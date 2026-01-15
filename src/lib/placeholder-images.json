@@ -1,3 +1,22 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "math-learning",
+      "description": "Child happily learning mathematics with colorful blocks",
+      "imageUrl": "https://images.unsplash.com/photo-1758685733780-4eced3a89d98?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjaGlsZCUyMGxlYXJuaW5nJTIwbWF0aHxlbnwwfHx8fDE3Njg0NzY0NjB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "child learning math"
+    },
+    {
+      "id": "portuguese-reading",
+      "description": "Child focused on reading a large print book",
+      "imageUrl": "https://images.unsplash.com/photo-1666888740974-3e31589c16b7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjaGlsZCUyMHJlYWRpbmclMjBib29rfGVufDB8fHx8MTc2ODQ3NjQ2MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "child reading book"
+    },
+    {
+      "id": "printable-worksheets",
+      "description": "Neatly arranged printed worksheets on a desk",
+      "imageUrl": "https://images.unsplash.com/photo-1581019055756-93b5361f9536?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwcmludGVkJTIwd29ya3NoZWV0c3xlbnwwfHx8fDE3Njg0NzY0NjB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "printed worksheets"
+    }
+  ]
 }
