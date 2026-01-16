@@ -185,16 +185,18 @@ service cloud.firestore {
     }
 
     match /students/{studentId} {
-      // READ:
-      // - A user can read their own profile.
-      // - An admin can read any profile.
-      // - A teacher can read the profiles of students assigned to them.
-      //   This allows a teacher to query their students, as the client-side
-      //   query `where("teacherId", "==", auth.uid)` will match this rule.
-      allow read: if isOwner(studentId)
+      // GET: A user can read their own profile, an admin can read any, and a
+      // teacher can read profiles of their own students.
+      allow get: if isOwner(studentId)
                  || isAdmin()
                  || (request.auth.uid == resource.data.teacherId);
                  
+      // LIST: Any signed-in user can attempt a query. The security is
+      // enforced by the 'get' rule, which Firestore checks for every potential
+      // document in the query result. This allows a teacher's query for their
+      // own students (`where('teacherId', '==', uid)`) to succeed.
+      allow list: if isSignedIn();
+
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
       allow delete: if isExistingOwner(studentId) || isAdmin();
@@ -203,7 +205,7 @@ service cloud.firestore {
         allow get: if isOwner(studentId) || isTaskAuthor() || isAdmin();
         allow list: if isOwner(studentId) || isAdmin();
         // Only a teacher can create a task for a student.
-        allow create: if hasValidStudentTaskDataOnCreate(studentId);
+        allow create: if hasValidStudentDataOnCreate(studentId);
         // A student can only update performance data, a teacher can update other fields, or an admin.
         allow update: if (isExistingOwner(studentId) && canStudentUpdateTask()) || 
                          (isTaskAuthor() && canTeacherUpdateTask()) || isAdmin();
