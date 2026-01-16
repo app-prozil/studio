@@ -81,32 +81,45 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
+  const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
 
   const exercisesQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'exercises'), [firestore, teacherId]);
   const { data: exercises, isLoading } = useCollection<Exercise>(exercisesQuery);
   
   const form = useForm<Exercise>({
     resolver: zodResolver(exerciseSchema),
-    defaultValues: { text: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy' },
+    defaultValues: { text: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId },
   });
+
+  const filteredExercises = useMemo(() => {
+    if (isLoading || !exercises) {
+      return [];
+    }
+    if (subjectFilter === 'all') {
+      return exercises;
+    }
+    return exercises.filter((ex) => ex.subject === subjectFilter);
+  }, [exercises, subjectFilter, isLoading]);
+
 
   useEffect(() => {
     if (editingExercise) {
       form.reset(editingExercise);
     } else {
-      form.reset({ text: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy' });
+      form.reset({ text: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '' });
     }
-  }, [editingExercise, form]);
+  }, [editingExercise, form, teacherId]);
 
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-      updateDoc(exerciseRef, values).catch(async (serverError) => {
+      const exerciseData = { ...values, teacherId };
+      updateDoc(exerciseRef, exerciseData).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: exerciseRef.path,
           operation: 'update',
-          requestResourceData: values,
+          requestResourceData: exerciseData,
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({ variant: 'destructive', title: 'Erro ao atualizar exercício' });
@@ -196,12 +209,25 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         <CardHeader>
           <CardTitle>Seu Banco de Exercícios</CardTitle>
            <CardDescription>Visualize e gerencie os exercícios que você criou.</CardDescription>
+           <div className="flex flex-wrap items-center gap-2 pt-4">
+              <Button variant={subjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('all')}>
+                Todos ({exercises?.length || 0})
+              </Button>
+              <Button variant={subjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('matematica')}>
+                Matemática ({exercises?.filter(e => e.subject === 'matematica').length || 0})
+              </Button>
+              <Button variant={subjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('portugues')}>
+                Português ({exercises?.filter(e => e.subject === 'portugues').length || 0})
+              </Button>
+            </div>
         </CardHeader>
         <CardContent>
-          {isLoading && <p>Carregando exercícios...</p>}
-          <ul className="space-y-2 h-[500px] overflow-y-auto">
-            {exercises?.map(ex => (
-              <li key={ex.id} className="p-3 border rounded-lg flex justify-between items-start">
+          {isLoading ? (
+             <div className="flex h-full items-center justify-center pt-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+          ) : (
+            <ul className="space-y-2 h-[480px] overflow-y-auto pr-2">
+            {filteredExercises.length > 0 ? filteredExercises.map(ex => (
+              <li key={ex.id} className="p-3 border rounded-lg flex justify-between items-start gap-2">
                 <div className="flex-1">
                   <p className="font-semibold">{ex.text}</p>
                   <p className="text-sm text-muted-foreground">Resposta: {ex.answer}</p>
@@ -215,8 +241,13 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                    <Button variant="ghost" size="icon" onClick={() => setDeletingExercise(ex)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
                 </div>
               </li>
-            ))}
+            )) : (
+              <div className="text-center text-muted-foreground py-8">
+                Nenhum exercício encontrado para este filtro.
+              </div>
+            )}
           </ul>
+          )}
         </CardContent>
       </Card>
       <AlertDialog open={!!deletingExercise} onOpenChange={open => !open && setDeletingExercise(null)}>
@@ -242,11 +273,18 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
+  const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
 
   const exercisesQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'exercises'), [firestore, teacherId]);
-  const { data: exercises } = useCollection<Exercise>(exercisesQuery);
+  const { data: exercises, isLoading: isLoadingExercises } = useCollection<Exercise>(exercisesQuery);
   const tasksQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'tasks'), [firestore, teacherId]);
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+  
+  const filteredBankExercises = useMemo(() => {
+    if (!exercises) return [];
+    if (bankSubjectFilter === 'all') return exercises;
+    return exercises.filter(ex => ex.subject === bankSubjectFilter);
+  }, [exercises, bankSubjectFilter]);
   
   const form = useForm<Task>({
     resolver: zodResolver(taskSchema),
@@ -433,32 +471,48 @@ function TaskManager({ teacherId }: { teacherId: string }) {
       <Dialog open={isBankOpen} onOpenChange={setIsBankOpen}>
           <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
               <DialogHeader><DialogTitle>Adicionar Exercícios do Banco</DialogTitle><DialogDescription>Selecione os exercícios que você quer adicionar a esta tarefa.</DialogDescription></DialogHeader>
+               <div className="flex flex-wrap items-center gap-2 pt-2 border-y pb-4">
+                  <span className="text-sm font-medium pr-4">Filtrar por:</span>
+                  <Button variant={bankSubjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('all')}>Todos</Button>
+                  <Button variant={bankSubjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('matematica')}>Matemática</Button>
+                  <Button variant={bankSubjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('portugues')}>Português</Button>
+              </div>
               <div className="flex-1 overflow-y-auto pr-4">
-                  {exercises?.map(ex => (
-                    <div key={ex.id} className="flex items-center gap-4 p-2 border-b">
-                        <Checkbox 
-                            id={ex.id} 
-                            checked={selectedExercises.some(s => s.id === ex.id)}
-                            onCheckedChange={(checked) => {
-                                if (checked) {
-                                    setSelectedExercises(prev => [...prev, ex]);
-                                } else {
-                                    setSelectedExercises(prev => prev.filter(p => p.id !== ex.id));
-                                }
-                            }}
-                        />
-                        <label htmlFor={ex.id} className="flex-1">
-                            <p className="font-semibold">{ex.text}</p>
-                            <div className="flex gap-2 mt-1">
-                                <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
-                                <Badge variant="outline">{ex.difficulty}</Badge>
-                            </div>
-                        </label>
+                  {isLoadingExercises ? (
+                    <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                  ) : filteredBankExercises.length > 0 ? (
+                    filteredBankExercises.map(ex => (
+                      <div key={ex.id} className="flex items-center gap-4 p-2 border-b">
+                          <Checkbox 
+                              id={`bank-${ex.id}`} 
+                              checked={selectedExercises.some(s => s.id === ex.id)}
+                              onCheckedChange={(checked) => {
+                                  if (checked) {
+                                      setSelectedExercises(prev => [...prev, ex]);
+                                  } else {
+                                      setSelectedExercises(prev => prev.filter(p => p.id !== ex.id));
+                                  }
+                              }}
+                          />
+                          <label htmlFor={`bank-${ex.id}`} className="flex-1 cursor-pointer">
+                              <p className="font-semibold">{ex.text}</p>
+                              <div className="flex gap-2 mt-1">
+                                  <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
+                                  <Badge variant="outline">{ex.difficulty}</Badge>
+                              </div>
+                          </label>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-muted-foreground py-8">
+                      Nenhum exercício encontrado. Crie alguns no Banco de Exercícios.
                     </div>
-                  ))}
+                  )}
               </div>
               <DialogFooter>
-                  <Button onClick={() => setIsBankOpen(false)}>Concluir</Button>
+                  <Button onClick={() => setIsBankOpen(false)}>
+                    Adicionar {selectedExercises.length > 0 ? `(${selectedExercises.length})` : ''} Exercícios
+                  </Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
