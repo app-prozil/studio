@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Trash2, Edit, ShieldAlert } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const ADMIN_EMAIL = 'admin@prozil.com'; // Centralize admin email
+const ADMIN_EMAIL = 'admin@prozil.com';
 
 const userSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
@@ -33,14 +33,20 @@ type UserProfile = {
   prozilId: string;
 };
 
-function UserTable({ type, isAuthorized }: { type: 'teacher' | 'student', isAuthorized: boolean }) {
+const NotAuthorizedMessage = () => (
+    <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
+      <p className="text-sm text-muted-foreground">Você não tem permissão para visualizar esta lista.</p>
+    </div>
+);
+
+function UserTable({ type }: { type: 'teacher' | 'student' }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
   
   const query = useMemoFirebase(
-    () => (isAuthorized ? collection(firestore, collectionName) : null),
-    [firestore, collectionName, isAuthorized]
+    () => collection(firestore, collectionName),
+    [firestore, collectionName]
   );
   
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
@@ -89,15 +95,7 @@ function UserTable({ type, isAuthorized }: { type: 'teacher' | 'student', isAuth
       })
       .finally(() => setIsSubmitting(false));
   };
-
-  if (!isAuthorized) {
-    return (
-      <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
-        <p className="text-sm text-muted-foreground">Você não tem permissão para visualizar esta lista.</p>
-      </div>
-    );
-  }
-
+  
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Erro ao carregar usuários: {error.message}</p>;
 
@@ -225,7 +223,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
             </CardHeader>
             <CardContent>
-               <UserTable type="teacher" isAuthorized={isAuthorized} />
+               {isAuthorized ? <UserTable type="teacher" /> : <NotAuthorizedMessage />}
             </CardContent>
           </Card>
         </TabsContent>
@@ -236,7 +234,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
             </CardHeader>
             <CardContent>
-              <UserTable type="student" isAuthorized={isAuthorized} />
+              {isAuthorized ? <UserTable type="student" /> : <NotAuthorizedMessage />}
             </CardContent>
           </Card>
         </TabsContent>
