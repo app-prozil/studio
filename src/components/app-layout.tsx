@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User as UserIcon, LogIn, ClipboardCheck } from 'lucide-react';
+import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User as UserIcon, LogIn, ClipboardCheck, Shield } from 'lucide-react';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
@@ -40,6 +40,7 @@ const menuItems = [
 ];
 
 const settingsMenuItem = { href: '/configuracoes', label: 'Configurações', icon: Settings };
+const ADMIN_EMAIL = 'admin@prozil.com';
 
 function UserNav() {
   const { user, isUserLoading } = useUser();
@@ -130,6 +131,7 @@ function UserNav() {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { user } = useUser();
 
   return (
     <SidebarProvider>
@@ -156,6 +158,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
+            {user?.email === ADMIN_EMAIL && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith('/admin')}
+                  tooltip="Admin"
+                >
+                  <Link href="/admin">
+                    <Shield />
+                    <span>Admin</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>

@@ -15,11 +15,12 @@
  * A teacher's private exercise bank is stored at `/teachers/{teacherId}/exercises`.
  *
  * Key Security Decisions:
- * - User data is private. Users cannot list or read profiles of other users.
+ * - User data is private by default. Users cannot list or read profiles of other users.
  * - Teachers have full Create, Read, Update, Delete (CRUD) permissions on tasks
  *   and exercises within their own subcollections.
  * - Students can only read and update tasks assigned to them. They are
  *   explicitly forbidden from creating or deleting tasks.
+ * - An admin role (identified by email) has full access to manage all users.
  * - Authorization logic relies on path-based security, using the UID in the
  *   document path to verify ownership. This avoids slow and costly `get()`
  *   calls in rules.
@@ -38,6 +39,12 @@ service cloud.firestore {
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      // In production, it is recommended to use custom claims: request.auth.token.admin == true
+      // For this prototype, we will check for a specific admin email.
+      return isSignedIn() && request.auth.token.email == 'admin@prozil.com';
     }
     
     function isExistingDoc() {
@@ -121,6 +128,9 @@ service cloud.firestore {
               incoming.title == existing.title &&
               incoming.teacherId == existing.teacherId &&
               incoming.studentId == existing.studentId &&
+              incoming.studentProzilId == existing.studentProzilId &&
+              incoming.teacherName == existing.teacherName &&
+              incoming.studentName == existing.studentName &&
               incoming.subject == existing.subject &&
               incoming.description == existing.description &&
               incoming.taskType == existing.taskType &&
@@ -150,44 +160,44 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
 
     match /teachers/{teacherId} {
-      allow get: if isOwner(teacherId);
-      allow list: if false;
+      allow get: if isOwner(teacherId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isOwner(teacherId) && hasValidTeacherDataOnCreate(teacherId);
-      allow update: if isExistingOwner(teacherId) && hasValidTeacherDataOnUpdate();
-      allow delete: if isExistingOwner(teacherId);
+      allow update: if (isExistingOwner(teacherId) && hasValidTeacherDataOnUpdate()) || isAdmin();
+      allow delete: if isExistingOwner(teacherId) || isAdmin();
 
       match /tasks/{taskId} {
-        allow get, list: if isOwner(teacherId);
+        allow get, list: if isOwner(teacherId) || isAdmin();
         allow create: if isOwner(teacherId) && hasValidTeacherTaskDataOnCreate(teacherId);
         allow update: if isExistingOwner(teacherId) && canTeacherUpdateTask();
         allow delete: if isExistingOwner(teacherId);
       }
       
       match /exercises/{exerciseId} {
-        allow get, list: if isOwner(teacherId);
+        allow get, list: if isOwner(teacherId) || isAdmin();
         allow create: if isOwner(teacherId) && hasValidExerciseDataOnCreate(teacherId);
-        allow update: if isExistingOwner(teacherId) && hasValidExerciseDataOnUpdate();
-        allow delete: if isExistingOwner(teacherId);
+        allow update: if (isExistingOwner(teacherId) && hasValidExerciseDataOnUpdate()) || isAdmin();
+        allow delete: if isExistingOwner(teacherId) || isAdmin();
       }
     }
 
     match /students/{studentId} {
-      allow get: if isOwner(studentId);
-      allow list: if false;
+      allow get: if isOwner(studentId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
-      allow update: if isExistingOwner(studentId) && hasValidStudentDataOnUpdate();
-      allow delete: if isExistingOwner(studentId);
+      allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
+      allow delete: if isExistingOwner(studentId) || isAdmin();
 
       match /tasks/{taskId} {
-        allow get: if isOwner(studentId) || isTaskAuthor();
-        allow list: if isOwner(studentId);
+        allow get: if isOwner(studentId) || isTaskAuthor() || isAdmin();
+        allow list: if isOwner(studentId) || isAdmin();
         // Only a teacher can create a task for a student.
         allow create: if hasValidStudentTaskDataOnCreate(studentId);
-        // A student can only update performance data, a teacher can update other fields.
+        // A student can only update performance data, a teacher can update other fields, or an admin.
         allow update: if (isExistingOwner(studentId) && canStudentUpdateTask()) || 
-                         (isTaskAuthor() && canTeacherUpdateTask());
+                         (isTaskAuthor() && canTeacherUpdateTask()) || isAdmin();
         // Only the authoring teacher can delete a task from a student's list.
-        allow delete: if isTaskAuthor();
+        allow delete: if isTaskAuthor() || isAdmin();
       }
     }
   }
