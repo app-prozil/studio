@@ -129,7 +129,7 @@ service cloud.firestore {
     }
     
     function canTeacherUpdateTask() {
-      // The teacher can modify task details, but not its core IDs or completion status.
+      // The teacher can modify task details, but not its core IDs.
       let incoming = request.resource.data;
       let existing = resource.data;
 

@@ -46,12 +46,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 
 
 // Schemas
 const exerciseSchema = z.object({
   id: z.string().optional(),
-  teacherId: z.string().optional(),
+  teacherId: z.string(),
   text: z.string().min(5, 'A pergunta deve ter pelo menos 5 caracteres.'),
   options: z.array(z.string().min(1, "A opção não pode estar vazia.")).length(3, 'Deve haver exatamente 3 opções.'),
   answer: z.string().min(1, 'A resposta correta é obrigatória.'),
@@ -67,12 +68,13 @@ const taskSchema = z.object({
   taskType: z.enum(['jogo_interativo', 'folha_imprimivel']),
   description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
   dueDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Data inválida.' }),
+  isCompleted: z.boolean().optional(),
   questions: z.array(exerciseSchema.pick({ text: true, options: true, answer: true })).min(1, 'A tarefa deve ter pelo menos uma questão.'),
 });
 
 
 type Exercise = z.infer<typeof exerciseSchema>;
-type Task = z.infer<typeof taskSchema> & { studentName?: string; teacherName?: string; isCompleted?: boolean; };
+type Task = z.infer<typeof taskSchema> & { studentName?: string; teacherName?: string; };
 
 
 function ExerciseBank({ teacherId }: { teacherId: string }) {
@@ -112,32 +114,27 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
-    const exerciseData = { ...values, teacherId };
-
+    
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-      updateDoc(exerciseRef, exerciseData).then(() => {
-        toast({ title: 'Exercício atualizado!' });
-        setEditingExercise(null);
-        form.reset();
-      }).catch(async (serverError) => {
+      updateDoc(exerciseRef, values).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: exerciseRef.path,
           operation: 'update',
-          requestResourceData: exerciseData,
+          requestResourceData: values,
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({ variant: 'destructive', title: 'Erro ao atualizar exercício' });
       }).finally(() => {
+        toast({ title: 'Exercício atualizado!' });
+        setEditingExercise(null);
+        form.reset();
         setIsSubmitting(false);
       });
     } else {
       const newExerciseRef = doc(collection(firestore, 'teachers', teacherId, 'exercises'));
-      const newExercise = { ...exerciseData, id: newExerciseRef.id };
-      setDoc(newExerciseRef, newExercise).then(() => {
-        toast({ title: 'Exercício salvo no banco!' });
-        form.reset();
-      }).catch(async (serverError) => {
+      const newExercise = { ...values, teacherId, id: newExerciseRef.id };
+      setDoc(newExerciseRef, newExercise).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: newExerciseRef.path,
           operation: 'create',
@@ -146,6 +143,8 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         errorEmitter.emit('permission-error', permissionError);
         toast({ variant: 'destructive', title: 'Erro ao salvar exercício' });
       }).finally(() => {
+        toast({ title: 'Exercício salvo no banco!' });
+        form.reset();
         setIsSubmitting(false);
       });
     }
@@ -155,9 +154,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     if (!deletingExercise?.id) return;
     setIsSubmitting(true);
     const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', deletingExercise.id);
-    deleteDoc(exerciseRef).then(() => {
-        toast({ title: 'Exercício excluído!' });
-    }).catch(async (serverError) => {
+    deleteDoc(exerciseRef).catch(async (serverError) => {
       const permissionError = new FirestorePermissionError({
         path: exerciseRef.path,
         operation: 'delete',
@@ -165,6 +162,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       errorEmitter.emit('permission-error', permissionError);
       toast({ variant: 'destructive', title: 'Erro ao excluir' });
     }).finally(() => {
+        toast({ title: 'Exercício excluído!' });
         setDeletingExercise(null);
         setIsSubmitting(false);
     });
@@ -297,7 +295,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
-    defaultValues: { title: '', studentId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [] },
+    defaultValues: { title: '', studentId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [], isCompleted: false },
   });
 
   useEffect(() => {
@@ -306,17 +304,33 @@ function TaskManager({ teacherId }: { teacherId: string }) {
             ...editingTask,
             dueDate: editingTask.dueDate ? format(new Date(editingTask.dueDate), 'yyyy-MM-dd') : '',
         });
-        setSelectedExercises(editingTask.questions.map((q, i) => ({...q, id: `${editingTask.id}-q-${i}`, subject: editingTask.subject, difficulty: 'easy' })));
+        setSelectedExercises(editingTask.questions.map((q, i) => ({...q, id: `${editingTask.id}-q-${i}`, subject: editingTask.subject, difficulty: 'easy', teacherId })));
     } else {
-        form.reset({ title: '', studentId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [] });
+        form.reset({ title: '', studentId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [], isCompleted: false });
         setSelectedExercises([]);
     }
-  }, [editingTask, form]);
+  }, [editingTask, form, teacherId]);
 
 
   useEffect(() => {
     form.setValue('questions', selectedExercises.map(e => ({text: e.text, options: e.options, answer: e.answer})));
   }, [selectedExercises, form]);
+
+  const handleDuplicate = (taskToDuplicate: Task) => {
+    setEditingTask(null); // Sair do modo de edição
+    // Preencher o formulário com dados da tarefa, mas limpar campos de atribuição
+    form.reset({
+      ...taskToDuplicate,
+      id: undefined,
+      studentId: '', // Limpar ID do aluno para nova atribuição
+      isCompleted: false, // Nova tarefa começa como não concluída
+      dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], // Definir nova data de entrega
+    });
+    // @ts-ignore
+    setSelectedExercises(taskToDuplicate.questions.map((q, i) => ({...q, id: `dup-${taskToDuplicate.id}-q-${i}-${Date.now()}` })));
+    toast({ title: 'Tarefa Duplicada', description: 'Atribua a um novo aluno e salve.' });
+  };
+
 
   const onSubmit = async (values: z.infer<typeof taskSchema>) => {
     setIsSubmitting(true);
@@ -343,17 +357,14 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     }
 
     const batch = writeBatch(firestore);
-    let taskPromise: Promise<void>;
-
+    
     if (editingTask?.id) {
-        const taskData = { ...values, teacherId, isCompleted: editingTask.isCompleted, dueDate: new Date(values.dueDate).toISOString(), studentName, teacherName };
+        const taskData = { ...values, teacherId, dueDate: new Date(values.dueDate).toISOString(), studentName, teacherName };
         const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', editingTask.id);
         const studentTaskRef = doc(firestore, 'students', editingTask.studentId, 'tasks', editingTask.id);
         
         batch.update(teacherTaskRef, taskData);
         batch.update(studentTaskRef, taskData);
-        taskPromise = batch.commit();
-
     } else {
         const newTaskId = doc(collection(firestore, 'teachers')).id;
         const taskData = { ...values, id: newTaskId, teacherId, isCompleted: false, dueDate: new Date(values.dueDate).toISOString(), studentName, teacherName };
@@ -363,10 +374,9 @@ function TaskManager({ teacherId }: { teacherId: string }) {
         
         batch.set(teacherTaskRef, taskData);
         batch.set(studentTaskRef, taskData);
-        taskPromise = batch.commit();
     }
     
-    taskPromise.then(() => {
+    batch.commit().then(() => {
         toast({ title: editingTask ? 'Tarefa atualizada com sucesso!' : 'Tarefa criada com sucesso!' });
         setEditingTask(null);
         form.reset();
@@ -386,8 +396,8 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     const { id, studentId } = deletingTask;
     setIsSubmitting(true);
     
-    const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', id);
-    const studentTaskRef = doc(firestore, 'students', studentId, 'tasks', id);
+    const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', id as string);
+    const studentTaskRef = doc(firestore, 'students', studentId, 'tasks', id as string);
 
     const batch = writeBatch(firestore);
     batch.delete(teacherTaskRef);
@@ -418,11 +428,32 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                 <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Título da Tarefa</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
                 <FormField control={form.control} name="studentId" render={({ field }) => (<FormItem><FormLabel>ID do Aluno</FormLabel><FormControl><Input {...field} disabled={!!editingTask} /></FormControl><FormMessage /></FormItem>)}/>
                 <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel>Matéria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="matematica">Matemática</SelectItem><SelectItem value="portugues">Português</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                     <FormField control={form.control} name="taskType" render={({ field }) => (<FormItem><FormLabel>Tipo de Tarefa</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="jogo_interativo">Jogo Interativo</SelectItem><SelectItem value="folha_imprimivel">Folha Imprimível</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
-                    <FormField control={form.control} name="dueDate" render={({ field }) => (<FormItem><FormLabel>Data de Entrega</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    <FormField control={form.control} name="dueDate" render={({ field }) => (<FormItem><FormLabel>Data de Entrega</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                     {editingTask && (
+                        <FormField
+                            control={form.control}
+                            name="isCompleted"
+                            render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 mt-4 md:mt-0">
+                                <div className="space-y-0.5">
+                                    <FormLabel>Tarefa Concluída</FormLabel>
+                                </div>
+                                <FormControl>
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                                </FormControl>
+                            </FormItem>
+                            )}
+                        />
+                    )}
+                 </div>
 
                 <Card>
                     <CardHeader className="flex-row items-center justify-between">
@@ -465,11 +496,12 @@ function TaskManager({ teacherId }: { teacherId: string }) {
             <CardContent>
                 {isLoadingTasks && <p>Carregando tarefas...</p>}
                 <ul className="space-y-2 h-[500px] overflow-y-auto">
-                    {tasks?.map(task => (
+                    {tasks?.sort((a,b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()).map(task => (
                         <li key={task.id} className="p-3 border rounded-lg flex justify-between items-start">
-                            <div className="flex-1">
+                            <div className="flex-1 space-y-1">
                                 <p className="font-semibold">{task.title}</p>
                                 <p className="text-sm text-muted-foreground">Para: {task.studentName || task.studentId}</p>
+                                <div><Badge variant={task.isCompleted ? 'secondary' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge></div>
                             </div>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -481,10 +513,13 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                                             <Eye className="mr-2 h-4 w-4"/> Visualizar
                                         </Link>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setEditingTask(task)} className="cursor-pointer">
+                                    <DropdownMenuItem onClick={() => setEditingTask(task as Task)} className="cursor-pointer">
                                         <Edit className="mr-2 h-4 w-4"/> Editar
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setDeletingTask(task)} className="cursor-pointer text-destructive focus:text-destructive">
+                                     <DropdownMenuItem onClick={() => handleDuplicate(task as Task)} className="cursor-pointer">
+                                        <BookCopy className="mr-2 h-4 w-4"/> Duplicar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setDeletingTask(task as Task)} className="cursor-pointer text-destructive focus:text-destructive">
                                         <Trash2 className="mr-2 h-4 w-4"/> Excluir
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
