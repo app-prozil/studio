@@ -230,7 +230,11 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
             </CardHeader>
             <CardContent>
-              <UserTable type="teacher" canQuery={isAuthorized} />
+               {isAuthorized ? <UserTable type="teacher" canQuery={isAuthorized} /> : (
+                 <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
+                   <p className="text-sm text-muted-foreground">Você não tem permissão para visualizar esta lista.</p>
+                 </div>
+               )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -241,7 +245,11 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
             </CardHeader>
             <CardContent>
-              <UserTable type="student" canQuery={isAuthorized} />
+               {isAuthorized ? <UserTable type="student" canQuery={isAuthorized} /> : (
+                 <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
+                   <p className="text-sm text-muted-foreground">Você não tem permissão para visualizar esta lista.</p>
+                 </div>
+               )}
             </CardContent>
           </Card>
         </TabsContent>
