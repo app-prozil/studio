@@ -304,7 +304,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
             ...editingTask,
             dueDate: editingTask.dueDate ? format(new Date(editingTask.dueDate), 'yyyy-MM-dd') : '',
         });
-        setSelectedExercises(editingTask.questions.map((q, i) => ({...q, id: `${editingTask.id}-q-${i}`, subject: editingTask.subject, difficulty: 'easy', teacherId })));
+        setSelectedExercises((editingTask.questions || []).map((q, i) => ({...q, id: `${editingTask.id}-q-${i}`, subject: editingTask.subject, difficulty: 'easy', teacherId })));
     } else {
         form.reset({ title: '', studentId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [], isCompleted: false });
         setSelectedExercises([]);
@@ -327,7 +327,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
       dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], // Definir nova data de entrega
     });
     // @ts-ignore
-    setSelectedExercises(taskToDuplicate.questions.map((q, i) => ({...q, id: `dup-${taskToDuplicate.id}-q-${i}-${Date.now()}` })));
+    setSelectedExercises((taskToDuplicate.questions || []).map((q, i) => ({...q, id: `dup-${taskToDuplicate.id}-q-${i}-${Date.now()}` })));
     toast({ title: 'Tarefa Duplicada', description: 'Atribua a um novo aluno e salve.' });
   };
 
