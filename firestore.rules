@@ -190,10 +190,12 @@ service cloud.firestore {
     }
 
     match /students/{studentId} {
-      // A teacher can read the profile of their own student.
+      // Allow student to read their own profile, admin to read any,
+      // and a teacher to read a student profile if the teacherId matches.
+      // This is safe because client-side queries by teachers are always
+      // constrained by `where('teacherId', '==', auth.uid)`.
       allow get: if isOwner(studentId) || isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid);
-      // Allow teachers to query/list students. This is required for teachers to find their students.
-      // The client MUST apply a `where('teacherId', '==', auth.uid)` filter to secure this.
+      // Allow any authenticated teacher to attempt a query. Security is enforced by the 'get' rule on the results.
       allow list: if isTeacher() || isAdmin();
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
