@@ -57,69 +57,126 @@
         "teacherId"
       ]
     },
-    "Task": {
+    "Exercise": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Task",
+      "title": "Exercise",
       "type": "object",
-      "description": "Represents a task assigned by a teacher.",
+      "description": "Represents a single reusable exercise created by a teacher for their exercise bank.",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "Unique identifier for the Task entity."
-        },
-        "title": {
-          "type": "string",
-          "description": "The title or topic of the task."
+          "type": "string"
         },
         "teacherId": {
-          "type": "string",
-          "description": "Reference to Teacher. (Relationship: Teacher 1:N Task)"
-        },
-        "studentId": {
-          "type": "string",
-          "description": "Reference to Student. (Relationship: Student 1:N Task)"
+          "type": "string"
         },
         "subject": {
           "type": "string",
-          "description": "The subject of the task (e.g., Mathematics, Portuguese).",
           "enum": [
             "matematica",
             "portugues"
           ]
         },
-        "description": {
-          "type": "string",
-          "description": "Detailed description of the task."
-        },
-        "taskType": {
-          "type": "string",
-          "description": "The type of task.",
-          "enum": [
-            "jogo_interativo",
-            "folha_imprimivel"
-          ]
-        },
         "difficulty": {
           "type": "string",
-          "description": "The difficulty level of the task.",
           "enum": [
             "easy",
             "medium",
             "hard"
           ]
         },
-        "numberOfQuestions": {
-          "type": "number",
-          "description": "The number of questions for the task."
+        "text": {
+          "type": "string",
+          "description": "The text of the question."
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "answer": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "teacherId",
+        "subject",
+        "difficulty",
+        "text",
+        "options",
+        "answer"
+      ]
+    },
+    "Task": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a task assigned by a teacher, composed of one or more questions.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "teacherId": {
+          "type": "string"
+        },
+        "studentId": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string",
+          "enum": [
+            "matematica",
+            "portugues"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "taskType": {
+          "type": "string",
+          "enum": [
+            "jogo_interativo",
+            "folha_imprimivel"
+          ]
         },
         "dueDate": {
           "type": "string",
-          "description": "The due date for the task.",
           "format": "date-time"
         },
         "isCompleted": {
-          "type": "boolean",
-          "description": "Indicates whether the task is completed."
+          "type": "boolean"
+        },
+        "questions": {
+          "type": "array",
+          "description": "A list of questions that make up the task. This data is denormalized from the exercise bank.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "answer": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "options",
+              "answer"
+            ]
+          }
         }
       },
       "required": [
@@ -130,10 +187,9 @@
         "subject",
         "description",
         "taskType",
-        "difficulty",
-        "numberOfQuestions",
         "dueDate",
-        "isCompleted"
+        "isCompleted",
+        "questions"
       ]
     }
   },
@@ -173,6 +229,26 @@
             {
               "name": "studentId",
               "description": "The Firebase Auth UID of the student."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/teachers/{teacherId}/exercises/{exerciseId}",
+        "definition": {
+          "entityName": "Exercise",
+          "schema": {
+            "$ref": "#/backend/entities/Exercise"
+          },
+          "description": "Stores reusable exercises created by teachers. This is the teacher's 'exercise bank'.",
+          "params": [
+            {
+              "name": "teacherId",
+              "description": "The Firebase Auth UID of the teacher who created the exercise."
+            },
+            {
+              "name": "exerciseId",
+              "description": "Unique identifier for the exercise."
             }
           ]
         }
@@ -218,6 +294,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to provide a clear separation between teacher and student data, ensuring efficient data access and security. The primary principle applied is Authorization Independence by avoiding `get()` calls in the security rules. This is achieved by structuring the data in a way that allows authorization to be determined based on the path and the user's authentication status, eliminating the need to fetch parent document data. The structure utilizes hierarchical paths to establish clear ownership for user-created content (Tasks). For the QAPs requirement, the design segregates data based on ownership and role (teacher/student), thus filtering during list operations can be achieved securely using path-based rules. Tasks are organized under students, with a reference to the teacher who assigned them, enabling secure and efficient retrieval of tasks by students or teachers. Denormalization is used to include any necessary authorization data directly within the Task document (e.g., the studentId)."
+    "reasoning": "The Firestore structure is designed to provide a clear separation between teacher and student data, ensuring efficient data access and security. The primary principle applied is Authorization Independence by avoiding `get()` calls in the security rules. This is achieved by structuring the data in a way that allows authorization to be determined based on the path and the user's authentication status, eliminating the need to fetch parent document data. The structure utilizes hierarchical paths to establish clear ownership for user-created content (Tasks, Exercises). For the QAPs requirement, the design segregates data based on ownership and role (teacher/student), thus filtering during list operations can be achieved securely using path-based rules. Tasks are organized under students, with a reference to the teacher who assigned them, enabling secure and efficient retrieval of tasks by students or teachers. Denormalization is used to include any necessary authorization data directly within the Task document (e.g., the studentId and the full question data)."
   }
 }

@@ -1,5 +1,7 @@
+'use server';
+
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/generate-printable-worksheets.ts';
-import '@/ai/flows/generate-game-questions.ts';
+// AI flows are no longer used for task generation.
+// This file is kept for potential future AI features.

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, BookOpen, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -54,9 +54,12 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
                                </p>
                                <p className="text-muted-foreground text-sm">{task.description}</p>
                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                   <span>Matéria: <span className="font-semibold">{task.subject === 'matematica' ? 'Matemática' : 'Português'}</span></span>
-                                   <span>Dificuldade: <span className="font-semibold">{task.difficulty}</span></span>
-                                   <span>Questões: <span className="font-semibold">{task.numberOfQuestions}</span></span>
+                                   <span className="flex items-center gap-1">
+                                    <BookOpen className="w-3 h-3"/> {task.subject === 'matematica' ? 'Matemática' : 'Português'}
+                                   </span>
+                                   <span className="flex items-center gap-1">
+                                    <FileText className="w-3 h-3"/> {task.questions?.length || 0} questões
+                                   </span>
                                </div>
                            </div>
                            <div className="flex flex-col items-end justify-between gap-2 self-stretch shrink-0">
@@ -69,7 +72,7 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
 
                             {!task.isCompleted && task.taskType === 'jogo_interativo' && (
                                 <Button asChild size="sm">
-                                    <Link href={`/${task.subject}?taskId=${task.id}&studentId=${studentId}&topic=${encodeURIComponent(task.title)}&difficulty=${task.difficulty}&questions=${task.numberOfQuestions}`}>
+                                    <Link href={`/${task.subject}?taskId=${task.id}&studentId=${studentId}`}>
                                         Iniciar Atividade <ArrowRight className="ml-2 h-4 w-4"/>
                                     </Link>
                                 </Button>

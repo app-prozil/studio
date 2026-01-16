@@ -2,19 +2,25 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { generateGameQuestions } from '@/ai/flows/generate-game-questions';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Question = {
   text: string;
   options: string[];
   answer: string;
 };
+
+type Task = {
+    id: string;
+    questions: Question[];
+    subject: 'math' | 'portuguese';
+}
 
 type InteractiveGameProps = {
   subject: 'math' | 'portuguese';
@@ -30,58 +36,33 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [isGameLoading, setIsGameLoading] = useState(true);
   const [isGameComplete, setIsGameComplete] = useState(false);
 
   // Task parameters from URL
   const taskId = searchParams.get('taskId');
   const studentId = searchParams.get('studentId');
-  const topic = searchParams.get('topic');
-  const difficulty = searchParams.get('difficulty') as 'easy' | 'medium' | 'hard' | null;
-  const numberOfQuestions = searchParams.get('questions');
 
-  const loadQuestions = useCallback(async () => {
-    if (!topic || !difficulty || !numberOfQuestions) {
-        toast({ variant: 'destructive', title: 'Erro', description: 'Parâmetros da tarefa inválidos.' });
-        setIsGameLoading(false);
-        return;
-    }
-
-    try {
-      setIsGameLoading(true);
-      const result = await generateGameQuestions({
-        subject,
-        topic,
-        difficulty,
-        numberOfQuestions: parseInt(numberOfQuestions, 10),
-      });
-      if (result.questions && result.questions.length > 0) {
-        setQuestions(result.questions);
-      } else {
-         toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível gerar as questões.' });
-      }
-    } catch (error) {
-      console.error('Failed to generate questions:', error);
-      toast({ variant: 'destructive', title: 'Erro de IA', description: 'Ocorreu um erro ao gerar as questões para a atividade.' });
-    } finally {
-      setIsGameLoading(false);
-    }
-  }, [subject, topic, difficulty, numberOfQuestions, toast]);
+  const taskDocRef = useMemoFirebase(
+    () => (studentId && taskId ? doc(firestore, 'students', studentId, 'tasks', taskId) : null),
+    [firestore, studentId, taskId]
+  );
+  const { data: taskData, isLoading: isTaskLoading } = useDoc<Task>(taskDocRef);
 
   useEffect(() => {
-    loadQuestions();
-  }, [loadQuestions]);
+    if (taskData && taskData.questions) {
+      setQuestions(taskData.questions);
+    }
+  }, [taskData]);
 
   const completeTask = useCallback(async () => {
-    if (!studentId || !taskId) return;
-    const taskRef = doc(firestore, 'students', studentId, 'tasks', taskId);
+    if (!taskDocRef) return;
     try {
-      await updateDoc(taskRef, { isCompleted: true });
+      await updateDoc(taskDocRef, { isCompleted: true });
     } catch (e) {
       console.error("Erro ao atualizar tarefa: ", e);
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível marcar a tarefa como concluída.' });
     }
-  }, [studentId, taskId, firestore, toast]);
+  }, [taskDocRef, toast]);
 
   const handleAnswer = (option: string) => {
     if (selectedAnswer !== null) return;
@@ -89,7 +70,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setSelectedAnswer(option);
     const currentQuestion = questions[currentQuestionIndex];
     const correct = subject === 'math' 
-      ? parseInt(option, 10) === parseInt(currentQuestion.answer, 10)
+      ? parseFloat(option) === parseFloat(currentQuestion.answer)
       : option === currentQuestion.answer;
     
     setIsCorrect(correct);
@@ -109,14 +90,23 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }, 2000);
   };
 
-  if (isGameLoading) {
-    return <div className="flex items-center justify-center h-48"><Loader2 className="w-12 h-12 animate-spin" /> Carregando questões...</div>;
+  if (isTaskLoading) {
+    return (
+        <div className="space-y-8">
+            <Skeleton className="h-32 w-full" />
+            <div className="grid grid-cols-3 gap-6">
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+            </div>
+        </div>
+    );
   }
 
-  if (!questions.length) {
-    return <div className="text-destructive-foreground">Não foi possível carregar a atividade. Tente voltar para a página de tarefas e acessar novamente.</div>;
+  if (!taskData || questions.length === 0) {
+    return <div className="text-destructive-foreground text-center">Não foi possível carregar a atividade. Verifique se o link está correto ou tente novamente.</div>;
   }
-
+  
   if (isGameComplete) {
     return (
         <div className="flex flex-col items-center justify-center text-center h-48 space-y-4">

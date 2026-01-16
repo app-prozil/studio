@@ -2,9 +2,9 @@
  * Core Philosophy: This ruleset enforces a strict role-based security model
  * for a teacher/student application. Data access is segregated based on user
  * ownership, meaning users can only interact with their own documents and
- * subcollections. Teachers have full control over the tasks they create, while
- * students have read-only access to their assigned tasks, with the limited
- * ability to update task status.
+ * subcollections. Teachers have full control over the tasks and exercises they
+ * create, while students have read-only access to their assigned tasks, with
+ * the limited ability to update task status.
  *
  * Data Structure: The data is hierarchically organized and segregated by role.
  * Teacher and student profiles are stored in separate top-level collections
@@ -12,14 +12,14 @@
  * performant, and secure queries, tasks are denormalized and stored in two
  * locations: under the teacher who created them (`/teachers/{teacherId}/tasks`)
  * and under the student they are assigned to (`/students/{studentId}/tasks`).
+ * A teacher's private exercise bank is stored at `/teachers/{teacherId}/exercises`.
  *
  * Key Security Decisions:
  * - User data is private. Users cannot list or read profiles of other users.
  * - Teachers have full Create, Read, Update, Delete (CRUD) permissions on tasks
- *   within their own subcollection.
+ *   and exercises within their own subcollections.
  * - Students can only read and update tasks assigned to them. They are
- *   explicitly forbidden from creating or deleting tasks, as this is a teacher's
- *   responsibility.
+ *   explicitly forbidden from creating or deleting tasks.
  * - Authorization logic relies on path-based security, using the UID in the
  *   document path to verify ownership. This avoids slow and costly `get()`
  *   calls in rules.
@@ -32,114 +32,80 @@ service cloud.firestore {
     // Helper Functions
     // -------------------------------------------------------------------------
 
-    /**
-     * Verifies if the current request is from a signed-in user.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the currently authenticated user's UID matches the provided userId.
-     * This is the primary function for enforcing data ownership.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-
-    /**
-     * Verifies that the document being modified already exists.
-     * CRITICAL: Must be used for all update and delete operations.
-     */
+    
     function isExistingDoc() {
       return resource != null;
     }
 
-    /**
-     * A composite function that verifies ownership and document existence.
-     * Used for secure update and delete operations.
-     */
     function isExistingOwner(userId) {
       return isOwner(userId) && isExistingDoc();
     }
 
     // --- Create Validation Helpers ---
 
-    /**
-     * Validates required relational fields when creating a Teacher profile.
-     * Ensures the document's internal ID matches the document path ID (UID).
-     */
     function hasValidTeacherDataOnCreate(teacherId) {
       return request.resource.data.id == teacherId;
     }
 
-    /**
-     * Validates required relational fields when creating a Student profile.
-     * Ensures the document's internal ID matches the document path ID (UID)
-     * and a teacherId is present.
-     */
     function hasValidStudentDataOnCreate(studentId) {
       let isIdValid = request.resource.data.id == studentId;
       let hasTeacher = request.resource.data.teacherId != null;
       return isIdValid && hasTeacher;
     }
 
-    /**
-     * Validates required relational fields when a Teacher creates a Task.
-     * Ensures the task's teacherId field matches the owner's UID in the path.
-     */
     function hasValidTeacherTaskDataOnCreate(teacherId) {
-      return request.resource.data.teacherId == teacherId;
+      let isCorrectTeacher = request.resource.data.teacherId == teacherId;
+      let hasQuestions = request.resource.data.questions.size() > 0;
+      return isCorrectTeacher && hasQuestions;
     }
 
-    /**
-     * Validates that the creator of a task in a student's subcollection
-     * is the teacher assigned to that task.
-     */
     function hasValidStudentTaskDataOnCreate(studentId) {
       let isCorrectStudent = request.resource.data.studentId == studentId;
+      // The creator of a student's task must be the teacher assigned to it.
       let isTeacherTheAuthor = request.resource.data.teacherId == request.auth.uid;
-      return isCorrectStudent && isTeacherTheAuthor;
+      let hasQuestions = request.resource.data.questions.size() > 0;
+      return isCorrectStudent && isTeacherTheAuthor && hasQuestions;
+    }
+    
+    function hasValidExerciseDataOnCreate(teacherId) {
+       return request.resource.data.teacherId == teacherId;
     }
 
     // --- Update Validation Helpers ---
 
-    /**
-     * Enforces immutability of the core ID field for a Teacher profile on update.
-     */
     function hasValidTeacherDataOnUpdate() {
       return request.resource.data.id == resource.data.id;
     }
 
-    /**
-     * Enforces immutability of relational IDs for a Student profile on update.
-     * Prevents a student from changing their own ID or their assigned teacher.
-     */
     function hasValidStudentDataOnUpdate() {
       let isIdImmutable = request.resource.data.id == resource.data.id;
-      let isTeacherIdImmutable = request.resource.data.teacherId == resource.teacherId;
+      let isTeacherIdImmutable = request.resource.data.teacherId == resource.data.teacherId;
       return isIdImmutable && isTeacherIdImmutable;
     }
-
-    /**
-     * Enforces immutability of the teacherId for a Task on update.
-     */
-    function hasValidTeacherTaskDataOnUpdate() {
-      return request.resource.data.teacherId == resource.data.teacherId;
+    
+    function hasValidExerciseDataOnUpdate() {
+      return request.resource.data.teacherId == resource.data.teacherId
+          && request.resource.data.id == resource.data.id;
     }
 
-    /**
-     * Enforces that a student can only update the `isCompleted` field of a task.
-     * All other fields must remain unchanged. This prevents students from altering
-     * task details like title, due date, or difficulty.
-     */
     function canStudentUpdateTask() {
+        // A student can ONLY change the `isCompleted` status from false to true.
+        // All other fields must remain identical.
         let incoming = request.resource.data;
         let existing = resource.data;
-
-        // Check if `isCompleted` is the only field that is changing.
-        // All other fields must have the same value as before.
-        return incoming.id == existing.id &&
+        
+        let isCompletingTask = incoming.isCompleted == true && existing.isCompleted == false;
+        
+        // Check immutability of all other fields
+        return isCompletingTask &&
+               incoming.id == existing.id &&
                incoming.title == existing.title &&
                incoming.teacherId == existing.teacherId &&
                incoming.studentId == existing.studentId &&
@@ -147,45 +113,28 @@ service cloud.firestore {
                incoming.description == existing.description &&
                incoming.taskType == existing.taskType &&
                incoming.dueDate == existing.dueDate &&
-               incoming.difficulty == existing.difficulty &&
-               incoming.numberOfQuestions == existing.numberOfQuestions;
+               incoming.questions == existing.questions; // questions array must be identical
     }
 
-    /**
-     * Checks if the requester is the author of the task.
-     */
     function isTaskAuthor() {
       return isExistingDoc() && request.auth.uid == resource.data.teacherId;
     }
     
-    /**
-     * Validates fields a teacher is allowed to update on a student's task.
-     * The teacher cannot change the completion status or core IDs.
-     */
     function canTeacherUpdateTask() {
+      // The teacher can modify task details, but not its core IDs or completion status.
       let incoming = request.resource.data;
       let existing = resource.data;
 
       return incoming.isCompleted == existing.isCompleted &&
-              incoming.id == existing.id &&
-              incoming.teacherId == existing.teacherId &&
-              incoming.studentId == existing.studentId;
+             incoming.id == existing.id &&
+             incoming.teacherId == existing.teacherId &&
+             incoming.studentId == existing.studentId;
     }
-
 
     // -------------------------------------------------------------------------
     // Collection Rules
     // -------------------------------------------------------------------------
 
-    /**
-     * @description Manages teacher profiles. Only the authenticated teacher can
-     *              access or modify their own profile document.
-     * @path /teachers/{teacherId}
-     * @allow (create) A signed-in user 'user123' creating their profile at /teachers/user123.
-     * @deny  (get) User 'user456' trying to read the profile at /teachers/user123.
-     * @deny  (list) Any user trying to list all documents in the /teachers collection.
-     * @principle Restricts access to a user's own data tree and prevents user enumeration.
-     */
     match /teachers/{teacherId} {
       allow get: if isOwner(teacherId);
       allow list: if false;
@@ -193,32 +142,21 @@ service cloud.firestore {
       allow update: if isExistingOwner(teacherId) && hasValidTeacherDataOnUpdate();
       allow delete: if isExistingOwner(teacherId);
 
-      /**
-       * @description Manages tasks from a teacher's perspective. The teacher has
-       *              full CRUD permissions over tasks in their own subcollection.
-       * @path /teachers/{teacherId}/tasks/{taskId}
-       * @allow (create) Teacher 'user123' creating a new task at /teachers/user123/tasks/abc.
-       * @deny  (list) Student 'user456' trying to list tasks from /teachers/user123/tasks.
-       * @principle Enforces document ownership for all operations within a user-specific subcollection.
-       */
       match /tasks/{taskId} {
-        allow get: if isOwner(teacherId);
-        allow list: if isOwner(teacherId);
+        allow get, list: if isOwner(teacherId);
         allow create: if isOwner(teacherId) && hasValidTeacherTaskDataOnCreate(teacherId);
-        allow update: if isExistingOwner(teacherId) && hasValidTeacherTaskDataOnUpdate();
+        allow update: if isExistingOwner(teacherId) && canTeacherUpdateTask();
+        allow delete: if isExistingOwner(teacherId);
+      }
+      
+      match /exercises/{exerciseId} {
+        allow get, list: if isOwner(teacherId);
+        allow create: if isOwner(teacherId) && hasValidExerciseDataOnCreate(teacherId);
+        allow update: if isExistingOwner(teacherId) && hasValidExerciseDataOnUpdate();
         allow delete: if isExistingOwner(teacherId);
       }
     }
 
-    /**
-     * @description Manages student profiles. Only the authenticated student can
-     *              access or modify their own profile document.
-     * @path /students/{studentId}
-     * @allow (update) A signed-in user 'user123' updating their profile at /students/user123.
-     * @deny  (get) User 'user456' trying to read the profile at /students/user123.
-     * @deny  (list) Any user trying to list all documents in the /students collection.
-     * @principle Restricts access to a user's own data tree and prevents user enumeration.
-     */
     match /students/{studentId} {
       allow get: if isOwner(studentId);
       allow list: if false;
@@ -226,22 +164,15 @@ service cloud.firestore {
       allow update: if isExistingOwner(studentId) && hasValidStudentDataOnUpdate();
       allow delete: if isExistingOwner(studentId);
 
-      /**
-       * @description Manages tasks assigned to a student. Students can read and update
-       *              their own tasks (e.g., mark as complete). Teachers can create, 
-       *              update, and delete tasks.
-       * @path /students/{studentId}/tasks/{taskId}
-       * @allow (get) Student 'user123' reading a task at /students/user123/tasks/abc.
-       * @allow (create) Teacher 'teacher456' creating a task for student 'user123'.
-       * @deny  (delete) Student 'user123' trying to delete an assigned task.
-       * @principle Allows read/limited-update for owners, and full CRUD for authorized roles (teachers).
-       */
       match /tasks/{taskId} {
         allow get: if isOwner(studentId) || isTaskAuthor();
         allow list: if isOwner(studentId);
+        // Only a teacher can create a task for a student.
         allow create: if hasValidStudentTaskDataOnCreate(studentId);
+        // A student can only update `isCompleted`, a teacher can update other fields.
         allow update: if (isExistingOwner(studentId) && canStudentUpdateTask()) || 
                          (isTaskAuthor() && canTeacherUpdateTask());
+        // Only the authoring teacher can delete a task from a student's list.
         allow delete: if isTaskAuthor();
       }
     }
