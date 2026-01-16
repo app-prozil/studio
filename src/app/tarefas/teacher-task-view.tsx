@@ -82,10 +82,10 @@ function TaskList({ teacherId }: { teacherId: string }) {
                 dueDate: format(new Date(editTask.dueDate), 'yyyy-MM-dd'),
             });
         }
-    }, [editTask]);
+    }, [editTask, editForm]);
 
 
-    const handleUpdateTask = async (values: z.infer<typeof editTaskSchema>) => {
+    const handleUpdateTask = (values: z.infer<typeof editTaskSchema>) => {
       if (!editTask) return;
       setIsSubmitting(true);
   
@@ -98,67 +98,75 @@ function TaskList({ teacherId }: { teacherId: string }) {
       const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', editTask.id);
       const studentTaskRef = doc(firestore, 'students', editTask.studentId, 'tasks', editTask.id);
   
-      const teacherUpdate = updateDoc(teacherTaskRef, updatedData);
-      const studentUpdate = updateDoc(studentTaskRef, updatedData);
-  
-      try {
-        await Promise.all([teacherUpdate, studentUpdate]);
-        toast({
-          title: 'Tarefa atualizada!',
-          description: 'A tarefa foi atualizada com sucesso para o professor e para o aluno.',
-        });
-        setEditTask(null);
-      } catch (error) {
-        console.error('Failed to update task:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Erro ao atualizar',
-          description: 'Não foi possível atualizar a tarefa. Tente novamente.',
-        });
-        // Optionally emit a more specific permission error
-        const permissionError = new FirestorePermissionError({
-            path: teacherTaskRef.path, // or studentTaskRef.path
-            operation: 'update',
-            requestResourceData: updatedData,
-          });
+      const teacherUpdate = updateDoc(teacherTaskRef, updatedData).catch(error => {
+        const permissionError = new FirestorePermissionError({ path: teacherTaskRef.path, operation: 'update', requestResourceData: updatedData });
         errorEmitter.emit('permission-error', permissionError);
-      } finally {
-        setIsSubmitting(false);
-      }
+        throw error;
+      });
+      const studentUpdate = updateDoc(studentTaskRef, updatedData).catch(error => {
+        const permissionError = new FirestorePermissionError({ path: studentTaskRef.path, operation: 'update', requestResourceData: updatedData });
+        errorEmitter.emit('permission-error', permissionError);
+        throw error;
+      });
+  
+      Promise.all([teacherUpdate, studentUpdate])
+        .then(() => {
+          toast({
+            title: 'Tarefa atualizada!',
+            description: 'A tarefa foi atualizada com sucesso para o professor e para o aluno.',
+          });
+          setEditTask(null);
+        })
+        .catch((error) => {
+          console.error('Failed to update task:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Erro ao atualizar',
+            description: 'Não foi possível atualizar a tarefa. Tente novamente.',
+          });
+        })
+        .finally(() => {
+          setIsSubmitting(false);
+        });
     };
   
-    const handleDeleteTask = async () => {
+    const handleDeleteTask = () => {
       if (!deleteTask) return;
       setIsSubmitting(true);
   
       const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', deleteTask.id);
       const studentTaskRef = doc(firestore, 'students', deleteTask.studentId, 'tasks', deleteTask.id);
   
-      const teacherDelete = deleteDoc(teacherTaskRef);
-      const studentDelete = deleteDoc(studentTaskRef);
-  
-      try {
-        await Promise.all([teacherDelete, studentDelete]);
-        toast({
-          title: 'Tarefa excluída!',
-          description: 'A tarefa foi removida com sucesso.',
-        });
-        setDeleteTask(null);
-      } catch (error) {
-        console.error('Failed to delete task:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Erro ao excluir',
-          description: 'Não foi possível excluir a tarefa. Tente novamente.',
-        });
-         const permissionError = new FirestorePermissionError({
-            path: teacherTaskRef.path,
-            operation: 'delete',
-          });
+      const teacherDelete = deleteDoc(teacherTaskRef).catch(error => {
+        const permissionError = new FirestorePermissionError({ path: teacherTaskRef.path, operation: 'delete' });
         errorEmitter.emit('permission-error', permissionError);
-      } finally {
-        setIsSubmitting(false);
-      }
+        throw error;
+      });
+      const studentDelete = deleteDoc(studentTaskRef).catch(error => {
+        const permissionError = new FirestorePermissionError({ path: studentTaskRef.path, operation: 'delete' });
+        errorEmitter.emit('permission-error', permissionError);
+        throw error;
+      });
+  
+      Promise.all([teacherDelete, studentDelete])
+        .then(() => {
+            toast({
+              title: 'Tarefa excluída!',
+              description: 'A tarefa foi removida com sucesso.',
+            });
+            setDeleteTask(null);
+        })
+        .catch((error) => {
+            console.error('Failed to delete task:', error);
+            toast({
+              variant: 'destructive',
+              title: 'Erro ao excluir',
+              description: 'Não foi possível excluir a tarefa. Tente novamente.',
+            });
+        })
+        .finally(() => {
+            setIsSubmitting(false);
+        });
     };
 
     if (isLoading) {
@@ -345,7 +353,7 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof taskSchema>) {
+  function onSubmit(values: z.infer<typeof taskSchema>) {
     setIsSubmitting(true);
 
     const newTaskId = doc(collection(firestore, 'teachers')).id;
@@ -361,44 +369,49 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
     const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', newTaskId);
     const studentTaskRef = doc(firestore, 'students', values.studentId, 'tasks', newTaskId);
 
-    const handleCreateError = (refPath: string) => {
+    const teacherWrite = setDoc(teacherTaskRef, taskData).catch(error => {
         const permissionError = new FirestorePermissionError({
-            path: refPath,
+            path: teacherTaskRef.path,
             operation: 'create',
             requestResourceData: taskData,
         });
         errorEmitter.emit('permission-error', permissionError);
-    };
+        throw error;
+    });
 
-    const teacherWrite = setDoc(teacherTaskRef, taskData);
-    const studentWrite = setDoc(studentTaskRef, taskData);
+    const studentWrite = setDoc(studentTaskRef, taskData).catch(error => {
+        const permissionError = new FirestorePermissionError({
+            path: studentTaskRef.path,
+            operation: 'create',
+            requestResourceData: taskData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw error;
+    });
 
-    try {
-        await Promise.all([teacherWrite, studentWrite]);
-        toast({
-            title: 'Tarefa criada!',
-            description: `A tarefa "${values.title}" foi atribuída com sucesso.`,
+    Promise.all([teacherWrite, studentWrite])
+        .then(() => {
+            toast({
+                title: 'Tarefa criada!',
+                description: `A tarefa "${values.title}" foi atribuída com sucesso.`,
+            });
+            form.reset({
+                ...form.getValues(), // keep some values
+                title: '',
+                studentId: '',
+                description: '',
+            });
+        })
+        .catch(() => {
+             toast({
+                variant: 'destructive',
+                title: 'Erro ao criar tarefa',
+                description: 'Ocorreu um problema ao salvar a tarefa. Verifique o ID do aluno e suas permissões.',
+            });
+        })
+        .finally(() => {
+            setIsSubmitting(false);
         });
-        form.reset({
-            ...form.getValues(), // keep some values
-            title: '',
-            studentId: '',
-            description: '',
-        });
-    } catch(e: any) {
-         toast({
-            variant: 'destructive',
-            title: 'Erro ao criar tarefa',
-            description: 'Ocorreu um problema ao salvar a tarefa. Verifique o ID do aluno e suas permissões.',
-        });
-        if (e.config?.name === 'FirebaseError') {
-             handleCreateError(e.customData.path);
-        } else {
-            console.error(e);
-        }
-    } finally {
-        setIsSubmitting(false);
-    }
   }
 
   return (
