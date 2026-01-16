@@ -8,7 +8,7 @@
  *
  * Data Structure: The data is hierarchically organized and segregated by role.
  * Teacher and student profiles are stored in separate top-level collections
- * (`/teachers/{teacherId}` and `/students/{studentId}`). To ensure simple,
+ * (`/teachers/{teacherId}` and `/students/{studentId}`).To ensure simple,
  * performant, and secure queries, tasks are denormalized and stored in two
  * locations: under the teacher who created them (`/teachers/{teacherId}/tasks`)
  * and under the student they are assigned to (`/students/{studentId}/tasks`).
@@ -190,7 +190,8 @@ service cloud.firestore {
     }
 
     match /students/{studentId} {
-      allow get: if isOwner(studentId) || isAdmin();
+      // A teacher can read the profile of their own student.
+      allow get: if isOwner(studentId) || isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid);
       // Allow teachers to query/list students. This is required for teachers to find their students.
       // The client MUST apply a `where('teacherId', '==', auth.uid)` filter to secure this.
       allow list: if isTeacher() || isAdmin();
