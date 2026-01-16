@@ -5,7 +5,9 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, deleteDoc, addDoc, writeBatch } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -88,40 +90,54 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     }
   }, [editingExercise, form]);
 
-  const onSubmit = async (values: Exercise) => {
+  const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
-    try {
-      if (editingExercise?.id) {
-        const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-        await updateDoc(exerciseRef, values);
-        toast({ title: 'Exercício atualizado!' });
-      } else {
-        const newExercise = { ...values, teacherId };
-        await addDoc(collection(firestore, 'teachers', teacherId, 'exercises'), newExercise);
-        toast({ title: 'Exercício salvo no banco!' });
-      }
+    if (editingExercise?.id) {
+      const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
+      updateDoc(exerciseRef, values).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: exerciseRef.path,
+          operation: 'update',
+          requestResourceData: values,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({ variant: 'destructive', title: 'Erro ao atualizar exercício' });
+      });
+      toast({ title: 'Exercício atualizado!' });
       setEditingExercise(null);
-      form.reset();
-    } catch (error) {
-      console.error(error);
-      toast({ variant: 'destructive', title: 'Erro ao salvar exercício' });
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      const newExercise = { ...values, teacherId };
+      const exercisesColRef = collection(firestore, 'teachers', teacherId, 'exercises');
+      addDoc(exercisesColRef, newExercise).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: exercisesColRef.path,
+          operation: 'create',
+          requestResourceData: newExercise,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({ variant: 'destructive', title: 'Erro ao salvar exercício' });
+      });
+      toast({ title: 'Exercício salvo no banco!' });
     }
+    form.reset();
+    setIsSubmitting(false);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingExercise?.id) return;
     setIsSubmitting(true);
-    try {
-      await deleteDoc(doc(firestore, 'teachers', teacherId, 'exercises', deletingExercise.id));
-      toast({ title: 'Exercício excluído!' });
-      setDeletingExercise(null);
-    } catch (error) {
-       toast({ variant: 'destructive', title: 'Erro ao excluir' });
-    } finally {
-      setIsSubmitting(false);
-    }
+    const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', deletingExercise.id);
+    deleteDoc(exerciseRef).catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: exerciseRef.path,
+        operation: 'delete',
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      toast({ variant: 'destructive', title: 'Erro ao excluir' });
+    });
+    toast({ title: 'Exercício excluído!' });
+    setDeletingExercise(null);
+    setIsSubmitting(false);
   };
   
   return (
@@ -231,7 +247,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     form.setValue('questions', selectedExercises.map(e => ({text: e.text, options: e.options, answer: e.answer})));
   }, [selectedExercises, form]);
 
-  const onSubmit = async (values: Task) => {
+  const onSubmit = (values: Task) => {
     setIsSubmitting(true);
     
     const newTaskId = doc(collection(firestore, 'teachers')).id;
@@ -239,19 +255,25 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
     const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', newTaskId);
     const studentTaskRef = doc(firestore, 'students', values.studentId, 'tasks', newTaskId);
+    
+    const batch = writeBatch(firestore);
+    batch.set(teacherTaskRef, taskData);
+    batch.set(studentTaskRef, taskData);
 
-    try {
-        await setDoc(teacherTaskRef, taskData);
-        await setDoc(studentTaskRef, taskData);
-        toast({ title: 'Tarefa criada com sucesso!' });
-        form.reset();
-        setSelectedExercises([]);
-    } catch(error) {
-        console.error(error);
+    batch.commit().catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: teacherTaskRef.path,
+            operation: 'write',
+            requestResourceData: taskData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
         toast({ variant: 'destructive', title: 'Erro ao criar tarefa' });
-    } finally {
-        setIsSubmitting(false);
-    }
+    });
+
+    toast({ title: 'Tarefa criada com sucesso!' });
+    form.reset();
+    setSelectedExercises([]);
+    setIsSubmitting(false);
   };
 
   return (
