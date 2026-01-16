@@ -16,7 +16,7 @@
  *
  * Key Security Decisions:
  * - User data is generally private. Single user profiles can only be read by their owner or an admin.
- * - The `students` collection is listable by any authenticated user. This is necessary to allow
+ * - The `students` collection is listable by teachers or admins. This is necessary to allow
  *   teachers to query for their students. Client-side queries MUST be used to filter
  *   students by `teacherId` to enforce data visibility.
  * - Teachers have full Create, Read, Update, Delete (CRUD) permissions on tasks
@@ -48,6 +48,11 @@ service cloud.firestore {
       // In production, it is recommended to use custom claims: request.auth.token.admin == true
       // For this prototype, we will check for a specific admin email.
       return isSignedIn() && request.auth.token.email == 'admin@prozil.com';
+    }
+    
+    function isTeacher() {
+      // Check if a document for the user exists in the teachers collection.
+      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
     function isExistingDoc() {
@@ -186,9 +191,9 @@ service cloud.firestore {
 
     match /students/{studentId} {
       allow get: if isOwner(studentId) || isAdmin();
-      // Allow any signed-in user to query/list students. This is required for teachers to find their students.
+      // Allow teachers to query/list students. This is required for teachers to find their students.
       // The client MUST apply a `where('teacherId', '==', auth.uid)` filter to secure this.
-      allow list: if isSignedIn();
+      allow list: if isTeacher() || isAdmin();
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
       allow delete: if isExistingOwner(studentId) || isAdmin();
