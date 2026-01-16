@@ -44,6 +44,7 @@ import { Badge } from '@/components/ui/badge';
 // Schemas
 const exerciseSchema = z.object({
   id: z.string().optional(),
+  teacherId: z.string().optional(),
   text: z.string().min(5, 'A pergunta deve ter pelo menos 5 caracteres.'),
   options: z.array(z.string().min(1, "A opção não pode estar vazia.")).length(3, 'Deve haver exatamente 3 opções.'),
   answer: z.string().min(1, 'A resposta correta é obrigatória.'),
