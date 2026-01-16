@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Trash2, Edit, ShieldAlert } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const ADMIN_EMAIL = 'zilmara.nunes@hotmail.com.br';
+const ADMIN_EMAIL = 'admin@prozil.com';
 
 const userSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),

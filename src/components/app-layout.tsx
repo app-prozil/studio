@@ -40,7 +40,7 @@ const menuItems = [
 ];
 
 const settingsMenuItem = { href: '/configuracoes', label: 'Configurações', icon: Settings };
-const ADMIN_EMAIL = 'zilmara.nunes@hotmail.com.br';
+const ADMIN_EMAIL = 'admin@prozil.com';
 
 function UserNav() {
   const { user, isUserLoading } = useUser();

@@ -46,8 +46,8 @@ service cloud.firestore {
 
     function isAdmin() {
       // In production, it is recommended to use custom claims: request.auth.token.admin == true
-      // For this prototype, we will check for a specific admin UID.
-      return isSignedIn() && request.auth.uid == 'q6xYOGHSw7RyOUDpQSbGbpQfy2r2';
+      // For this prototype, we will check for a specific admin email.
+      return isSignedIn() && request.auth.token.email == 'admin@prozil.com';
     }
     
     function isExistingDoc() {
