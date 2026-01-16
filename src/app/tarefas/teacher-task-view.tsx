@@ -124,7 +124,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-      const valuesToUpdate = { ...values, teacherId };
+      const valuesToUpdate = { ...values };
       updateDoc(exerciseRef, valuesToUpdate).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: exerciseRef.path,
@@ -141,7 +141,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       });
     } else {
       const newExerciseRef = doc(collection(firestore, 'teachers', teacherId, 'exercises'));
-      const newExercise = { ...values, teacherId, id: newExerciseRef.id };
+      const newExercise = { ...values, id: newExerciseRef.id };
       setDoc(newExerciseRef, newExercise).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: newExerciseRef.path,
@@ -682,7 +682,7 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
                            </div>
                            <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
                               <Button variant="outline" size="sm" asChild>
-                                <Link href={`/${task.subject}?taskId=${task.id}&studentId=${task.studentId}`} target="_blank">
+                                <Link href={`/${task.subject}?taskId=${task.id}&studentId=${task.studentId}`}>
                                   <Eye className="mr-2 h-3 w-3"/> Visualizar
                                 </Link>
                               </Button>
