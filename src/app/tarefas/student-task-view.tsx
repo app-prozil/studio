@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, BookOpen, FileText } from 'lucide-react';
+import { ArrowRight, BookOpen, FileText, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -53,7 +53,10 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
                                  {task.title}
                                </p>
                                <p className="text-muted-foreground text-sm">{task.description}</p>
-                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                               <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-2">
+                                   {task.teacherName && (
+                                     <span className="flex items-center gap-1"><User className="w-3 h-3"/> {task.teacherName}</span>
+                                   )}
                                    <span className="flex items-center gap-1">
                                     <BookOpen className="w-3 h-3"/> {task.subject === 'matematica' ? 'Matemática' : 'Português'}
                                    </span>

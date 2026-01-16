@@ -67,6 +67,8 @@ export default function ProfilePage() {
     );
   }
 
+  const profile = teacherProfile || studentProfile;
+  const displayName = profile?.name || user.displayName || 'Usuário';
   const userRole = teacherProfile ? 'Professor' : studentProfile ? 'Aluno' : 'Não definido';
   const descriptionText = teacherProfile
     ? 'Compartilhe este ID com seus alunos para que eles possam se cadastrar em sua turma.'
@@ -79,7 +81,7 @@ export default function ProfilePage() {
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle>{user.displayName || 'Usuário'}</CardTitle>
+              <CardTitle>{displayName}</CardTitle>
               <CardDescription>{user.email}</CardDescription>
             </div>
             <div className="text-sm font-medium bg-primary/10 text-primary py-1 px-3 rounded-full">{userRole}</div>

@@ -20,6 +20,7 @@ type Task = {
     id: string;
     questions: Question[];
     subject: 'math' | 'portuguese';
+    studentName?: string;
 }
 
 type InteractiveGameProps = {
@@ -108,10 +109,11 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   }
   
   if (isGameComplete) {
+    const studentName = taskData?.studentName || 'aluno(a)';
     return (
         <div className="flex flex-col items-center justify-center text-center h-48 space-y-4">
             <CheckCircle className="w-24 h-24 text-success" />
-            <h2 className="text-3xl font-bold">Parabéns, tarefa concluída!</h2>
+            <h2 className="text-3xl font-bold">Parabéns, {studentName}, tarefa concluída!</h2>
             <Button onClick={() => router.push('/tarefas')} className="text-lg">
                 Voltar para Tarefas <ArrowRight className="ml-2" />
             </Button>
