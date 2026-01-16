@@ -185,19 +185,16 @@ service cloud.firestore {
     }
 
     match /students/{studentId} {
-      // GET: Allows reading a single document by its path.
-      // - A user can get their own profile.
-      // - An admin can get any profile.
-      // - A teacher can get their student's profile, if the teacherId matches.
-      allow get: if isOwner(studentId)
-                  || isAdmin()
-                  || (resource.data.teacherId == request.auth.uid);
-
-      // LIST: Allows querying the collection.
-      // Security is enforced by client-side queries and the 'get' rule above,
-      // which prevents reading unauthorized data.
-      allow list: if isSignedIn() || isAdmin();
-
+      // READ:
+      // - A user can read their own profile.
+      // - An admin can read any profile.
+      // - A teacher can read the profiles of students assigned to them.
+      //   This allows a teacher to query their students, as the client-side
+      //   query `where("teacherId", "==", auth.uid)` will match this rule.
+      allow read: if isOwner(studentId)
+                 || isAdmin()
+                 || (request.auth.uid == resource.data.teacherId);
+                 
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
       allow delete: if isExistingOwner(studentId) || isAdmin();
