@@ -339,7 +339,10 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
   
   const studentsQuery = useMemoFirebase(
-    () => query(collection(firestore, 'students'), where('teacherId', '==', teacherId)),
+    () => {
+      if (!teacherId) return null;
+      return query(collection(firestore, 'students'), where('teacherId', '==', teacherId));
+    },
     [firestore, teacherId]
   );
   const { data: allTeacherStudents, isLoading: areStudentsLoading } = useCollection<Student>(studentsQuery);
