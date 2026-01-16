@@ -362,8 +362,8 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const filteredStudents = useMemo(() => {
     if (!uniqueStudents) return [];
     return uniqueStudents.filter(s =>
-      s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-      s.prozilId.toLowerCase().includes(studentSearch.toLowerCase())
+      (s.name && s.name.toLowerCase().includes(studentSearch.toLowerCase())) ||
+      (s.prozilId && s.prozilId.toLowerCase().includes(studentSearch.toLowerCase()))
     );
   }, [uniqueStudents, studentSearch]);
 
