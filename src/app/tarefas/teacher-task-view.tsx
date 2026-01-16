@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, Send } from 'lucide-react';
+import { Loader2, Send } from 'lucide-react';
 import { format } from 'date-fns';
 
 const taskSchema = z.object({
@@ -23,6 +23,8 @@ const taskSchema = z.object({
   taskType: z.enum(['jogo_interativo', 'folha_imprimivel'], { required_error: 'Selecione o tipo.' }),
   description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
   dueDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Data inválida.' }),
+  difficulty: z.enum(['easy', 'medium', 'hard'], { required_error: 'Selecione a dificuldade.'}),
+  numberOfQuestions: z.coerce.number().min(1, 'O mínimo é 1 questão.').max(20, 'O máximo são 20 questões.'),
 });
 
 function TaskList({ teacherId }: { teacherId: string }) {
@@ -49,8 +51,12 @@ function TaskList({ teacherId }: { teacherId: string }) {
                         {tasks.map(task => (
                             <li key={task.id} className="p-4 border rounded-lg">
                                 <h3 className="font-bold">{task.title}</h3>
-                                <p className="text-sm text-muted-foreground">Matéria: {task.subject}</p>
                                 <p className="text-sm text-muted-foreground">Aluno ID: {task.studentId}</p>
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                   <span>Matéria: <span className="font-semibold">{task.subject}</span></span>
+                                   <span>Dificuldade: <span className="font-semibold">{task.difficulty}</span></span>
+                                   <span>Questões: <span className="font-semibold">{task.numberOfQuestions}</span></span>
+                                </div>
                                 <p className="text-sm">Vencimento: {format(new Date(task.dueDate), 'dd/MM/yyyy')}</p>
                             </li>
                         ))}
@@ -76,6 +82,8 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
       studentId: '',
       description: '',
       dueDate: new Date().toISOString().split('T')[0],
+      difficulty: 'easy',
+      numberOfQuestions: 5,
     },
   });
 
@@ -139,8 +147,9 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Título da Tarefa</FormLabel>
+                    <FormLabel>Título da Tarefa (Tópico)</FormLabel>
                     <FormControl><Input placeholder="Ex: Adição com 2 dígitos" {...field} /></FormControl>
+                    <FormDescription>Este será o tópico usado para gerar as questões de IA.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -208,17 +217,50 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="dueDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data de Entrega</FormLabel>
-                    <FormControl><Input type="date" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="difficulty"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dificuldade</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Selecione a dificuldade" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="easy">Fácil</SelectItem>
+                          <SelectItem value="medium">Médio</SelectItem>
+                          <SelectItem value="hard">Difícil</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="numberOfQuestions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nº de Questões</FormLabel>
+                      <FormControl><Input type="number" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data de Entrega</FormLabel>
+                      <FormControl><Input type="date" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                 Atribuir Tarefa

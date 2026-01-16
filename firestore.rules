@@ -129,13 +129,26 @@ service cloud.firestore {
     }
 
     /**
-     * Enforces immutability of relational IDs when a Student updates a task.
-     * Prevents a student from re-assigning the task to another student or teacher.
+     * Enforces that a student can only update the `isCompleted` field of a task.
+     * All other fields must remain unchanged. This prevents students from altering
+     * task details like title, due date, or difficulty.
      */
     function canStudentUpdateTask() {
-      let isStudentIdImmutable = request.resource.data.studentId == resource.data.studentId;
-      let isTeacherIdImmutable = request.resource.data.teacherId == resource.data.teacherId;
-      return isStudentIdImmutable && isTeacherIdImmutable;
+        let incoming = request.resource.data;
+        let existing = resource.data;
+
+        // Check if `isCompleted` is the only field that is changing.
+        // All other fields must have the same value as before.
+        return incoming.id == existing.id &&
+               incoming.title == existing.title &&
+               incoming.teacherId == existing.teacherId &&
+               incoming.studentId == existing.studentId &&
+               incoming.subject == existing.subject &&
+               incoming.description == existing.description &&
+               incoming.taskType == existing.taskType &&
+               incoming.dueDate == existing.dueDate &&
+               incoming.difficulty == existing.difficulty &&
+               incoming.numberOfQuestions == existing.numberOfQuestions;
     }
 
 

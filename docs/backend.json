@@ -69,7 +69,7 @@
         },
         "title": {
           "type": "string",
-          "description": "The title of the task."
+          "description": "The title or topic of the task."
         },
         "teacherId": {
           "type": "string",
@@ -81,7 +81,11 @@
         },
         "subject": {
           "type": "string",
-          "description": "The subject of the task (e.g., Mathematics, Portuguese)."
+          "description": "The subject of the task (e.g., Mathematics, Portuguese).",
+          "enum": [
+            "matematica",
+            "portugues"
+          ]
         },
         "description": {
           "type": "string",
@@ -89,7 +93,24 @@
         },
         "taskType": {
           "type": "string",
-          "description": "The type of task (e.g., Interactive Game, Printable Worksheet)."
+          "description": "The type of task.",
+          "enum": [
+            "jogo_interativo",
+            "folha_imprimivel"
+          ]
+        },
+        "difficulty": {
+          "type": "string",
+          "description": "The difficulty level of the task.",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "numberOfQuestions": {
+          "type": "number",
+          "description": "The number of questions for the task."
         },
         "dueDate": {
           "type": "string",
@@ -109,6 +130,8 @@
         "subject",
         "description",
         "taskType",
+        "difficulty",
+        "numberOfQuestions",
         "dueDate",
         "isCompleted"
       ]
