@@ -74,10 +74,15 @@ function UserNav() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => router.push('/perfil')} className="cursor-pointer">
+            <UserIcon className="mr-2 h-4 w-4" />
+            <span>Meu Perfil</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={async () => {
             await auth.signOut();
             router.push('/login');
-          }}>
+          }} className="cursor-pointer">
             <LogOut className="mr-2 h-4 w-4" />
             <span>Sair</span>
           </DropdownMenuItem>
