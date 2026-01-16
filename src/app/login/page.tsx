@@ -60,13 +60,16 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       router.push('/');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Erro ao entrar',
         description: 'Verifique seu email e senha.',
       });
-      console.error(error);
+      // Apenas registre erros inesperados no console
+      if (error.code !== 'auth/invalid-credential') {
+        console.error(error);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -117,15 +120,22 @@ export default function LoginPage() {
 
       router.push('/');
       
-    } catch (error) {
+    } catch (error: any) {
+      let description = 'Ocorreu um erro inesperado.';
+      if (error.code === 'auth/email-already-in-use') {
+        description = 'Este email já está em uso.';
+      }
+      
       toast({
         variant: 'destructive',
         title: 'Erro ao criar conta',
-        description: (error as Error).message.includes('email-already-in-use')
-          ? 'Este email já está em uso.'
-          : 'Ocorreu um erro inesperado.',
+        description: description,
       });
-      console.error(error);
+
+      // Apenas registre erros inesperados no console
+      if (error.code !== 'auth/email-already-in-use') {
+        console.error(error);
+      }
     } finally {
       setIsLoading(false);
     }
