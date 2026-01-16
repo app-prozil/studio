@@ -332,20 +332,13 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
   const [isStudentSelectorOpen, setIsStudentSelectorOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
+  const [selectableStudents, setSelectableStudents] = useState<Student[]>([]);
+  const [areStudentsLoading, setAreStudentsLoading] = useState(false);
 
   const exercisesQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'exercises'), [firestore, teacherId]);
   const { data: exercises, isLoading: isLoadingExercises } = useCollection<Exercise>(exercisesQuery);
   const tasksQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'tasks'), [firestore, teacherId]);
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
-  
-  const studentsQuery = useMemoFirebase(
-    () => {
-      if (!teacherId) return null;
-      return query(collection(firestore, 'students'), where('teacherId', '==', teacherId));
-    },
-    [firestore, teacherId]
-  );
-  const { data: allTeacherStudents, isLoading: areStudentsLoading } = useCollection<Student>(studentsQuery);
 
   const filteredBankExercises = useMemo(() => {
     if (!exercises) return [];
@@ -354,12 +347,12 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   }, [exercises, bankSubjectFilter]);
   
   const filteredStudents = useMemo(() => {
-    if (!allTeacherStudents) return [];
-    return allTeacherStudents.filter(s =>
+    if (!selectableStudents) return [];
+    return selectableStudents.filter(s =>
       (s.name && s.name.toLowerCase().includes(studentSearch.toLowerCase())) ||
       (s.prozilId && s.prozilId.toLowerCase().includes(studentSearch.toLowerCase()))
     ).sort((a, b) => a.name.localeCompare(b.name));
-  }, [allTeacherStudents, studentSearch]);
+  }, [selectableStudents, studentSearch]);
 
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
@@ -406,6 +399,26 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     
     setSelectedExercises(reusedExercises);
     toast({ title: 'Tarefa Pronta para Reutilizar', description: 'Atribua a um novo aluno e salve.' });
+  };
+  
+  const handleOpenStudentSelector = async () => {
+    if (!teacherId) return;
+    setIsStudentSelectorOpen(true);
+    if (selectableStudents.length > 0) return; // Do not re-fetch if already loaded
+
+    setAreStudentsLoading(true);
+    const studentsColRef = collection(firestore, 'students');
+    const q = query(studentsColRef, where('teacherId', '==', teacherId));
+    try {
+        const querySnapshot = await getDocs(q);
+        const students = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Student[];
+        setSelectableStudents(students);
+    } catch (e) {
+        console.error("Error fetching students: ", e);
+        toast({ variant: "destructive", title: "Erro ao buscar alunos." });
+    } finally {
+        setAreStudentsLoading(false);
+    }
   };
 
 
@@ -522,7 +535,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                           type="button"
                           variant="outline"
                           size="icon"
-                          onClick={() => setIsStudentSelectorOpen(true)}
+                          onClick={handleOpenStudentSelector}
                           disabled={!!editingTask}
                           aria-label="Buscar Aluno"
                         >
