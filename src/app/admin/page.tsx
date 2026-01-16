@@ -33,10 +33,18 @@ type UserProfile = {
   prozilId: string;
 };
 
-function UserTableContent({ users, isLoading, error, type, collectionName }: { users: UserProfile[] | null; isLoading: boolean; error: Error | null; type: 'teacher' | 'student', collectionName: string }) {
+function UserTable({ type, isAuthorized }: { type: 'teacher' | 'student', isAuthorized: boolean }) {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const collectionName = type === 'teacher' ? 'teachers' : 'students';
   
+  const query = useMemoFirebase(
+    () => (isAuthorized ? collection(firestore, collectionName) : null),
+    [firestore, collectionName, isAuthorized]
+  );
+  
+  const { data: users, isLoading, error } = useCollection<UserProfile>(query);
+
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserProfile | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,6 +89,14 @@ function UserTableContent({ users, isLoading, error, type, collectionName }: { u
       })
       .finally(() => setIsSubmitting(false));
   };
+
+  if (!isAuthorized) {
+    return (
+      <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
+        <p className="text-sm text-muted-foreground">Você não tem permissão para visualizar esta lista.</p>
+      </div>
+    );
+  }
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Erro ao carregar usuários: {error.message}</p>;
@@ -154,19 +170,6 @@ function UserTableContent({ users, isLoading, error, type, collectionName }: { u
   );
 }
 
-function UserTable({ type }: { type: 'teacher' | 'student' }) {
-  const firestore = useFirestore();
-  const collectionName = type === 'teacher' ? 'teachers' : 'students';
-  
-  const query = useMemoFirebase(
-    () => collection(firestore, collectionName),
-    [firestore, collectionName]
-  );
-  
-  const { data: users, isLoading, error } = useCollection<UserProfile>(query);
-
-  return <UserTableContent users={users} isLoading={isLoading} error={error} type={type} collectionName={collectionName}/>;
-}
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser();
@@ -222,11 +225,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
             </CardHeader>
             <CardContent>
-               {isAuthorized ? <UserTable type="teacher" /> : (
-                 <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                   <p className="text-sm text-muted-foreground">Você não tem permissão para visualizar esta lista.</p>
-                 </div>
-               )}
+               <UserTable type="teacher" isAuthorized={isAuthorized} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -237,11 +236,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
             </CardHeader>
             <CardContent>
-               {isAuthorized ? <UserTable type="student" /> : (
-                 <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                   <p className="text-sm text-muted-foreground">Você não tem permissão para visualizar esta lista.</p>
-                 </div>
-               )}
+              <UserTable type="student" isAuthorized={isAuthorized} />
             </CardContent>
           </Card>
         </TabsContent>
