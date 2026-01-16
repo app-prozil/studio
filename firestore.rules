@@ -190,15 +190,16 @@ service cloud.firestore {
     }
 
     match /students/{studentId} {
-      // `read` combines `get` and `list`. This rule ensures that:
-      // 1. A user can read their own profile (`isOwner`).
-      // 2. An admin can read any profile (`isAdmin`).
-      // 3. A teacher can read the profiles of their students. This also allows
-      //    a teacher to `list` (query) students, as long as their query filters
-      //    by `teacherId`, which matches this rule's constraint.
+      // `read` combines `get` and `list`.
+      // A user can read a student profile if:
+      // 1. They are the student themselves (`isOwner`).
+      // 2. They are an admin (`isAdmin`).
+      // 3. They are the teacher assigned to that student (`resource.data.teacherId == request.auth.uid`).
+      // This rule allows a teacher to query for their own students, as the client-side
+      // query `where('teacherId', '==', auth.uid)` is validated by this rule.
       allow read: if isOwner(studentId) 
                    || isAdmin()
-                   || (isTeacher() && resource.data.teacherId == request.auth.uid);
+                   || resource.data.teacherId == request.auth.uid;
 
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
