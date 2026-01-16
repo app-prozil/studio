@@ -190,20 +190,15 @@ service cloud.firestore {
     }
 
     match /students/{studentId} {
-      // `get` is the ultimate arbiter of access for a single document.
-      // Allow a read if:
-      // 1. You are the student (owner).
-      // 2. You are an admin.
-      // 3. The student's `teacherId` field matches your UID (making you their teacher).
-      allow get: if isOwner(studentId) || isAdmin() || (resource.data.teacherId == request.auth.uid);
-      
-      // `list` grants permission to issue a query against the collection.
-      // It does NOT filter results. For a query to succeed, the `get` rule above
-      // must pass for *every* document returned by the query.
-      // Therefore, we restrict list to only teachers and admins, and the client-side
-      // query `where('teacherId', '==', auth.uid)` ensures only relevant
-      // documents are requested, which are then secured by the `get` rule.
-      allow list: if isTeacher() || isAdmin();
+      // `read` combines `get` and `list`. This rule ensures that:
+      // 1. A user can read their own profile (`isOwner`).
+      // 2. An admin can read any profile (`isAdmin`).
+      // 3. A teacher can read the profiles of their students. This also allows
+      //    a teacher to `list` (query) students, as long as their query filters
+      //    by `teacherId`, which matches this rule's constraint.
+      allow read: if isOwner(studentId) 
+                   || isAdmin()
+                   || (isTeacher() && resource.data.teacherId == request.auth.uid);
 
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
