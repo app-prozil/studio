@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -75,14 +75,14 @@ function TaskList({ teacherId }: { teacherId: string }) {
     });
 
     // Populate form when a task is selected for editing
-    useState(() => {
+    useEffect(() => {
         if (editTask) {
             editForm.reset({
                 ...editTask,
                 dueDate: format(new Date(editTask.dueDate), 'yyyy-MM-dd'),
             });
         }
-    }, [editTask, editForm]);
+    }, [editTask]);
 
 
     const handleUpdateTask = async (values: z.infer<typeof editTaskSchema>) => {
