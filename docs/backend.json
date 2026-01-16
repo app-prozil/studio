@@ -40,6 +40,11 @@
           "type": "string",
           "description": "The student's full name."
         },
+        "email": {
+          "type": "string",
+          "description": "The student's email address.",
+          "format": "email"
+        },
         "teacherId": {
           "type": "string",
           "description": "Reference to Teacher. (Relationship: Teacher 1:N Student)"
@@ -48,7 +53,7 @@
       "required": [
         "id",
         "name",
-        "teacherId"
+        "email"
       ]
     },
     "Task": {

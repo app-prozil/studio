@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AppLayout } from '@/components/app-layout';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'ProZil',
@@ -23,10 +24,12 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <AppLayout>
-              {children}
-            </AppLayout>
-            <Toaster />
+            <FirebaseClientProvider>
+              <AppLayout>
+                {children}
+              </AppLayout>
+              <Toaster />
+            </FirebaseClientProvider>
         </ThemeProvider>
       </body>
     </html>
