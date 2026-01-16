@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User as UserIcon, LogIn } from 'lucide-react';
+import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User as UserIcon, LogIn, ClipboardCheck } from 'lucide-react';
 import { useUser, useAuth } from '@/firebase/provider';
 
 import {
@@ -33,6 +33,7 @@ const menuItems = [
   { href: '/', label: 'Início', icon: Home },
   { href: '/matematica', label: 'Matemática', icon: Calculator },
   { href: '/portugues', label: 'Português', icon: Book },
+  { href: '/tarefas', label: 'Tarefas', icon: ClipboardCheck },
   { href: '/imprimir', label: 'Imprimir', icon: Printer },
   { href: '/progresso', label: 'Progresso', icon: BarChart },
 ];

@@ -19,8 +19,7 @@
  *   within their own subcollection.
  * - Students can only read and update tasks assigned to them. They are
  *   explicitly forbidden from creating or deleting tasks, as this is a teacher's
- *   responsibility. Task creation for students is expected to be handled by a
- *   trusted backend process (e.g., Cloud Functions).
+ *   responsibility.
  * - Authorization logic relies on path-based security, using the UID in the
  *   document path to verify ownership. This avoids slow and costly `get()`
  *   calls in rules.
@@ -76,10 +75,13 @@ service cloud.firestore {
 
     /**
      * Validates required relational fields when creating a Student profile.
-     * Ensures the document's internal ID matches the document path ID (UID).
+     * Ensures the document's internal ID matches the document path ID (UID)
+     * and a teacherId is present.
      */
     function hasValidStudentDataOnCreate(studentId) {
-      return request.resource.data.id == studentId;
+      let isIdValid = request.resource.data.id == studentId;
+      let hasTeacher = request.resource.data.teacherId != null;
+      return isIdValid && hasTeacher;
     }
 
     /**
@@ -88,6 +90,16 @@ service cloud.firestore {
      */
     function hasValidTeacherTaskDataOnCreate(teacherId) {
       return request.resource.data.teacherId == teacherId;
+    }
+
+    /**
+     * Validates that the creator of a task in a student's subcollection
+     * is the teacher assigned to that task.
+     */
+    function hasValidStudentTaskDataOnCreate(studentId) {
+      let isCorrectStudent = request.resource.data.studentId == studentId;
+      let isTeacherTheAuthor = request.resource.data.teacherId == request.auth.uid;
+      return isCorrectStudent && isTeacherTheAuthor;
     }
 
     // --- Update Validation Helpers ---
@@ -146,6 +158,22 @@ service cloud.firestore {
       allow create: if isOwner(teacherId) && hasValidTeacherDataOnCreate(teacherId);
       allow update: if isExistingOwner(teacherId) && hasValidTeacherDataOnUpdate();
       allow delete: if isExistingOwner(teacherId);
+
+      /**
+       * @description Manages tasks from a teacher's perspective. The teacher has
+       *              full CRUD permissions over tasks in their own subcollection.
+       * @path /teachers/{teacherId}/tasks/{taskId}
+       * @allow (create) Teacher 'user123' creating a new task at /teachers/user123/tasks/abc.
+       * @deny  (list) Student 'user456' trying to list tasks from /teachers/user123/tasks.
+       * @principle Enforces document ownership for all operations within a user-specific subcollection.
+       */
+      match /tasks/{taskId} {
+        allow get: if isOwner(teacherId);
+        allow list: if isOwner(teacherId);
+        allow create: if isOwner(teacherId) && hasValidTeacherTaskDataOnCreate(teacherId);
+        allow update: if isExistingOwner(teacherId) && hasValidTeacherTaskDataOnUpdate();
+        allow delete: if isExistingOwner(teacherId);
+      }
     }
 
     /**
@@ -163,40 +191,23 @@ service cloud.firestore {
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if isExistingOwner(studentId) && hasValidStudentDataOnUpdate();
       allow delete: if isExistingOwner(studentId);
-    }
 
-    /**
-     * @description Manages tasks from a teacher's perspective. The teacher has
-     *              full CRUD permissions over tasks in their own subcollection.
-     * @path /teachers/{teacherId}/tasks/{taskId}
-     * @allow (create) Teacher 'user123' creating a new task at /teachers/user123/tasks/abc.
-     * @deny  (list) Student 'user456' trying to list tasks from /teachers/user123/tasks.
-     * @principle Enforces document ownership for all operations within a user-specific subcollection.
-     */
-    match /teachers/{teacherId}/tasks/{taskId} {
-      allow get: if isOwner(teacherId);
-      allow list: if isOwner(teacherId);
-      allow create: if isOwner(teacherId) && hasValidTeacherTaskDataOnCreate(teacherId);
-      allow update: if isExistingOwner(teacherId) && hasValidTeacherTaskDataOnUpdate();
-      allow delete: if isExistingOwner(teacherId);
-    }
-
-    /**
-     * @description Manages tasks assigned to a student. Students can read and update
-     *              their own tasks (e.g., mark as complete) but cannot create or
-     *              delete them.
-     * @path /students/{studentId}/tasks/{taskId}
-     * @allow (update) Student 'user123' updating a task at /students/user123/tasks/abc.
-     * @deny  (create) Student 'user123' trying to create a new task for themselves.
-     * @deny  (delete) Student 'user123' trying to delete an assigned task.
-     * @principle Allows read-only access and limited updates for assigned data, while prohibiting creation and deletion.
-     */
-    match /students/{studentId}/tasks/{taskId} {
-      allow get: if isOwner(studentId);
-      allow list: if isOwner(studentId);
-      allow create: if false;
-      allow update: if isExistingOwner(studentId) && canStudentUpdateTask();
-      allow delete: if false;
+      /**
+       * @description Manages tasks assigned to a student. Students can read and update
+       *              their own tasks (e.g., mark as complete). Teachers can create tasks.
+       * @path /students/{studentId}/tasks/{taskId}
+       * @allow (get) Student 'user123' reading a task at /students/user123/tasks/abc.
+       * @allow (create) Teacher 'teacher456' creating a task for student 'user123'.
+       * @deny  (delete) Student 'user123' trying to delete an assigned task.
+       * @principle Allows read/limited-update for owners, and create for authorized roles (teachers).
+       */
+      match /tasks/{taskId} {
+        allow get: if isOwner(studentId);
+        allow list: if isOwner(studentId);
+        allow create: if hasValidStudentTaskDataOnCreate(studentId);
+        allow update: if isExistingOwner(studentId) && canStudentUpdateTask();
+        allow delete: if false;
+      }
     }
   }
 }

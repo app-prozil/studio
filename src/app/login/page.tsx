@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirebase } from '@/firebase/provider';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +25,10 @@ const signUpSchema = z.object({
   email: z.string().email('Email inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
   role: z.enum(['teacher', 'student'], { required_error: 'Por favor, selecione um perfil.' }),
+  teacherId: z.string().optional(),
+}).refine(data => data.role !== 'student' || (data.role === 'student' && data.teacherId && data.teacherId.trim().length > 0), {
+  message: "O ID do Professor é obrigatório.",
+  path: ["teacherId"],
 });
 
 const loginSchema = z.object({
@@ -49,6 +52,8 @@ export default function LoginPage() {
     resolver: zodResolver(signUpSchema),
     defaultValues: { name: '', email: '', password: '', role: 'student' },
   });
+
+  const role = signUpForm.watch('role');
 
   async function handleLogin(values: z.infer<typeof loginSchema>) {
     setIsLoading(true);
@@ -75,11 +80,23 @@ export default function LoginPage() {
       
       const roleCollection = values.role === 'teacher' ? 'teachers' : 'students';
       const userDocRef = doc(firestore, roleCollection, user.uid);
-      const userData = {
-        id: user.uid,
-        name: values.name,
-        email: values.email,
-      };
+      
+      let userData: { id: string; name: string; email: string; teacherId?: string };
+      
+      if (values.role === 'teacher') {
+        userData = {
+          id: user.uid,
+          name: values.name,
+          email: values.email,
+        };
+      } else {
+        userData = {
+          id: user.uid,
+          name: values.name,
+          email: values.email,
+          teacherId: values.teacherId,
+        };
+      }
 
       setDoc(userDocRef, userData)
         .catch(async (serverError) => {
@@ -243,6 +260,24 @@ export default function LoginPage() {
                       </FormItem>
                     )}
                   />
+                  {role === 'student' && (
+                    <FormField
+                      control={signUpForm.control}
+                      name="teacherId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>ID do Professor</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Cole o ID do seu professor" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Peça ao seu professor o ID dele para se conectar.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Criar Conta

@@ -53,7 +53,8 @@
       "required": [
         "id",
         "name",
-        "email"
+        "email",
+        "teacherId"
       ]
     },
     "Task": {
@@ -65,6 +66,10 @@
         "id": {
           "type": "string",
           "description": "Unique identifier for the Task entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the task."
         },
         "teacherId": {
           "type": "string",
@@ -98,6 +103,7 @@
       },
       "required": [
         "id",
+        "title",
         "teacherId",
         "studentId",
         "subject",
