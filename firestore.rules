@@ -200,10 +200,10 @@ service cloud.firestore {
       // `list` grants permission to issue a query against the collection.
       // It does NOT filter results. For a query to succeed, the `get` rule above
       // must pass for *every* document returned by the query.
-      // Therefore, we can allow any signed-in user to issue a query.
-      // The client-side query `where('teacherId', '==', auth.uid)` ensures
-      // only relevant documents are requested, and the `get` rule above secures them.
-      allow list: if isSignedIn();
+      // Therefore, we restrict list to only teachers and admins, and the client-side
+      // query `where('teacherId', '==', auth.uid)` ensures only relevant
+      // documents are requested, which are then secured by the `get` rule.
+      allow list: if isTeacher() || isAdmin();
 
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
