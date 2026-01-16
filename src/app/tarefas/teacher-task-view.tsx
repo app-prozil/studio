@@ -643,6 +643,8 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
   if (!task) return null;
 
+  const questions = task.questions || [];
+
   const formatTime = (seconds: number | undefined) => {
     if (seconds === undefined) return 'N/A';
     const mins = Math.floor(seconds / 60);
@@ -655,8 +657,8 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
     return `${(ms / 1000).toFixed(1)}s`;
   }
   
-  const correctAnswers = task.questions.filter(q => q.status === 'correct').length;
-  const totalQuestions = task.questions.length;
+  const correctAnswers = questions.filter(q => q.status === 'correct').length;
+  const totalQuestions = questions.length;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -699,7 +701,7 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {task.questions.map((q, index) => (
+                    {questions.map((q, index) => (
                         <TableRow key={index} className={q.status === 'incorrect' ? 'bg-destructive/10' : ''}>
                             <TableCell>{index + 1}</TableCell>
                             <TableCell className="font-medium max-w-xs truncate">{q.text}</TableCell>
