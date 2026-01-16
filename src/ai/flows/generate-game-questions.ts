@@ -17,7 +17,7 @@ const QuestionSchema = z.object({
   answer: z.string().describe('The correct answer from the options.'),
 });
 
-export const GenerateGameQuestionsInputSchema = z.object({
+const GenerateGameQuestionsInputSchema = z.object({
   subject: z.enum(['math', 'portuguese']).describe('The subject of the game.'),
   topic: z.string().describe('A specific topic within the subject (e.g., "addition up to 10", "nouns").'),
   difficulty: z.enum(['easy', 'medium', 'hard']).describe('The difficulty level of the questions.'),
@@ -25,7 +25,7 @@ export const GenerateGameQuestionsInputSchema = z.object({
 });
 export type GenerateGameQuestionsInput = z.infer<typeof GenerateGameQuestionsInputSchema>;
 
-export const GenerateGameQuestionsOutputSchema = z.object({
+const GenerateGameQuestionsOutputSchema = z.object({
   questions: z.array(QuestionSchema).describe('An array of generated questions.'),
 });
 export type GenerateGameQuestionsOutput = z.infer<typeof GenerateGameQuestionsOutputSchema>;
