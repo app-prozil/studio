@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirebase } from '@/firebase/provider';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -25,10 +25,10 @@ const signUpSchema = z.object({
   email: z.string().email('Email inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
   role: z.enum(['teacher', 'student'], { required_error: 'Por favor, selecione um perfil.' }),
-  teacherId: z.string().optional(),
-}).refine(data => data.role !== 'student' || (data.role === 'student' && data.teacherId && data.teacherId.trim().length > 0), {
-  message: "O ID do Professor é obrigatório.",
-  path: ["teacherId"],
+  teacherProzilId: z.string().optional(),
+}).refine(data => data.role !== 'student' || (data.role === 'student' && data.teacherProzilId && data.teacherProzilId.trim().length > 0), {
+  message: "O ID ProZil do Professor é obrigatório.",
+  path: ["teacherProzilId"],
 });
 
 const loginSchema = z.object({
@@ -50,7 +50,7 @@ export default function LoginPage() {
 
   const signUpForm = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { name: '', email: '', password: '', role: 'student', teacherId: '' },
+    defaultValues: { name: '', email: '', password: '', role: 'student', teacherProzilId: '' },
   });
 
   const role = signUpForm.watch('role');
@@ -66,7 +66,6 @@ export default function LoginPage() {
         title: 'Erro ao entrar',
         description: 'Verifique seu email e senha.',
       });
-      // Apenas registre erros inesperados no console
       if (error.code !== 'auth/invalid-credential') {
         console.error(error);
       }
@@ -80,24 +79,49 @@ export default function LoginPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
+
+      const firstName = values.name.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '');
+      const randomDigits = Math.floor(100000 + Math.random() * 900000);
+      const prozilId = `${firstName}-${randomDigits}`;
+
+      let teacherUid: string | undefined;
+      if (values.role === 'student') {
+        if (!values.teacherProzilId) {
+            toast({ variant: 'destructive', title: 'Erro', description: 'O ID ProZil do professor é obrigatório.' });
+            setIsLoading(false);
+            return;
+        }
+        const teachersRef = collection(firestore, 'teachers');
+        const q = query(teachersRef, where("prozilId", "==", values.teacherProzilId));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            signUpForm.setError("teacherProzilId", { message: "Professor não encontrado com este ID ProZil." });
+            setIsLoading(false);
+            return;
+        }
+        teacherUid = querySnapshot.docs[0].id;
+      }
       
       const roleCollection = values.role === 'teacher' ? 'teachers' : 'students';
       const userDocRef = doc(firestore, roleCollection, user.uid);
       
-      let userData: { id: string; name: string; email: string; teacherId?: string };
+      let userData: { id: string; prozilId: string; name: string; email: string; teacherId?: string };
       
       if (values.role === 'teacher') {
         userData = {
           id: user.uid,
+          prozilId: prozilId,
           name: values.name,
           email: values.email,
         };
       } else {
         userData = {
           id: user.uid,
+          prozilId: prozilId,
           name: values.name,
           email: values.email,
-          teacherId: values.teacherId,
+          teacherId: teacherUid,
         };
       }
 
@@ -110,7 +134,7 @@ export default function LoginPage() {
             requestResourceData: userData,
           });
           errorEmitter.emit('permission-error', permissionError);
-          await auth.signOut(); // Sign out user if profile creation fails
+          await auth.signOut();
           toast({
             variant: "destructive",
             title: "Erro ao criar perfil",
@@ -132,7 +156,6 @@ export default function LoginPage() {
         description: description,
       });
 
-      // Apenas registre erros inesperados no console
       if (error.code !== 'auth/email-already-in-use') {
         console.error(error);
       }
@@ -273,15 +296,15 @@ export default function LoginPage() {
                   {role === 'student' && (
                     <FormField
                       control={signUpForm.control}
-                      name="teacherId"
+                      name="teacherProzilId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>ID do Professor</FormLabel>
+                          <FormLabel>ID ProZil do Professor</FormLabel>
                           <FormControl>
                             <Input placeholder="Cole o ID do seu professor" {...field} />
                           </FormControl>
                           <FormDescription>
-                            Peça ao seu professor o ID dele para se conectar.
+                            Peça ao seu professor o ID ProZil dele para se conectar.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

@@ -26,17 +26,20 @@ export default function ProfilePage() {
   );
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
+  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading;
+  const profile = teacherProfile || studentProfile;
+  
+  const idToDisplay = profile?.prozilId;
+
   const handleCopyId = () => {
-    if (user?.uid) {
-      navigator.clipboard.writeText(user.uid);
+    if (idToDisplay) {
+      navigator.clipboard.writeText(idToDisplay);
       toast({
         title: 'ID Copiado!',
-        description: 'Seu ID de usuário foi copiado para a área de transferência.',
+        description: 'Seu ID ProZil foi copiado para a área de transferência.',
       });
     }
   };
-
-  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading;
 
   if (isLoading) {
     return (
@@ -67,12 +70,11 @@ export default function ProfilePage() {
     );
   }
 
-  const profile = teacherProfile || studentProfile;
   const displayName = profile?.name || user.displayName || 'Usuário';
   const userRole = teacherProfile ? 'Professor' : studentProfile ? 'Aluno' : 'Não definido';
   const descriptionText = teacherProfile
-    ? 'Compartilhe este ID com seus alunos para que eles possam se cadastrar em sua turma.'
-    : 'Este é o seu ID de aluno. Você não precisará dele com frequência.';
+    ? 'Compartilhe este ID ProZil com seus alunos para que eles possam se conectar em sua turma.'
+    : 'Este é o seu ID ProZil de aluno. Você não precisará dele com frequência.';
 
   return (
     <div className="max-w-xl mx-auto">
@@ -89,10 +91,10 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-6">
             <div>
-                <Label>Seu ID de Usuário</Label>
+                <Label>Seu ID ProZil</Label>
                 <div className="flex items-center justify-between p-3 mt-1 bg-muted rounded-md">
-                    <code className="text-sm font-mono break-all">{user.uid}</code>
-                    <Button variant="ghost" size="icon" onClick={handleCopyId} className="shrink-0">
+                    <code className="text-sm font-mono break-all">{idToDisplay || user.uid}</code>
+                    <Button variant="ghost" size="icon" onClick={handleCopyId} className="shrink-0" disabled={!idToDisplay}>
                         <Copy className="h-4 w-4" />
                         <span className="sr-only">Copiar ID</span>
                     </Button>
@@ -103,7 +105,7 @@ export default function ProfilePage() {
             </div>
             {studentProfile && studentProfile.teacherId && (
                  <div>
-                    <Label>ID do seu Professor</Label>
+                    <Label>ID do seu Professor (UID)</Label>
                     <div className="flex items-center justify-between p-3 mt-1 bg-muted rounded-md">
                         <code className="text-sm font-mono break-all">{studentProfile.teacherId}</code>
                     </div>

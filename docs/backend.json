@@ -8,7 +8,11 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Teacher entity."
+          "description": "Unique identifier for the Teacher entity (Firebase Auth UID)."
+        },
+        "prozilId": {
+          "type": "string",
+          "description": "Public, user-friendly identifier for the teacher, in the format <name>-<6_digits>."
         },
         "name": {
           "type": "string",
@@ -22,6 +26,7 @@
       },
       "required": [
         "id",
+        "prozilId",
         "name",
         "email"
       ]
@@ -34,7 +39,11 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Student entity."
+          "description": "Unique identifier for the Student entity (Firebase Auth UID)."
+        },
+        "prozilId": {
+          "type": "string",
+          "description": "Public, user-friendly identifier for the student, in the format <name>-<6_digits>."
         },
         "name": {
           "type": "string",
@@ -47,11 +56,12 @@
         },
         "teacherId": {
           "type": "string",
-          "description": "Reference to Teacher. (Relationship: Teacher 1:N Student)"
+          "description": "The Auth UID of the teacher. (Relationship: Teacher 1:N Student)"
         }
       },
       "required": [
         "id",
+        "prozilId",
         "name",
         "email",
         "teacherId"
@@ -126,7 +136,12 @@
           "type": "string"
         },
         "studentId": {
-          "type": "string"
+          "type": "string",
+          "description": "The Auth UID of the student to whom the task is assigned."
+        },
+        "studentProzilId": {
+          "type": "string",
+          "description": "The user-friendly ProZil ID of the student to whom the task is assigned. Denormalized for display."
         },
         "studentName": {
           "type": "string",
@@ -222,6 +237,7 @@
         "title",
         "teacherId",
         "studentId",
+        "studentProzilId",
         "subject",
         "description",
         "taskType",

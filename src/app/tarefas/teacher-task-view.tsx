@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, updateDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, deleteDoc, writeBatch, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Button } from '@/components/ui/button';
@@ -79,7 +79,7 @@ const exerciseSchema = z.object({
 const taskSchema = z.object({
   id: z.string().optional(),
   title: z.string().min(3, 'O título deve ter pelo menos 3 caracteres.'),
-  studentId: z.string().min(1, 'O ID do aluno é obrigatório.'),
+  studentProzilId: z.string().min(1, 'O ID ProZil do aluno é obrigatório.'),
   subject: z.enum(['matematica', 'portugues']),
   taskType: z.enum(['jogo_interativo', 'folha_imprimivel']),
   description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
@@ -101,10 +101,18 @@ type PerformanceQuestion = {
   timeTaken?: number; // in ms
 };
 
-type Task = z.infer<typeof taskSchema> & { 
-  id: string; // id is optional in schema, but required in a fetched task
-  studentName?: string; 
-  teacherName?: string; 
+type Task = {
+  id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  teacherId: string;
+  studentId: string;
+  studentProzilId: string;
+  studentName?: string;
+  teacherName?: string;
+  subject: 'matematica' | 'portugues';
+  taskType: 'jogo_interativo' | 'folha_imprimivel';
   isCompleted: boolean;
   completedAt?: string;
   totalTime?: number; // in seconds
@@ -149,15 +157,14 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
-    const valuesWithTeacherId = { ...values, teacherId };
     
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-      updateDoc(exerciseRef, valuesWithTeacherId).catch(async (serverError) => {
+      updateDoc(exerciseRef, values).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: exerciseRef.path,
           operation: 'update',
-          requestResourceData: valuesWithTeacherId,
+          requestResourceData: values,
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({ variant: 'destructive', title: 'Erro ao atualizar exercício' });
@@ -169,7 +176,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       });
     } else {
       const newExerciseRef = doc(collection(firestore, 'teachers', teacherId, 'exercises'));
-      const newExercise = { ...valuesWithTeacherId, id: newExerciseRef.id };
+      const newExercise = { ...values, id: newExerciseRef.id, teacherId };
       setDoc(newExerciseRef, newExercise).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: newExerciseRef.path,
@@ -331,18 +338,19 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
-    defaultValues: { title: '', studentId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [], isCompleted: false },
+    defaultValues: { title: '', studentProzilId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [], isCompleted: false },
   });
 
   useEffect(() => {
     if (editingTask) {
         form.reset({
             ...editingTask,
+            studentProzilId: editingTask.studentProzilId,
             dueDate: editingTask.dueDate ? format(new Date(editingTask.dueDate), 'yyyy-MM-dd') : '',
         });
         setSelectedExercises((editingTask.questions || []).map((q, i) => ({...q, id: `${editingTask.id}-q-${i}`, subject: editingTask.subject, difficulty: 'easy', teacherId })));
     } else {
-        form.reset({ title: '', studentId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [], isCompleted: false });
+        form.reset({ title: '', studentProzilId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [], isCompleted: false });
         setSelectedExercises([]);
     }
   }, [editingTask, form, teacherId]);
@@ -353,24 +361,22 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   }, [selectedExercises, form]);
 
   const handleReuse = (taskToReuse: Task) => {
-    setEditingTask(null); // Exit editing mode
+    setEditingTask(null); 
     form.reset({
       ...taskToReuse,
-      title: `${taskToReuse.title} (Cópia)`, // Add copy to title to avoid confusion
+      title: `${taskToReuse.title} (Cópia)`,
       id: undefined,
-      studentId: '', // Clear student ID for new assignment
-      isCompleted: false, // New task starts as not completed
-      dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], // Set a new due date
+      studentProzilId: '', 
+      isCompleted: false,
+      dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
     });
     
-    // Re-create the exercises for the new task form
     const reusedExercises: Exercise[] = (taskToReuse.questions || []).map((q, i) => ({
       ...q,
-      // Re-add properties that are not stored in the task's question object
       id: `reused-${taskToReuse.id}-q-${i}-${Date.now()}`,
       teacherId: teacherId,
       subject: taskToReuse.subject,
-      difficulty: 'easy', // Default difficulty, as this is not stored on the task's question object
+      difficulty: 'easy', 
     }));
     
     setSelectedExercises(reusedExercises);
@@ -381,16 +387,20 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const onSubmit = async (values: z.infer<typeof taskSchema>) => {
     setIsSubmitting(true);
 
-    let studentName, teacherName;
+    let studentUid, studentName, teacherName;
     try {
-        const studentRef = doc(firestore, 'students', values.studentId);
-        const studentSnap = await getDoc(studentRef);
-        if (!studentSnap.exists()) {
-            form.setError('studentId', { message: 'ID do aluno não encontrado.' });
+        const studentsRef = collection(firestore, 'students');
+        const q = query(studentsRef, where("prozilId", "==", values.studentProzilId));
+        const studentSnap = await getDocs(q);
+        
+        if (studentSnap.empty) {
+            form.setError('studentProzilId', { message: 'ID ProZil do aluno não encontrado.' });
             setIsSubmitting(false);
             return;
         }
-        studentName = studentSnap.data().name;
+        const studentDoc = studentSnap.docs[0];
+        studentUid = studentDoc.id;
+        studentName = studentDoc.data().name;
 
         const teacherRef = doc(firestore, 'teachers', teacherId);
         const teacherSnap = await getDoc(teacherRef);
@@ -405,7 +415,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     const batch = writeBatch(firestore);
     
     if (editingTask?.id) {
-        const taskData = { ...values, teacherId, dueDate: new Date(values.dueDate).toISOString(), studentName, teacherName };
+        const taskData = { ...values, teacherId, dueDate: new Date(values.dueDate).toISOString(), studentName, teacherName, studentId: editingTask.studentId };
         const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', editingTask.id);
         const studentTaskRef = doc(firestore, 'students', editingTask.studentId, 'tasks', editingTask.id);
         
@@ -413,10 +423,10 @@ function TaskManager({ teacherId }: { teacherId: string }) {
         batch.update(studentTaskRef, taskData);
     } else {
         const newTaskId = doc(collection(firestore, 'teachers')).id;
-        const taskData = { ...values, id: newTaskId, teacherId, isCompleted: false, dueDate: new Date(values.dueDate).toISOString(), studentName, teacherName };
+        const taskData = { ...values, id: newTaskId, teacherId, isCompleted: false, dueDate: new Date(values.dueDate).toISOString(), studentId: studentUid, studentName, teacherName };
 
         const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', newTaskId);
-        const studentTaskRef = doc(firestore, 'students', values.studentId, 'tasks', newTaskId);
+        const studentTaskRef = doc(firestore, 'students', studentUid, 'tasks', newTaskId);
         
         batch.set(teacherTaskRef, taskData);
         batch.set(studentTaskRef, taskData);
@@ -472,7 +482,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Título da Tarefa</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                <FormField control={form.control} name="studentId" render={({ field }) => (<FormItem><FormLabel>ID do Aluno</FormLabel><FormControl><Input {...field} disabled={!!editingTask} /></FormControl><FormMessage /></FormItem>)}/>
+                <FormField control={form.control} name="studentProzilId" render={({ field }) => (<FormItem><FormLabel>ID ProZil do Aluno</FormLabel><FormControl><Input {...field} disabled={!!editingTask} /></FormControl><FormMessage /></FormItem>)}/>
                 <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel>Matéria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="matematica">Matemática</SelectItem><SelectItem value="portugues">Português</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
