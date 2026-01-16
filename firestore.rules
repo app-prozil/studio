@@ -117,7 +117,7 @@ service cloud.firestore {
      */
     function hasValidStudentDataOnUpdate() {
       let isIdImmutable = request.resource.data.id == resource.data.id;
-      let isTeacherIdImmutable = request.resource.data.teacherId == resource.data.teacherId;
+      let isTeacherIdImmutable = request.resource.data.teacherId == resource.teacherId;
       return isIdImmutable && isTeacherIdImmutable;
     }
 
@@ -149,6 +149,27 @@ service cloud.firestore {
                incoming.dueDate == existing.dueDate &&
                incoming.difficulty == existing.difficulty &&
                incoming.numberOfQuestions == existing.numberOfQuestions;
+    }
+
+    /**
+     * Checks if the requester is the author of the task.
+     */
+    function isTaskAuthor() {
+      return isExistingDoc() && request.auth.uid == resource.data.teacherId;
+    }
+    
+    /**
+     * Validates fields a teacher is allowed to update on a student's task.
+     * The teacher cannot change the completion status or core IDs.
+     */
+    function canTeacherUpdateTask() {
+      let incoming = request.resource.data;
+      let existing = resource.data;
+
+      return incoming.isCompleted == existing.isCompleted &&
+              incoming.id == existing.id &&
+              incoming.teacherId == existing.teacherId &&
+              incoming.studentId == existing.studentId;
     }
 
 
@@ -207,19 +228,21 @@ service cloud.firestore {
 
       /**
        * @description Manages tasks assigned to a student. Students can read and update
-       *              their own tasks (e.g., mark as complete). Teachers can create tasks.
+       *              their own tasks (e.g., mark as complete). Teachers can create, 
+       *              update, and delete tasks.
        * @path /students/{studentId}/tasks/{taskId}
        * @allow (get) Student 'user123' reading a task at /students/user123/tasks/abc.
        * @allow (create) Teacher 'teacher456' creating a task for student 'user123'.
        * @deny  (delete) Student 'user123' trying to delete an assigned task.
-       * @principle Allows read/limited-update for owners, and create for authorized roles (teachers).
+       * @principle Allows read/limited-update for owners, and full CRUD for authorized roles (teachers).
        */
       match /tasks/{taskId} {
-        allow get: if isOwner(studentId);
+        allow get: if isOwner(studentId) || isTaskAuthor();
         allow list: if isOwner(studentId);
         allow create: if hasValidStudentTaskDataOnCreate(studentId);
-        allow update: if isExistingOwner(studentId) && canStudentUpdateTask();
-        allow delete: if false;
+        allow update: if (isExistingOwner(studentId) && canStudentUpdateTask()) || 
+                         (isTaskAuthor() && canTeacherUpdateTask());
+        allow delete: if isTaskAuthor();
       }
     }
   }
