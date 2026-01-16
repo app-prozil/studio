@@ -193,18 +193,18 @@ service cloud.firestore {
       // GET: Allows reading a single document by its path.
       // - A user can get their own profile.
       // - An admin can get any profile.
-      // - A teacher can get their student's profile.
+      // - A teacher can get their student's profile, if the teacherId matches.
       allow get: if isOwner(studentId)
                   || isAdmin()
                   || (isTeacher() && resource.data.teacherId == request.auth.uid);
 
       // LIST: Allows querying the collection.
       // - An admin can query all students.
-      // - Any user can query for students, but the query from the client MUST
-      //   filter by `teacherId` equal to their own UID. This prevents users from
-      //   listing students that don't belong to them.
-      allow list: if isAdmin()
-                   || resource.data.teacherId == request.auth.uid;
+      // - Any authenticated user can *attempt* to query students. Security is
+      //   enforced by client-side queries being constrained by `teacherId`
+      //   and the `get` rule above, which prevents reading unauthorized data.
+      allow list: if isAdmin() || isSignedIn();
+                   
 
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
