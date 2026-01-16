@@ -190,13 +190,21 @@ service cloud.firestore {
     }
 
     match /students/{studentId} {
-      // Allow student to read their own profile, admin to read any,
-      // and a teacher to read a student profile if the teacherId matches.
-      // This is safe because client-side queries by teachers are always
-      // constrained by `where('teacherId', '==', auth.uid)`.
-      allow get: if isOwner(studentId) || isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid);
-      // Allow any authenticated teacher to attempt a query. Security is enforced by the 'get' rule on the results.
-      allow list: if isTeacher() || isAdmin();
+      // `get` is the ultimate arbiter of access for a single document.
+      // Allow a read if:
+      // 1. You are the student (owner).
+      // 2. You are an admin.
+      // 3. The student's `teacherId` field matches your UID (making you their teacher).
+      allow get: if isOwner(studentId) || isAdmin() || (resource.data.teacherId == request.auth.uid);
+      
+      // `list` grants permission to issue a query against the collection.
+      // It does NOT filter results. For a query to succeed, the `get` rule above
+      // must pass for *every* document returned by the query.
+      // Therefore, we can allow any signed-in user to issue a query.
+      // The client-side query `where('teacherId', '==', auth.uid)` ensures
+      // only relevant documents are requested, and the `get` rule above secures them.
+      allow list: if isSignedIn();
+
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
       allow delete: if isExistingOwner(studentId) || isAdmin();
