@@ -154,24 +154,16 @@ function UserTableContent({ users, isLoading, error, type, collectionName }: { u
   );
 }
 
-function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: boolean }) {
+function UserTable({ type }: { type: 'teacher' | 'student' }) {
   const firestore = useFirestore();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
   
   const query = useMemoFirebase(
-    () => (canQuery ? collection(firestore, collectionName) : null),
-    [firestore, collectionName, canQuery]
+    () => collection(firestore, collectionName),
+    [firestore, collectionName]
   );
   
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
-
-  if (!canQuery) {
-    return (
-      <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
-          <p className="text-sm text-muted-foreground">Você não tem permissão para visualizar esta lista.</p>
-      </div>
-    );
-  }
 
   return <UserTableContent users={users} isLoading={isLoading} error={error} type={type} collectionName={collectionName}/>;
 }
@@ -230,7 +222,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
             </CardHeader>
             <CardContent>
-               {isAuthorized ? <UserTable type="teacher" canQuery={isAuthorized} /> : (
+               {isAuthorized ? <UserTable type="teacher" /> : (
                  <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
                    <p className="text-sm text-muted-foreground">Você não tem permissão para visualizar esta lista.</p>
                  </div>
@@ -245,7 +237,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
             </CardHeader>
             <CardContent>
-               {isAuthorized ? <UserTable type="student" canQuery={isAuthorized} /> : (
+               {isAuthorized ? <UserTable type="student" /> : (
                  <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
                    <p className="text-sm text-muted-foreground">Você não tem permissão para visualizar esta lista.</p>
                  </div>
