@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import {
@@ -27,6 +27,12 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +53,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 // Schemas
@@ -605,6 +612,94 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   );
 }
 
+function TasksByStudentView({ teacherId }: { teacherId: string }) {
+  const firestore = useFirestore();
+  const tasksQuery = useMemoFirebase(
+    () => collection(firestore, 'teachers', teacherId, 'tasks'),
+    [firestore, teacherId]
+  );
+  const { data: tasks, isLoading } = useCollection<Task>(tasksQuery);
+
+  const tasksByStudent = useMemo(() => {
+    if (!tasks) return {};
+    return tasks.reduce((acc, task) => {
+      const studentIdentifier = task.studentName || task.studentId;
+      if (!acc[studentIdentifier]) {
+        acc[studentIdentifier] = [];
+      }
+      acc[studentIdentifier].push(task);
+      return acc;
+    }, {} as Record<string, Task[]>);
+  }, [tasks]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Visão Geral por Aluno</CardTitle>
+        <CardDescription>Veja todas as tarefas que você atribuiu, agrupadas por aluno.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {Object.keys(tasksByStudent).length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">Nenhuma tarefa atribuída encontrada.</div>
+        ) : (
+          <Accordion type="single" collapsible className="w-full">
+            {Object.entries(tasksByStudent).map(([studentName, studentTasks]) => (
+              <AccordionItem value={studentName} key={studentName}>
+                <AccordionTrigger className="text-lg font-medium hover:no-underline">
+                  <div className="flex items-center gap-3">
+                    <User className="h-5 w-5 text-primary" />
+                    {studentName} 
+                    <Badge variant="outline">{studentTasks.length} tarefas</Badge>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ul className="space-y-3 pt-2 pl-4">
+                    {studentTasks.sort((a,b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()).map(task => (
+                       <li key={task.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg bg-background/50 gap-4">
+                           <div className="grid gap-1.5 flex-1">
+                               <p className={`font-semibold ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                                 {task.title}
+                               </p>
+                               <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-1">
+                                   <Badge variant={task.isCompleted ? 'secondary' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
+                                   <span>
+                                    Data de Entrega: {format(new Date(task.dueDate), "dd/MM/yyyy")}
+                                   </span>
+                                   <span className="flex items-center gap-1">
+                                    <FileText className="w-3 h-3"/> {task.questions?.length || 0} questões
+                                   </span>
+                               </div>
+                           </div>
+                           <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                              <Button variant="outline" size="sm" asChild>
+                                <Link href={`/${task.subject}?taskId=${task.id}&studentId=${task.studentId}`} target="_blank">
+                                  <Eye className="mr-2 h-3 w-3"/> Visualizar
+                                </Link>
+                              </Button>
+                           </div>
+                        </li>
+                    ))}
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
   return (
@@ -615,15 +710,19 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
       </div>
 
       <Tabs defaultValue="tasks">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="tasks">Gerenciar Tarefas</TabsTrigger>
           <TabsTrigger value="exercises">Banco de Exercícios</TabsTrigger>
+          <TabsTrigger value="by-student">Tarefas por Aluno</TabsTrigger>
         </TabsList>
         <TabsContent value="tasks" className="mt-6">
           <TaskManager teacherId={teacherId} />
         </TabsContent>
         <TabsContent value="exercises" className="mt-6">
           <ExerciseBank teacherId={teacherId} />
+        </TabsContent>
+        <TabsContent value="by-student" className="mt-6">
+          <TasksByStudentView teacherId={teacherId} />
         </TabsContent>
       </Tabs>
     </div>
