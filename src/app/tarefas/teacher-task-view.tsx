@@ -119,6 +119,12 @@ type Task = {
   questions: PerformanceQuestion[];
 };
 
+type Student = {
+  id: string;
+  name: string;
+  prozilId: string;
+};
+
 
 function ExerciseBank({ teacherId }: { teacherId: string }) {
   const firestore = useFirestore();
@@ -324,6 +330,8 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
+  const [isStudentSelectorOpen, setIsStudentSelectorOpen] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
 
   const exercisesQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'exercises'), [firestore, teacherId]);
   const { data: exercises, isLoading: isLoadingExercises } = useCollection<Exercise>(exercisesQuery);
@@ -336,6 +344,29 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => ex.subject === bankSubjectFilter);
   }, [exercises, bankSubjectFilter]);
   
+  const uniqueStudents = useMemo(() => {
+    if (!tasks) return [];
+    const studentMap = new Map<string, Student>();
+    tasks.forEach(task => {
+        if (task.studentId && !studentMap.has(task.studentId)) {
+            studentMap.set(task.studentId, {
+                id: task.studentId,
+                name: task.studentName || 'Nome desconhecido',
+                prozilId: task.studentProzilId,
+            });
+        }
+    });
+    return Array.from(studentMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks]);
+
+  const filteredStudents = useMemo(() => {
+    if (!uniqueStudents) return [];
+    return uniqueStudents.filter(s =>
+      s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      s.prozilId.toLowerCase().includes(studentSearch.toLowerCase())
+    );
+  }, [uniqueStudents, studentSearch]);
+
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
     defaultValues: { title: '', studentProzilId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [], isCompleted: false },
@@ -482,7 +513,33 @@ function TaskManager({ teacherId }: { teacherId: string }) {
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Título da Tarefa</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                <FormField control={form.control} name="studentProzilId" render={({ field }) => (<FormItem><FormLabel>ID ProZil do Aluno</FormLabel><FormControl><Input {...field} disabled={!!editingTask} /></FormControl><FormMessage /></FormItem>)}/>
+                
+                <FormField
+                  control={form.control}
+                  name="studentProzilId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ID ProZil do Aluno</FormLabel>
+                      <div className="flex items-center gap-2">
+                        <FormControl>
+                          <Input {...field} disabled={!!editingTask} placeholder="Selecione um aluno..."/>
+                        </FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setIsStudentSelectorOpen(true)}
+                          disabled={!!editingTask}
+                          aria-label="Buscar Aluno"
+                        >
+                          <Search className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel>Matéria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="matematica">Matemática</SelectItem><SelectItem value="portugues">Português</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
@@ -587,6 +644,48 @@ function TaskManager({ teacherId }: { teacherId: string }) {
         </Card>
       </div>
       
+      <Dialog open={isStudentSelectorOpen} onOpenChange={setIsStudentSelectorOpen}>
+        <DialogContent className="max-w-md">
+            <DialogHeader>
+            <DialogTitle>Selecionar Aluno</DialogTitle>
+            <DialogDescription>
+                Selecione um aluno da sua lista para atribuir esta tarefa. A lista é baseada nas tarefas que você já criou.
+            </DialogDescription>
+            </DialogHeader>
+            <div className="py-2">
+            <Input 
+                placeholder="Buscar por nome ou ID ProZil..." 
+                value={studentSearch} 
+                onChange={(e) => setStudentSearch(e.target.value)} 
+            />
+            </div>
+            <div className="space-y-2 h-64 overflow-y-auto pr-2">
+            {filteredStudents.map(student => (
+                <div 
+                key={student.id} 
+                className="p-3 border rounded-md cursor-pointer hover:bg-muted"
+                onClick={() => {
+                    form.setValue('studentProzilId', student.prozilId);
+                    setIsStudentSelectorOpen(false);
+                    setStudentSearch('');
+                }}
+                >
+                <p className="font-semibold">{student.name}</p>
+                <p className="text-sm text-muted-foreground">{student.prozilId}</p>
+                </div>
+            ))}
+            {filteredStudents.length === 0 && (
+                <div className="text-center text-sm text-muted-foreground pt-10">
+                    Nenhum aluno encontrado.
+                </div>
+            )}
+            </div>
+            <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsStudentSelectorOpen(false)}>Fechar</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isBankOpen} onOpenChange={setIsBankOpen}>
           <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
               <DialogHeader><DialogTitle>Adicionar Exercícios do Banco</DialogTitle><DialogDescription>Selecione os exercícios que você quer adicionar a esta tarefa.</DialogDescription></DialogHeader>
