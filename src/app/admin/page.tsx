@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Trash2, Edit, ShieldAlert } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const ADMIN_EMAIL = 'admin@prozil.com';
+const ADMIN_EMAIL = 'zilmara.nunes@hotmail.com.br';
 
 const userSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
@@ -39,14 +39,14 @@ const NotAuthorizedMessage = () => (
     </div>
 );
 
-function UserTable({ type }: { type: 'teacher' | 'student' }) {
+function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: boolean }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
   
   const query = useMemoFirebase(
-    () => collection(firestore, collectionName),
-    [firestore, collectionName]
+    () => (canQuery ? collection(firestore, collectionName) : null),
+    [firestore, collectionName, canQuery]
   );
   
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
@@ -98,6 +98,8 @@ function UserTable({ type }: { type: 'teacher' | 'student' }) {
   
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Erro ao carregar usuários: {error.message}</p>;
+  if (!canQuery) return <NotAuthorizedMessage />;
+
 
   return (
     <>
@@ -223,7 +225,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
             </CardHeader>
             <CardContent>
-               {isAuthorized ? <UserTable type="teacher" /> : <NotAuthorizedMessage />}
+               <UserTable type="teacher" canQuery={isAuthorized} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -234,7 +236,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
             </CardHeader>
             <CardContent>
-              {isAuthorized ? <UserTable type="student" /> : <NotAuthorizedMessage />}
+              <UserTable type="student" canQuery={isAuthorized} />
             </CardContent>
           </Card>
         </TabsContent>
