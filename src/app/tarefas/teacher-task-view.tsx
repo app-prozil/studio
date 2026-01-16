@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, updateDoc, deleteDoc, addDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye } from 'lucide-react';
 import { format } from 'date-fns';
+import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -107,11 +114,11 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       toast({ title: 'Exercício atualizado!' });
       setEditingExercise(null);
     } else {
-      const newExercise = { ...values, teacherId };
-      const exercisesColRef = collection(firestore, 'teachers', teacherId, 'exercises');
-      addDoc(exercisesColRef, newExercise).catch(async (serverError) => {
+      const newExerciseRef = doc(collection(firestore, 'teachers', teacherId, 'exercises'));
+      const newExercise = { ...values, teacherId, id: newExerciseRef.id };
+      setDoc(newExerciseRef, newExercise).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
-          path: exercisesColRef.path,
+          path: newExerciseRef.path,
           operation: 'create',
           requestResourceData: newExercise,
         });
@@ -232,17 +239,33 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBankOpen, setIsBankOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
 
   const exercisesQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'exercises'), [firestore, teacherId]);
   const { data: exercises } = useCollection<Exercise>(exercisesQuery);
+  const tasksQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'tasks'), [firestore, teacherId]);
+  const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
   
   const form = useForm<Task>({
     resolver: zodResolver(taskSchema),
     defaultValues: { title: '', studentId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [] },
   });
 
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: "questions" });
+  useEffect(() => {
+    if (editingTask) {
+        form.reset({
+            ...editingTask,
+            dueDate: editingTask.dueDate ? format(new Date(editingTask.dueDate), 'yyyy-MM-dd') : '',
+        });
+        setSelectedExercises(editingTask.questions.map((q, i) => ({...q, id: `${editingTask.id}-q-${i}`})));
+    } else {
+        form.reset({ title: '', studentId: '', description: '', dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], subject: 'matematica', taskType: 'jogo_interativo', questions: [] });
+        setSelectedExercises([]);
+    }
+  }, [editingTask, form]);
+
 
   useEffect(() => {
     form.setValue('questions', selectedExercises.map(e => ({text: e.text, options: e.options, answer: e.answer})));
@@ -250,80 +273,162 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
   const onSubmit = (values: Task) => {
     setIsSubmitting(true);
-    
-    const newTaskId = doc(collection(firestore, 'teachers')).id;
-    const taskData = { ...values, id: newTaskId, teacherId, isCompleted: false, dueDate: new Date(values.dueDate).toISOString() };
 
-    const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', newTaskId);
-    const studentTaskRef = doc(firestore, 'students', values.studentId, 'tasks', newTaskId);
-    
-    const batch = writeBatch(firestore);
-    batch.set(teacherTaskRef, taskData);
-    batch.set(studentTaskRef, taskData);
+    if (editingTask?.id) {
+        const taskData = { ...values, teacherId, isCompleted: editingTask.isCompleted, dueDate: new Date(values.dueDate).toISOString() };
+        const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', editingTask.id);
+        const studentTaskRef = doc(firestore, 'students', editingTask.studentId, 'tasks', editingTask.id);
+        
+        const batch = writeBatch(firestore);
+        batch.update(teacherTaskRef, taskData);
+        batch.update(studentTaskRef, taskData);
 
-    batch.commit().catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: teacherTaskRef.path,
-            operation: 'write',
-            requestResourceData: taskData,
+        batch.commit().catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({ path: teacherTaskRef.path, operation: 'update', requestResourceData: taskData });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Erro ao atualizar tarefa' });
         });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({ variant: 'destructive', title: 'Erro ao criar tarefa' });
-    });
+        toast({ title: 'Tarefa atualizada com sucesso!' });
+        setEditingTask(null);
 
-    toast({ title: 'Tarefa criada com sucesso!' });
+    } else {
+        const newTaskId = doc(collection(firestore, 'teachers')).id;
+        const taskData = { ...values, id: newTaskId, teacherId, isCompleted: false, dueDate: new Date(values.dueDate).toISOString() };
+
+        const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', newTaskId);
+        const studentTaskRef = doc(firestore, 'students', values.studentId, 'tasks', newTaskId);
+        
+        const batch = writeBatch(firestore);
+        batch.set(teacherTaskRef, taskData);
+        batch.set(studentTaskRef, taskData);
+
+        batch.commit().catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({ path: teacherTaskRef.path, operation: 'write', requestResourceData: taskData });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Erro ao criar tarefa' });
+        });
+        toast({ title: 'Tarefa criada com sucesso!' });
+    }
+    
     form.reset();
     setSelectedExercises([]);
     setIsSubmitting(false);
   };
 
+  const handleDelete = () => {
+    if (!deletingTask) return;
+    const { id, studentId } = deletingTask;
+    setIsSubmitting(true);
+    
+    const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', id);
+    const studentTaskRef = doc(firestore, 'students', studentId, 'tasks', id);
+
+    const batch = writeBatch(firestore);
+    batch.delete(teacherTaskRef);
+    batch.delete(studentTaskRef);
+
+    batch.commit().catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({ path: teacherTaskRef.path, operation: 'delete' });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({ variant: 'destructive', title: 'Erro ao excluir tarefa' });
+    });
+
+    toast({ title: 'Tarefa excluída!' });
+    setDeletingTask(null);
+    setIsSubmitting(false);
+  }
+
   return (
      <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Criar Nova Tarefa</CardTitle>
-          <CardDescription>Preencha os detalhes e adicione exercícios do seu banco.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Título da Tarefa</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-              <FormField control={form.control} name="studentId" render={({ field }) => (<FormItem><FormLabel>ID do Aluno</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-              <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel>Matéria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="matematica">Matemática</SelectItem><SelectItem value="portugues">Português</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
-                <FormField control={form.control} name="taskType" render={({ field }) => (<FormItem><FormLabel>Tipo de Tarefa</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="jogo_interativo">Jogo Interativo</SelectItem><SelectItem value="folha_imprimivel">Folha Imprimível</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
-                <FormField control={form.control} name="dueDate" render={({ field }) => (<FormItem><FormLabel>Data de Entrega</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-              </div>
+      <div className="grid md:grid-cols-2 gap-8">
+        <Card>
+            <CardHeader>
+            <CardTitle>{editingTask ? 'Editar Tarefa' : 'Criar Nova Tarefa'}</CardTitle>
+            <CardDescription>{editingTask ? 'Modifique os detalhes da tarefa' : 'Preencha os detalhes e adicione exercícios do seu banco'}</CardDescription>
+            </CardHeader>
+            <CardContent>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Título da Tarefa</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                <FormField control={form.control} name="studentId" render={({ field }) => (<FormItem><FormLabel>ID do Aluno</FormLabel><FormControl><Input {...field} disabled={!!editingTask} /></FormControl><FormMessage /></FormItem>)}/>
+                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel>Matéria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="matematica">Matemática</SelectItem><SelectItem value="portugues">Português</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="taskType" render={({ field }) => (<FormItem><FormLabel>Tipo de Tarefa</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="jogo_interativo">Jogo Interativo</SelectItem><SelectItem value="folha_imprimivel">Folha Imprimível</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="dueDate" render={({ field }) => (<FormItem><FormLabel>Data de Entrega</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                </div>
 
-              <Card>
-                <CardHeader className="flex-row items-center justify-between">
-                    <div>
-                        <CardTitle>Exercícios da Tarefa ({selectedExercises.length})</CardTitle>
-                        <CardDescription>Adicione perguntas do seu banco de exercícios.</CardDescription>
-                    </div>
-                    <Button type="button" onClick={() => setIsBankOpen(true)}><PlusCircle className="mr-2"/> Adicionar</Button>
-                </CardHeader>
-                <CardContent>
-                    <ul className="space-y-2">
-                        {selectedExercises.map((ex, index) => (
-                           <li key={ex.id} className="flex items-center justify-between p-2 border rounded-md">
-                               <span className="truncate">{ex.text}</span>
-                               <Button type="button" variant="ghost" size="icon" onClick={() => setSelectedExercises(prev => prev.filter(p => p.id !== ex.id))}><Trash2 className="w-4 h-4 text-destructive"/></Button>
-                           </li> 
-                        ))}
-                    </ul>
-                    <FormMessage>{form.formState.errors.questions?.message}</FormMessage>
-                </CardContent>
-              </Card>
+                <Card>
+                    <CardHeader className="flex-row items-center justify-between">
+                        <div>
+                            <CardTitle>Exercícios da Tarefa ({selectedExercises.length})</CardTitle>
+                            <CardDescription>Adicione perguntas do seu banco de exercícios.</CardDescription>
+                        </div>
+                        <Button type="button" onClick={() => setIsBankOpen(true)}><PlusCircle className="mr-2"/> Adicionar</Button>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="space-y-2 max-h-48 overflow-y-auto">
+                            {selectedExercises.map((ex, index) => (
+                            <li key={ex.id || index} className="flex items-center justify-between p-2 border rounded-md">
+                                <span className="truncate">{ex.text}</span>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => setSelectedExercises(prev => prev.filter(p => p.id !== ex.id))}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                            </li> 
+                            ))}
+                        </ul>
+                        <FormMessage>{form.formState.errors.questions?.message}</FormMessage>
+                    </CardContent>
+                </Card>
 
-              <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />} Atribuir Tarefa
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                <div className="flex gap-2">
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />} 
+                        {editingTask ? 'Atualizar Tarefa' : 'Atribuir Tarefa'}
+                    </Button>
+                    {editingTask && <Button type="button" variant="ghost" onClick={() => setEditingTask(null)}>Cancelar</Button>}
+                </div>
+                </form>
+            </Form>
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Tarefas Criadas</CardTitle>
+                <CardDescription>Visualize e gerencie as tarefas que você atribuiu.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoadingTasks && <p>Carregando tarefas...</p>}
+                <ul className="space-y-2 h-[500px] overflow-y-auto">
+                    {tasks?.map(task => (
+                        <li key={task.id} className="p-3 border rounded-lg flex justify-between items-start">
+                            <div className="flex-1">
+                                <p className="font-semibold">{task.title}</p>
+                                <p className="text-sm text-muted-foreground">Para: {task.studentId}</p>
+                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">...</Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem asChild className="cursor-pointer">
+                                        <Link href={`/${task.subject}?taskId=${task.id}&studentId=${task.studentId}`} target="_blank">
+                                            <Eye className="mr-2 h-4 w-4"/> Visualizar
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setEditingTask(task)} className="cursor-pointer">
+                                        <Edit className="mr-2 h-4 w-4"/> Editar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setDeletingTask(task)} className="cursor-pointer text-destructive focus:text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4"/> Excluir
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </li>
+                    ))}
+                </ul>
+            </CardContent>
+        </Card>
+      </div>
       
       <Dialog open={isBankOpen} onOpenChange={setIsBankOpen}>
           <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
@@ -357,6 +462,17 @@ function TaskManager({ teacherId }: { teacherId: string }) {
               </DialogFooter>
           </DialogContent>
       </Dialog>
+      <AlertDialog open={!!deletingTask} onOpenChange={open => !open && setDeletingTask(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>Excluir Tarefa?</AlertDialogTitle><AlertDialogDescription>Esta ação é permanente. A tarefa será removida para o professor e para o aluno.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={isSubmitting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isSubmitting ? <Loader2 className="animate-spin" /> : 'Sim, Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
      </> 
   );
 }
