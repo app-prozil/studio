@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -14,6 +14,11 @@ type Question = {
   text: string;
   options: string[];
   answer: string;
+  // Performance fields
+  studentAnswer?: string;
+  attempts?: number;
+  status?: 'correct' | 'incorrect' | 'unanswered';
+  timeTaken?: number;
 };
 
 type Task = {
@@ -21,6 +26,10 @@ type Task = {
     questions: Question[];
     subject: 'math' | 'portuguese';
     studentName?: string;
+    isCompleted?: boolean;
+    // Performance fields
+    completedAt?: string;
+    totalTime?: number;
 }
 
 type InteractiveGameProps = {
@@ -38,6 +47,12 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [isGameComplete, setIsGameComplete] = useState(false);
+  
+  // Performance tracking state
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [currentAttempts, setCurrentAttempts] = useState(1);
+  const taskStartTime = useMemo(() => Date.now(), []);
+
 
   // Task parameters from URL
   const taskId = searchParams.get('taskId');
@@ -51,24 +66,43 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   useEffect(() => {
     if (taskData && taskData.questions) {
+      // If task is already completed, redirect.
+      if (taskData.isCompleted) {
+        toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
+        router.push('/tarefas');
+        return;
+      }
       setQuestions(taskData.questions);
     }
-  }, [taskData]);
+  }, [taskData, router, toast]);
+
+  useEffect(() => {
+    // When a new question is loaded, reset attempts and start the timer for it.
+    setQuestionStartTime(Date.now());
+    setCurrentAttempts(1);
+  }, [currentQuestionIndex]);
 
   const completeTask = useCallback(async () => {
     if (!taskDocRef) return;
+    const totalTime = Math.round((Date.now() - taskStartTime) / 1000); // in seconds
     try {
-      await updateDoc(taskDocRef, { isCompleted: true });
+      await updateDoc(taskDocRef, { 
+        isCompleted: true,
+        completedAt: new Date().toISOString(),
+        totalTime: totalTime,
+      });
     } catch (e) {
-      console.error("Erro ao atualizar tarefa: ", e);
+      console.error("Erro ao finalizar tarefa: ", e);
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível marcar a tarefa como concluída.' });
     }
-  }, [taskDocRef, toast]);
+  }, [taskDocRef, taskStartTime, toast]);
 
-  const handleAnswer = (option: string) => {
+  const handleAnswer = async (option: string) => {
     if (selectedAnswer !== null) return;
     
+    const timeTaken = Date.now() - questionStartTime;
     setSelectedAnswer(option);
+    
     const currentQuestion = questions[currentQuestionIndex];
     const correct = subject === 'math' 
       ? parseFloat(option) === parseFloat(currentQuestion.answer)
@@ -76,6 +110,23 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     
     setIsCorrect(correct);
     
+    // Persist performance data for the current question
+    if (taskDocRef && taskData) {
+        const updatedQuestions = [...taskData.questions];
+        updatedQuestions[currentQuestionIndex] = {
+            ...currentQuestion,
+            studentAnswer: option,
+            attempts: currentAttempts,
+            timeTaken: timeTaken,
+            status: correct ? 'correct' : 'incorrect',
+        };
+        // This is a non-blocking update. We don't wait for it to finish.
+        updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
+            console.error("Failed to update question performance", e)
+            // Silently fail for now to not disrupt user flow. A more robust solution could use global error handling.
+        });
+    }
+
     setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(null);
@@ -87,6 +138,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             } else {
                 setCurrentQuestionIndex((prev) => prev + 1);
             }
+        } else {
+            // If incorrect, increment attempts for the next try
+            setCurrentAttempts(prev => prev + 1);
         }
     }, 2000);
   };

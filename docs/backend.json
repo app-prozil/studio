@@ -160,9 +160,18 @@
         "isCompleted": {
           "type": "boolean"
         },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the student completed the task."
+        },
+        "totalTime": {
+          "type": "number",
+          "description": "Total time in seconds the student took to complete the task."
+        },
         "questions": {
           "type": "array",
-          "description": "A list of questions that make up the task. This data is denormalized from the exercise bank.",
+          "description": "A list of questions that make up the task, including student performance data.",
           "items": {
             "type": "object",
             "properties": {
@@ -177,6 +186,27 @@
               },
               "answer": {
                 "type": "string"
+              },
+              "studentAnswer": {
+                "type": "string",
+                "description": "The answer the student provided."
+              },
+              "attempts": {
+                "type": "number",
+                "description": "Number of attempts the student made for this question."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "correct",
+                  "incorrect",
+                  "unanswered"
+                ],
+                "description": "The final status of the student's answer for this question."
+              },
+              "timeTaken": {
+                "type": "number",
+                "description": "Time in milliseconds to answer this question."
               }
             },
             "required": [

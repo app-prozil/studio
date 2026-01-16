@@ -75,7 +75,8 @@ service cloud.firestore {
     }
     
     function hasValidExerciseDataOnCreate(teacherId) {
-       return request.resource.data.teacherId == teacherId;
+       let newExercise = request.resource.data;
+       return newExercise.teacherId == teacherId && newExercise.id == request.resource.id;
     }
 
     // --- Update Validation Helpers ---
@@ -104,24 +105,26 @@ service cloud.firestore {
     }
 
     function canStudentUpdateTask() {
-        // A student can ONLY change the `isCompleted` status from false to true.
-        // All other fields must remain identical.
         let incoming = request.resource.data;
         let existing = resource.data;
+
+        // A student can update performance fields (`questions`, `isCompleted`, `completedAt`, `totalTime`).
+        // All other fields must remain identical.
         
-        let isCompletingTask = incoming.isCompleted == true && existing.isCompleted == false;
-        
-        // Check immutability of all other fields
-        return isCompletingTask &&
-               incoming.id == existing.id &&
-               incoming.title == existing.title &&
-               incoming.teacherId == existing.teacherId &&
-               incoming.studentId == existing.studentId &&
-               incoming.subject == existing.subject &&
-               incoming.description == existing.description &&
-               incoming.taskType == existing.taskType &&
-               incoming.dueDate == existing.dueDate &&
-               incoming.questions == existing.questions; // questions array must be identical
+        // Prevent student from re-doing an already completed task.
+        // A teacher can re-open it, which is handled by `canTeacherUpdateTask`.
+        if (existing.isCompleted == true) {
+          return false;
+        }
+
+        return incoming.id == existing.id &&
+              incoming.title == existing.title &&
+              incoming.teacherId == existing.teacherId &&
+              incoming.studentId == existing.studentId &&
+              incoming.subject == existing.subject &&
+              incoming.description == existing.description &&
+              incoming.taskType == existing.taskType &&
+              incoming.dueDate == existing.dueDate;
     }
 
     function isTaskAuthor() {
@@ -180,7 +183,7 @@ service cloud.firestore {
         allow list: if isOwner(studentId);
         // Only a teacher can create a task for a student.
         allow create: if hasValidStudentTaskDataOnCreate(studentId);
-        // A student can only update `isCompleted`, a teacher can update other fields.
+        // A student can only update performance data, a teacher can update other fields.
         allow update: if (isExistingOwner(studentId) && canStudentUpdateTask()) || 
                          (isTaskAuthor() && canTeacherUpdateTask());
         // Only the authoring teacher can delete a task from a student's list.

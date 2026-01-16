@@ -15,8 +15,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText, Calendar, Clock, Target, Check, Circle } from 'lucide-react';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
 import {
   Dialog,
@@ -49,6 +50,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -81,7 +90,26 @@ const taskSchema = z.object({
 
 
 type Exercise = z.infer<typeof exerciseSchema>;
-type Task = z.infer<typeof taskSchema> & { studentName?: string; teacherName?: string; };
+
+type PerformanceQuestion = {
+  text: string;
+  options: string[];
+  answer: string;
+  studentAnswer?: string;
+  attempts?: number;
+  status?: 'correct' | 'incorrect' | 'unanswered';
+  timeTaken?: number; // in ms
+};
+
+type Task = z.infer<typeof taskSchema> & { 
+  id: string; // id is optional in schema, but required in a fetched task
+  studentName?: string; 
+  teacherName?: string; 
+  isCompleted: boolean;
+  completedAt?: string;
+  totalTime?: number; // in seconds
+  questions: PerformanceQuestion[];
+};
 
 
 function ExerciseBank({ teacherId }: { teacherId: string }) {
@@ -121,15 +149,15 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
+    const valuesWithTeacherId = { ...values, teacherId };
     
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-      const valuesToUpdate = { ...values };
-      updateDoc(exerciseRef, valuesToUpdate).catch(async (serverError) => {
+      updateDoc(exerciseRef, valuesWithTeacherId).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: exerciseRef.path,
           operation: 'update',
-          requestResourceData: valuesToUpdate,
+          requestResourceData: valuesWithTeacherId,
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({ variant: 'destructive', title: 'Erro ao atualizar exercício' });
@@ -141,7 +169,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       });
     } else {
       const newExerciseRef = doc(collection(firestore, 'teachers', teacherId, 'exercises'));
-      const newExercise = { ...values, id: newExerciseRef.id };
+      const newExercise = { ...valuesWithTeacherId, id: newExerciseRef.id };
       setDoc(newExerciseRef, newExercise).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: newExerciseRef.path,
@@ -527,8 +555,8 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
                                     <DropdownMenuItem asChild className="cursor-pointer">
-                                        <Link href={`/${task.subject}?taskId=${task.id}&studentId=${task.studentId}`} target="_blank">
-                                            <Eye className="mr-2 h-4 w-4"/> Visualizar
+                                        <Link href={`/${task.subject}?taskId=${task.id}&studentId=${task.studentId}`}>
+                                            <Eye className="mr-2 h-4 w-4"/> Visualizar Jogo
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => setEditingTask(task as Task)} className="cursor-pointer">
@@ -612,6 +640,95 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   );
 }
 
+function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+  if (!task) return null;
+
+  const formatTime = (seconds: number | undefined) => {
+    if (seconds === undefined) return 'N/A';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
+  const formatMs = (ms: number | undefined) => {
+    if (ms === undefined) return 'N/A';
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
+  
+  const correctAnswers = task.questions.filter(q => q.status === 'correct').length;
+  const totalQuestions = task.questions.length;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">{task.title}</DialogTitle>
+          <DialogDescription>Relatório de desempenho para {task.studentName || 'aluno desconhecido'}.</DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-y">
+            <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground">Status</dt>
+                <dd><Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge></dd>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground flex items-center gap-1"><Calendar className="w-4 h-4"/> Conclusão</dt>
+                <dd className="font-semibold">{task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yy HH:mm', {locale: ptBR}) : 'N/A'}</dd>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground flex items-center gap-1"><Clock className="w-4 h-4"/> Tempo Total</dt>
+                <dd className="font-semibold">{formatTime(task.totalTime)}</dd>
+            </div>
+             <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground flex items-center gap-1"><Target className="w-4 h-4"/> Precisão</dt>
+                <dd className="font-semibold">{correctAnswers} de {totalQuestions}</dd>
+            </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-[40px]">#</TableHead>
+                        <TableHead>Pergunta</TableHead>
+                        <TableHead>Resposta do Aluno</TableHead>
+                        <TableHead>Resposta Correta</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Tentativas</TableHead>
+                        <TableHead>Tempo</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {task.questions.map((q, index) => (
+                        <TableRow key={index} className={q.status === 'incorrect' ? 'bg-destructive/10' : ''}>
+                            <TableCell>{index + 1}</TableCell>
+                            <TableCell className="font-medium max-w-xs truncate">{q.text}</TableCell>
+                            <TableCell>{q.studentAnswer || '-'}</TableCell>
+                            <TableCell>{q.answer}</TableCell>
+                            <TableCell>
+                                {q.status === 'correct' && <Check className="w-5 h-5 text-success" />}
+                                {q.status === 'incorrect' && <X className="w-5 h-5 text-destructive" />}
+                                {q.status === 'unanswered' || !q.status && <Circle className="w-5 h-5 text-muted-foreground"/>}
+                            </TableCell>
+                            <TableCell>{q.attempts || '-'}</TableCell>
+                            <TableCell>{formatMs(q.timeTaken)}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Fechar</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 function TasksByStudentView({ teacherId }: { teacherId: string }) {
   const firestore = useFirestore();
   const tasksQuery = useMemoFirebase(
@@ -619,6 +736,7 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
     [firestore, teacherId]
   );
   const { data: tasks, isLoading } = useCollection<Task>(tasksQuery);
+  const [viewingReport, setViewingReport] = useState<Task | null>(null);
 
   const tasksByStudent = useMemo(() => {
     if (!tasks) return {};
@@ -643,6 +761,7 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>Visão Geral por Aluno</CardTitle>
@@ -671,7 +790,7 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
                                  {task.title}
                                </p>
                                <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-1">
-                                   <Badge variant={task.isCompleted ? 'secondary' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
+                                   <Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
                                    <span>
                                     Data de Entrega: {format(new Date(task.dueDate), "dd/MM/yyyy")}
                                    </span>
@@ -681,10 +800,8 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
                                </div>
                            </div>
                            <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-                              <Button variant="outline" size="sm" asChild>
-                                <Link href={`/${task.subject}?taskId=${task.id}&studentId=${task.studentId}`}>
-                                  <Eye className="mr-2 h-3 w-3"/> Visualizar
-                                </Link>
+                              <Button variant="outline" size="sm" onClick={() => setViewingReport(task)}>
+                                  <Eye className="mr-2 h-3 w-3"/> Ver Relatório
                               </Button>
                            </div>
                         </li>
@@ -697,6 +814,8 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
         )}
       </CardContent>
     </Card>
+    <TaskReportDialog task={viewingReport} isOpen={!!viewingReport} onOpenChange={() => setViewingReport(null)} />
+    </>
   );
 }
 
