@@ -117,11 +117,12 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-      updateDoc(exerciseRef, values).catch(async (serverError) => {
+      const valuesToUpdate = { ...values, teacherId };
+      updateDoc(exerciseRef, valuesToUpdate).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: exerciseRef.path,
           operation: 'update',
-          requestResourceData: values,
+          requestResourceData: valuesToUpdate,
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({ variant: 'destructive', title: 'Erro ao atualizar exercício' });
@@ -316,19 +317,29 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     form.setValue('questions', selectedExercises.map(e => ({text: e.text, options: e.options, answer: e.answer})));
   }, [selectedExercises, form]);
 
-  const handleDuplicate = (taskToDuplicate: Task) => {
-    setEditingTask(null); // Sair do modo de edição
-    // Preencher o formulário com dados da tarefa, mas limpar campos de atribuição
+  const handleReuse = (taskToReuse: Task) => {
+    setEditingTask(null); // Exit editing mode
     form.reset({
-      ...taskToDuplicate,
+      ...taskToReuse,
+      title: `${taskToReuse.title} (Cópia)`, // Add copy to title to avoid confusion
       id: undefined,
-      studentId: '', // Limpar ID do aluno para nova atribuição
-      isCompleted: false, // Nova tarefa começa como não concluída
-      dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], // Definir nova data de entrega
+      studentId: '', // Clear student ID for new assignment
+      isCompleted: false, // New task starts as not completed
+      dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], // Set a new due date
     });
-    // @ts-ignore
-    setSelectedExercises((taskToDuplicate.questions || []).map((q, i) => ({...q, id: `dup-${taskToDuplicate.id}-q-${i}-${Date.now()}` })));
-    toast({ title: 'Tarefa Duplicada', description: 'Atribua a um novo aluno e salve.' });
+    
+    // Re-create the exercises for the new task form
+    const reusedExercises: Exercise[] = (taskToReuse.questions || []).map((q, i) => ({
+      ...q,
+      // Re-add properties that are not stored in the task's question object
+      id: `reused-${taskToReuse.id}-q-${i}-${Date.now()}`,
+      teacherId: teacherId,
+      subject: taskToReuse.subject,
+      difficulty: 'easy', // Default difficulty, as this is not stored on the task's question object
+    }));
+    
+    setSelectedExercises(reusedExercises);
+    toast({ title: 'Tarefa Pronta para Reutilizar', description: 'Atribua a um novo aluno e salve.' });
   };
 
 
@@ -516,8 +527,8 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                                     <DropdownMenuItem onClick={() => setEditingTask(task as Task)} className="cursor-pointer">
                                         <Edit className="mr-2 h-4 w-4"/> Editar
                                     </DropdownMenuItem>
-                                     <DropdownMenuItem onClick={() => handleDuplicate(task as Task)} className="cursor-pointer">
-                                        <BookCopy className="mr-2 h-4 w-4"/> Duplicar
+                                     <DropdownMenuItem onClick={() => handleReuse(task as Task)} className="cursor-pointer">
+                                        <BookCopy className="mr-2 h-4 w-4"/> Reutilizar
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => setDeletingTask(task as Task)} className="cursor-pointer text-destructive focus:text-destructive">
                                         <Trash2 className="mr-2 h-4 w-4"/> Excluir
