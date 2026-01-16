@@ -33,13 +33,14 @@ type UserProfile = {
   prozilId: string;
 };
 
-function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: boolean }) {
+function UserTableContent({ type }: { type: 'teacher' | 'student' }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
+  
   const query = useMemoFirebase(
-    () => (canQuery ? collection(firestore, collectionName) : null),
-    [firestore, collectionName, canQuery]
+    () => collection(firestore, collectionName),
+    [firestore, collectionName]
   );
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
 
@@ -87,7 +88,7 @@ function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: 
       })
       .finally(() => setIsSubmitting(false));
   };
-  
+
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Erro ao carregar usuários: {error.message}</p>;
 
@@ -160,6 +161,20 @@ function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: 
   );
 }
 
+function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: boolean }) {
+  if (!canQuery) {
+    // Return a placeholder or null if the user is not authorized to query.
+    // This prevents the hook from being called with an unauthorized query.
+    return (
+      <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
+          <p className="text-sm text-muted-foreground">Você não tem permissão para visualizar esta lista.</p>
+      </div>
+    );
+  }
+
+  return <UserTableContent type={type} />;
+}
+
 export default function AdminPage() {
   const { user, isUserLoading } = useUser();
   const isAuthorized = user?.email === ADMIN_EMAIL;
@@ -173,22 +188,37 @@ export default function AdminPage() {
     );
   }
 
-  if (!isAuthorized) {
-    return (
+  if (!user) {
+     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
         <ShieldAlert className="w-16 h-16 text-destructive" />
         <h1 className="mt-4 text-2xl font-bold">Acesso Negado</h1>
-        <p className="text-muted-foreground">Você não tem permissão para acessar esta página.</p>
+        <p className="text-muted-foreground">Você precisa estar logado para acessar esta página.</p>
       </div>
     );
   }
-
+  
+  // Render the page structure, but UserTable will internally decide whether to fetch data.
+  // We show a restricted view for non-admins instead of a full "Access Denied" page,
+  // which is a better UX in case they landed here by mistake.
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-4xl font-bold font-headline">Painel do Administrador</h1>
         <p className="text-muted-foreground">Gerencie professores e alunos da plataforma.</p>
       </div>
+
+      {!isAuthorized && (
+         <Card className="border-destructive">
+          <CardHeader className="flex-row items-center gap-4">
+            <ShieldAlert className="w-8 h-8 text-destructive" />
+            <div>
+              <CardTitle>Acesso Restrito</CardTitle>
+              <CardDescription>Apenas administradores podem gerenciar usuários.</CardDescription>
+            </div>
+          </CardHeader>
+        </Card>
+      )}
       
       <Tabs defaultValue="teachers">
         <TabsList className="grid w-full grid-cols-2">
