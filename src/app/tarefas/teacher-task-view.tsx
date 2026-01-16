@@ -338,34 +338,25 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const tasksQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'tasks'), [firestore, teacherId]);
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
   
+  const studentsQuery = useMemoFirebase(
+    () => query(collection(firestore, 'students'), where('teacherId', '==', teacherId)),
+    [firestore, teacherId]
+  );
+  const { data: allTeacherStudents, isLoading: areStudentsLoading } = useCollection<Student>(studentsQuery);
+
   const filteredBankExercises = useMemo(() => {
     if (!exercises) return [];
     if (bankSubjectFilter === 'all') return exercises;
     return exercises.filter(ex => ex.subject === bankSubjectFilter);
   }, [exercises, bankSubjectFilter]);
   
-  const uniqueStudents = useMemo(() => {
-    if (!tasks) return [];
-    const studentMap = new Map<string, Student>();
-    tasks.forEach(task => {
-        if (task.studentId && !studentMap.has(task.studentId)) {
-            studentMap.set(task.studentId, {
-                id: task.studentId,
-                name: task.studentName || 'Nome desconhecido',
-                prozilId: task.studentProzilId,
-            });
-        }
-    });
-    return Array.from(studentMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [tasks]);
-
   const filteredStudents = useMemo(() => {
-    if (!uniqueStudents) return [];
-    return uniqueStudents.filter(s =>
+    if (!allTeacherStudents) return [];
+    return allTeacherStudents.filter(s =>
       (s.name && s.name.toLowerCase().includes(studentSearch.toLowerCase())) ||
       (s.prozilId && s.prozilId.toLowerCase().includes(studentSearch.toLowerCase()))
-    );
-  }, [uniqueStudents, studentSearch]);
+    ).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allTeacherStudents, studentSearch]);
 
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
@@ -649,7 +640,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
             <DialogHeader>
             <DialogTitle>Selecionar Aluno</DialogTitle>
             <DialogDescription>
-                Selecione um aluno da sua lista para atribuir esta tarefa. A lista é baseada nas tarefas que você já criou.
+                Selecione um dos seus alunos para atribuir esta tarefa.
             </DialogDescription>
             </DialogHeader>
             <div className="py-2">
@@ -660,25 +651,32 @@ function TaskManager({ teacherId }: { teacherId: string }) {
             />
             </div>
             <div className="space-y-2 h-64 overflow-y-auto pr-2">
-            {filteredStudents.map(student => (
-                <div 
-                key={student.id} 
-                className="p-3 border rounded-md cursor-pointer hover:bg-muted"
-                onClick={() => {
-                    form.setValue('studentProzilId', student.prozilId);
-                    setIsStudentSelectorOpen(false);
-                    setStudentSearch('');
-                }}
-                >
-                <p className="font-semibold">{student.name}</p>
-                <p className="text-sm text-muted-foreground">{student.prozilId}</p>
+              {areStudentsLoading ? (
+                <div className="flex justify-center items-center h-full">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
-            ))}
-            {filteredStudents.length === 0 && (
+              ) : filteredStudents.length > 0 ? (
+                filteredStudents.map(student => (
+                    <div 
+                    key={student.id} 
+                    className="p-3 border rounded-md cursor-pointer hover:bg-muted"
+                    onClick={() => {
+                        if (student.prozilId) {
+                          form.setValue('studentProzilId', student.prozilId);
+                          setIsStudentSelectorOpen(false);
+                          setStudentSearch('');
+                        }
+                    }}
+                    >
+                    <p className="font-semibold">{student.name}</p>
+                    <p className="text-sm text-muted-foreground">{student.prozilId}</p>
+                    </div>
+                ))
+              ) : (
                 <div className="text-center text-sm text-muted-foreground pt-10">
-                    Nenhum aluno encontrado.
+                    Nenhum aluno encontrado. Você já cadastrou algum aluno?
                 </div>
-            )}
+              )}
             </div>
             <DialogFooter>
                 <Button variant="ghost" onClick={() => setIsStudentSelectorOpen(false)}>Fechar</Button>
