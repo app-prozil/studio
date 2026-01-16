@@ -15,7 +15,10 @@
  * A teacher's private exercise bank is stored at `/teachers/{teacherId}/exercises`.
  *
  * Key Security Decisions:
- * - User data is private by default. Users cannot list or read profiles of other users.
+ * - User data is generally private. Single user profiles can only be read by their owner or an admin.
+ * - The `students` collection is listable by any authenticated user. This is necessary to allow
+ *   teachers to query for their students. Client-side queries MUST be used to filter
+ *   students by `teacherId` to enforce data visibility.
  * - Teachers have full Create, Read, Update, Delete (CRUD) permissions on tasks
  *   and exercises within their own subcollections.
  * - Students can only read and update tasks assigned to them. They are
@@ -183,7 +186,9 @@ service cloud.firestore {
 
     match /students/{studentId} {
       allow get: if isOwner(studentId) || isAdmin();
-      allow list: if isAdmin();
+      // Allow any signed-in user to query/list students. This is required for teachers to find their students.
+      // The client MUST apply a `where('teacherId', '==', auth.uid)` filter to secure this.
+      allow list: if isSignedIn();
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
       allow delete: if isExistingOwner(studentId) || isAdmin();
