@@ -33,11 +33,14 @@ type UserProfile = {
   prozilId: string;
 };
 
-function UserTable({ type }: { type: 'teacher' | 'student' }) {
+function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: boolean }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
-  const query = useMemoFirebase(() => collection(firestore, collectionName), [firestore, collectionName]);
+  const query = useMemoFirebase(
+    () => (canQuery ? collection(firestore, collectionName) : null),
+    [firestore, collectionName, canQuery]
+  );
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
 
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -159,6 +162,7 @@ function UserTable({ type }: { type: 'teacher' | 'student' }) {
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser();
+  const isAuthorized = user?.email === ADMIN_EMAIL;
 
   if (isUserLoading) {
     return (
@@ -169,7 +173,7 @@ export default function AdminPage() {
     );
   }
 
-  if (user?.email !== ADMIN_EMAIL) {
+  if (!isAuthorized) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
         <ShieldAlert className="w-16 h-16 text-destructive" />
@@ -198,7 +202,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
             </CardHeader>
             <CardContent>
-              <UserTable type="teacher" />
+              <UserTable type="teacher" canQuery={isAuthorized} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -209,7 +213,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
             </CardHeader>
             <CardContent>
-              <UserTable type="student" />
+              <UserTable type="student" canQuery={isAuthorized} />
             </CardContent>
           </Card>
         </TabsContent>
