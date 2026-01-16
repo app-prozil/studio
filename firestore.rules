@@ -196,7 +196,7 @@ service cloud.firestore {
       // - A teacher can get their student's profile, if the teacherId matches.
       allow get: if isOwner(studentId)
                   || isAdmin()
-                  || (isTeacher() && resource.data.teacherId == request.auth.uid);
+                  || (resource.data.teacherId == request.auth.uid);
 
       // LIST: Allows querying the collection.
       // - An admin can query all students.
