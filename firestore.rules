@@ -23,7 +23,7 @@
  *   and exercises within their own subcollections.
  * - Students can only read and update tasks assigned to them. They are
  *   explicitly forbidden from creating or deleting tasks.
- * - An admin role (identified by email) has full access to manage all users.
+ * - An admin role (identified by a specific UID) has full access to manage all users.
  * - Authorization logic relies on path-based security, using the UID in the
  *   document path to verify ownership. This avoids slow and costly `get()`
  *   calls in rules.
@@ -45,9 +45,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // In production, it is recommended to use custom claims: request.auth.token.admin == true
-      // For this prototype, we will check for a specific admin email.
-      return isSignedIn() && request.auth.token.email == 'admin@prozil.com';
+      // In production, it's recommended to use custom claims: request.auth.token.admin == true
+      // For this prototype, we will use the admin's specific UID for reliability.
+      return isSignedIn() && request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
     }
     
     function isExistingDoc() {
