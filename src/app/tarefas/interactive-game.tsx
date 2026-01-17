@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -101,17 +102,15 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [gameState, setGameState] = useState<'loading' | 'playing' | 'showingAnswer' | 'finished'>('loading');
   
-  // Animation & reward state
   const [isGiftOpened, setIsGiftOpened] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showEndConfetti, setShowEndConfetti] = useState(false);
 
-  // Performance tracking state
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const taskStartTime = useMemo(() => Date.now(), []);
 
 
-  // Task parameters from URL
   const taskId = searchParams.get('taskId');
   const studentId = searchParams.get('studentId'); 
   const taskSource = searchParams.get('source') || 'student';
@@ -124,20 +123,16 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   const taskDocRef = useMemoFirebase(
     () => (
-        !isTestDrive && !isAuthLoading && user && studentId && taskId 
+        !isTestDrive && user && studentId && taskId 
         ? doc(firestore, collectionPath, studentId, 'tasks', taskId) 
         : null
     ),
-    [firestore, studentId, taskId, isTestDrive, collectionPath, isAuthLoading, user]
+    [firestore, studentId, taskId, isTestDrive, collectionPath, user]
   );
   
-  const { data: taskDataFromHook, isLoading: isTaskLoadingFromHook } = useDoc<Task>(taskDocRef);
-
   useEffect(() => {
-    if (isAuthLoading) {
-      return; 
-    }
-    
+    if (isAuthLoading) return;
+
     setGameState('loading');
     
     if (isTestDrive) {
@@ -146,17 +141,28 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         setLoadedTask(mockTask);
         setQuestions(mockTask.questions.map(q => ({...q, status: 'unanswered', attempts: 0 })));
         setGameState('playing');
-    } else if (taskDataFromHook) {
-        if (taskDataFromHook.isCompleted && !isTestMode && gameState !== 'finished') {
-            toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
-            router.push('/tarefas');
-            return;
-        }
-        setLoadedTask(taskDataFromHook);
-        setQuestions(taskDataFromHook.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 })));
-        setGameState('playing');
+        return;
     }
-  }, [taskDataFromHook, isTestDrive, subject, router, toast, isTestMode, isAuthLoading, gameState]);
+
+    if (taskDocRef) {
+        getDoc(taskDocRef).then(docSnap => {
+            if (docSnap.exists()) {
+                const taskData = docSnap.data() as Task;
+                if (taskData.isCompleted && !isTestMode && gameState !== 'finished') {
+                    toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
+                    router.push('/tarefas');
+                    return;
+                }
+                setLoadedTask(taskData);
+                setQuestions(taskData.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 })));
+                setGameState('playing');
+            } else {
+                setGameState('finished'); // Or some error state
+                toast({ variant: "destructive", title: "Tarefa não encontrada"});
+            }
+        });
+    }
+  }, [taskDocRef, isTestDrive, subject, router, toast, isTestMode, isAuthLoading]);
 
 
   useEffect(() => {
@@ -215,11 +221,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setGameState('showingAnswer'); 
     setSelectedAnswer(option);
     setIsCorrect(isAnswerCorrect);
-
-    if (isAnswerCorrect) {
-      setShowConfetti(true);
-    }
-
+    
     const updatedQuestions = questions.map((q, index) => {
         if (index === currentQuestionIndex) {
             const isAlreadyCorrect = q.status === 'correct';
@@ -243,16 +245,19 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         });
     }
 
-    setTimeout(() => {
-        if (isAnswerCorrect) {
-            setShowConfetti(false);
-            handleNextQuestion(updatedQuestions);
-        } else {
-            setGameState('playing');
-            setSelectedAnswer(null);
-            setIsCorrect(null);
-        }
-    }, isAnswerCorrect ? 2000 : 2500);
+    if (isAnswerCorrect) {
+      setShowConfetti(true);
+      setTimeout(() => {
+        setShowConfetti(false);
+        handleNextQuestion(updatedQuestions);
+      }, 2000);
+    } else {
+      setTimeout(() => {
+        setGameState('playing');
+        setSelectedAnswer(null);
+        setIsCorrect(null);
+      }, 2500);
+    }
   }, [gameState, questionStartTime, questions, currentQuestionIndex, taskDocRef, isTestMode, handleNextQuestion]);
 
   useEffect(() => {
@@ -276,7 +281,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     };
   }, [gameState, handleAnswer, questions, currentQuestionIndex]);
 
-  const isLoading = gameState === 'loading' || isAuthLoading || (isTaskLoadingFromHook && !isTestDrive);
+  const isLoading = gameState === 'loading' || isAuthLoading;
 
   if (isLoading) {
     return (
@@ -309,14 +314,17 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           <>
             <h2 className="text-4xl font-bold z-10">PARABÉNS, {studentName.toUpperCase()}!</h2>
             <p className="text-2xl text-muted-foreground z-10">VOCÊ CONCLUIU A TAREFA!</p>
-            <button onClick={() => setIsGiftOpened(true)} className="animate-gift-bounce focus:outline-none relative z-10">
+            <button onClick={() => {
+                setIsGiftOpened(true);
+                setTimeout(() => setShowEndConfetti(true), 100);
+              }} className="animate-gift-bounce focus:outline-none relative z-10">
               <Gift className="w-40 h-40 text-primary" />
               <span className="mt-4 block text-lg font-semibold">CLIQUE NO SEU PRÊMIO!</span>
             </button>
           </>
         ) : (
           <>
-            {width > 0 && height > 0 && <Confetti width={width} height={height} recycle={false} numberOfPieces={800} gravity={0.08} />}
+            {showEndConfetti && width > 0 && height > 0 && <Confetti width={width} height={height} recycle={false} numberOfPieces={800} gravity={0.08} />}
             <div className="animate-score-reveal flex flex-col items-center gap-4 p-8 bg-card/80 backdrop-blur-sm rounded-lg shadow-2xl relative z-10">
               <h2 className="text-3xl font-bold">SUA PONTUAÇÃO!</h2>
               <p className="text-7xl font-bold text-accent">{finalScore}%</p>
@@ -350,15 +358,28 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   return (
     <div className="relative">
-      {showConfetti && width > 0 && height > 0 && (
-        <Confetti
-          width={width}
-          height={height}
-          recycle={false}
-          numberOfPieces={200}
-          gravity={0.1}
-        />
-      )}
+      <Dialog open={showConfetti} onOpenChange={setShowConfetti}>
+        <DialogContent className="max-w-md text-center bg-background/80 backdrop-blur-sm" onPointerDownOutside={(e) => e.preventDefault()}>
+            <DialogHeader>
+                <DialogTitle className="text-5xl font-bold font-headline mx-auto text-success">
+                    MUITO BEM!
+                </DialogTitle>
+            </DialogHeader>
+            <div className="flex justify-center items-center p-6 -mt-4">
+                <CheckCircle className="w-32 h-32 text-success" />
+            </div>
+            {showConfetti && width > 0 && height > 0 && (
+                <Confetti
+                  width={width}
+                  height={height}
+                  recycle={false}
+                  numberOfPieces={400}
+                  gravity={0.1}
+                />
+            )}
+        </DialogContent>
+      </Dialog>
+      
       <div className="space-y-8">
         <div className="relative p-8 border-4 border-dashed rounded-lg border-accent">
           <p className={`font-bold ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>
@@ -391,11 +412,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             </Button>
           ))}
         </div>
-        {gameState === 'showingAnswer' && (
-          <div className={`flex items-center justify-center text-4xl font-bold`}>
-              {isCorrect === true && <CheckCircle className="w-16 h-16 text-success mr-4"/>}
-              {isCorrect === false && <XCircle className="w-16 h-16 text-destructive mr-4"/>}
-              {isCorrect === true ? 'MUITO BEM!' : (isCorrect === false ? 'TENTE DE NOVO!' : '')}
+        {gameState === 'showingAnswer' && isCorrect === false && (
+          <div className="flex items-center justify-center text-4xl font-bold">
+              <XCircle className="w-16 h-16 text-destructive mr-4"/>
+              TENTE DE NOVO!
           </div>
         )}
       </div>
