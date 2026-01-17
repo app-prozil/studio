@@ -433,7 +433,12 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
   const sortedTasks = useMemo(() => {
     if (!tasks) return [];
-    return [...tasks].sort((a, b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
+    return [...tasks].sort((a, b) => {
+      if (a.isCompleted !== b.isCompleted) {
+        return a.isCompleted ? 1 : -1;
+      }
+      return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+    });
   }, [tasks]);
 
   const filteredBankExercises = useMemo(() => {
@@ -967,8 +972,8 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
 
   const tasksByStudent = useMemo(() => {
     if (!tasks) return {};
-    
-    // Group tasks by student
+
+    // 1. Group tasks by student
     const grouped = tasks.reduce((acc, task) => {
       const studentIdentifier = task.studentName || task.studentId;
       if (!acc[studentIdentifier]) {
@@ -978,12 +983,21 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
       return acc;
     }, {} as Record<string, Task[]>);
 
-    // Sort tasks within each group
-    Object.values(grouped).forEach(studentTasks => {
-      studentTasks.sort((a, b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
-    });
-
-    return grouped;
+    // 2. Sort tasks for each student and create a new object
+    const sortedTasksByStudent: Record<string, Task[]> = {};
+    for (const studentIdentifier in grouped) {
+      const studentTasks = grouped[studentIdentifier];
+      // Create a copy of the tasks array before sorting to avoid mutation
+      sortedTasksByStudent[studentIdentifier] = [...studentTasks].sort((a, b) => {
+        // Sort logic: pending tasks first, then by due date descending
+        if (a.isCompleted !== b.isCompleted) {
+          return a.isCompleted ? 1 : -1;
+        }
+        return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+      });
+    }
+    
+    return sortedTasksByStudent;
   }, [tasks]);
 
   if (isLoading) {

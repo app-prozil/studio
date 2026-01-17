@@ -52,7 +52,12 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
   
   const sortedTasks = useMemo(() => {
     if (!tasks) return [];
-    return [...tasks].sort((a, b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
+    return [...tasks].sort((a, b) => {
+      if (a.isCompleted !== b.isCompleted) {
+        return a.isCompleted ? 1 : -1; // false (pending) comes first
+      }
+      return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime(); // Then by date descending
+    });
   }, [tasks]);
 
   const handleTaskCompletion = async (task: Task, isCompleted: boolean) => {
