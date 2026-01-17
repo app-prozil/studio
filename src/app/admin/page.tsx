@@ -41,13 +41,14 @@ const NotAuthorizedMessage = () => (
 );
 
 function UserTable({ type }: { type: 'teacher' | 'student' }) {
+  const [shouldFetch, setShouldFetch] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
   
   const query = useMemoFirebase(
-    () => collection(firestore, collectionName),
-    [firestore, collectionName]
+    () => (shouldFetch ? collection(firestore, collectionName) : null),
+    [firestore, collectionName, shouldFetch]
   );
   
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
@@ -96,6 +97,14 @@ function UserTable({ type }: { type: 'teacher' | 'student' }) {
       })
       .finally(() => setIsSubmitting(false));
   };
+
+  if (!shouldFetch) {
+    return (
+      <div className="flex justify-center items-center h-48 border-2 border-dashed rounded-lg">
+        <Button onClick={() => setShouldFetch(true)}>Carregar {type === 'teacher' ? 'Professores' : 'Alunos'}</Button>
+      </div>
+    );
+  }
   
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Erro ao carregar usuários: {error.message}</p>;
