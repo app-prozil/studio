@@ -95,8 +95,8 @@ function UserTable({ type }: { type: 'teacher' | 'student' }) {
       .finally(() => setIsSubmitting(false));
   };
   
-  if (isLoading && !users) return <Skeleton className="h-64 w-full" />;
-  if (error) return <p className="text-destructive">Erro ao carregar usuários: {error.message}</p>;
+  if (isLoading) return <Skeleton className="h-64 w-full" />;
+  if (error) return <p className="text-destructive">Ocorreu um erro ao carregar os usuários. Verifique as permissões do Firestore.</p>;
 
   return (
     <>
@@ -175,17 +175,6 @@ export default function AdminPage() {
   const isAuthorized = user?.uid === ADMIN_UID;
   const [isSeeding, setIsSeeding] = useState(false);
 
-  useEffect(() => {
-    if (isUserLoading) return;
-    console.log('[Depuração AdminPage]', {
-      isUserLoading,
-      isAuthorized,
-      userExists: !!user,
-      uid: user?.uid,
-    });
-  }, [isUserLoading, isAuthorized, user]);
-
-
   const handleSeedExercises = async () => {
     if (!user) {
         toast({ variant: 'destructive', title: 'Você precisa estar logado.' });
@@ -252,51 +241,53 @@ export default function AdminPage() {
       )}
 
       {isAuthorized && (
-        <Card>
-            <CardHeader>
-                <CardTitle>Ações do Administrador</CardTitle>
-                <CardDescription>Use estas ações para gerenciar o conteúdo da plataforma.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Button onClick={handleSeedExercises} disabled={isSeeding}>
-                    {isSeeding ? <Loader2 className="animate-spin mr-2"/> : <PlusCircle className="mr-2"/>}
-                    Popular Banco de Exercícios
-                </Button>
-                <p className="text-sm text-muted-foreground mt-2">
-                    Adiciona 30 exercícios de exemplo (matemática e português) ao banco de exercícios do usuário admin.
-                </p>
-            </CardContent>
-        </Card>
+        <>
+          <Card>
+              <CardHeader>
+                  <CardTitle>Ações do Administrador</CardTitle>
+                  <CardDescription>Use estas ações para gerenciar o conteúdo da plataforma.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <Button onClick={handleSeedExercises} disabled={isSeeding}>
+                      {isSeeding ? <Loader2 className="animate-spin mr-2"/> : <PlusCircle className="mr-2"/>}
+                      Popular Banco de Exercícios
+                  </Button>
+                  <p className="text-sm text-muted-foreground mt-2">
+                      Adiciona 30 exercícios de exemplo (matemática e português) ao banco de exercícios do usuário admin.
+                  </p>
+              </CardContent>
+          </Card>
+        
+          <Tabs defaultValue="teachers">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="teachers">Professores</TabsTrigger>
+                <TabsTrigger value="students">Alunos</TabsTrigger>
+            </TabsList>
+            <TabsContent value="teachers" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gerenciar Professores</CardTitle>
+                  <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <UserTable type="teacher" />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="students" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gerenciar Alunos</CardTitle>
+                  <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <UserTable type="student" />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </>
       )}
-      
-      <Tabs defaultValue="teachers">
-        <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="teachers">Professores</TabsTrigger>
-            <TabsTrigger value="students">Alunos</TabsTrigger>
-        </TabsList>
-        <TabsContent value="teachers" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Gerenciar Professores</CardTitle>
-              <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
-            </CardHeader>
-            <CardContent>
-               {isAuthorized ? <UserTable type="teacher" /> : <NotAuthorizedMessage />}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="students" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Gerenciar Alunos</CardTitle>
-              <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isAuthorized ? <UserTable type="student" /> : <NotAuthorizedMessage />}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
