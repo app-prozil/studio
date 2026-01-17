@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -136,6 +137,8 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
 
+  const specialChars = ['★', '☆', '✔', '✖', '●', '■', '▲', '♦', '→', '←', '👍', '🍎', '1️⃣', '2️⃣', '3️⃣'];
+
   const exercisesQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'exercises'), [firestore, teacherId]);
   const { data: exercises, isLoading } = useCollection<Exercise>(exercisesQuery);
   
@@ -254,8 +257,30 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField control={form.control} name="text" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Pergunta</FormLabel><FormControl><Textarea {...field} placeholder="Ex: Quanto é 2 + 2?" /></FormControl><FormMessage /></FormItem>
               )}/>
+
+              <div>
+                <Label className="text-xs text-muted-foreground">Inserir símbolo</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {specialChars.map(char => (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      key={char}
+                      className="h-8 w-8 text-lg"
+                      onClick={() => {
+                        const currentText = form.getValues('text') || '';
+                        form.setValue('text', currentText + char, { shouldValidate: true });
+                      }}
+                    >
+                      {char}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <FormField control={form.control} name="subject" render={({ field }) => (
                   <FormItem><FormLabel>Matéria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="matematica">Matemática</SelectItem><SelectItem value="portugues">Português</SelectItem></SelectContent></Select><FormMessage /></FormItem>
