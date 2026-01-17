@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, writeBatch, deleteField } from 'firebase/firestore';
+import { collection, doc, updateDoc, writeBatch, deleteField, getDocs } from 'firebase/firestore';
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Edit, ShieldAlert, PlusCircle, Archive, ArchiveRestore } from 'lucide-react';
+import { Loader2, Edit, ShieldAlert, PlusCircle, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import seedData from '@/lib/seed-exercises.json';
 import { Label } from '@/components/ui/label';
@@ -53,10 +53,8 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showAr
     if (!allUsers) return null;
     // A user is considered archived if 'deletedAt' is not null or undefined.
     // This is a more robust check than relying on truthiness.
-    return allUsers.filter(user => {
-      const isArchived = user.deletedAt != null;
-      return showArchived ? isArchived : !isArchived;
-    });
+    const isArchived = (user: UserProfile) => user.deletedAt !== null && user.deletedAt !== undefined;
+    return allUsers.filter(user => showArchived ? isArchived(user) : !isArchived(user));
   }, [allUsers, showArchived]);
 
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -193,7 +191,7 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showAr
           <AlertDialogHeader>
             <AlertDialogTitle>Arquivar Usuário?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação irá arquivar o perfil do usuário, impedindo o acesso. A conta de autenticação (login) não será removida. Para excluir permanentemente a conta de login e liberar o e-mail para um novo cadastro, você deve fazê-lo manualmente no Firebase Console.
+             Esta ação irá arquivar o perfil do usuário, impedindo o acesso. A conta de autenticação (login) não será removida. O perfil poderá ser restaurado a qualquer momento.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -214,7 +212,11 @@ export default function AdminPage() {
   const { toast } = useToast();
   const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   const isAuthorized = user?.uid === ADMIN_UID;
+  
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+
   const [showArchivedTeachers, setShowArchivedTeachers] = useState(false);
   const [showArchivedStudents, setShowArchivedStudents] = useState(false);
 
@@ -241,6 +243,41 @@ export default function AdminPage() {
         toast({ variant: 'destructive', title: 'Erro ao popular o banco', description: 'Verifique o console para mais detalhes.' });
     } finally {
         setIsSeeding(false);
+    }
+  };
+
+  const handleClearData = async () => {
+    if (!isAuthorized) {
+        toast({ variant: 'destructive', title: 'Não autorizado.' });
+        return;
+    }
+    setIsClearing(true);
+    setIsClearConfirmOpen(false);
+
+    try {
+        const batch = writeBatch(firestore);
+
+        const studentsCollectionRef = collection(firestore, 'students');
+        const studentsSnapshot = await getDocs(studentsCollectionRef);
+        studentsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        const teachersCollectionRef = collection(firestore, 'teachers');
+        const teachersSnapshot = await getDocs(teachersCollectionRef);
+        teachersSnapshot.forEach(doc => {
+            if (doc.id !== ADMIN_UID) {
+                batch.delete(doc.ref);
+            }
+        });
+
+        await batch.commit();
+        toast({ title: 'Sucesso!', description: 'Todos os dados de professores e alunos (exceto o admin) foram removidos.' });
+    } catch (e) {
+        console.error("Error clearing data: ", e);
+        toast({ variant: 'destructive', title: 'Erro ao limpar dados', description: 'Verifique as permissões ou tente novamente.' });
+    } finally {
+        setIsClearing(false);
     }
   };
 
@@ -291,13 +328,26 @@ export default function AdminPage() {
                   <CardDescription>Use estas ações para gerenciar o conteúdo da plataforma.</CardDescription>
               </CardHeader>
               <CardContent>
-                  <Button onClick={handleSeedExercises} disabled={isSeeding}>
-                      {isSeeding ? <Loader2 className="animate-spin mr-2"/> : <PlusCircle className="mr-2"/>}
-                      Popular Banco de Exercícios
-                  </Button>
-                  <p className="text-sm text-muted-foreground mt-2">
-                      Adiciona 30 exercícios de exemplo (matemática e português) ao banco de exercícios do usuário admin.
-                  </p>
+                <div className="flex flex-wrap gap-4">
+                  <div>
+                    <Button onClick={handleSeedExercises} disabled={isSeeding}>
+                        {isSeeding ? <Loader2 className="animate-spin mr-2"/> : <PlusCircle className="mr-2"/>}
+                        Popular Banco de Exercícios
+                    </Button>
+                    <p className="text-sm text-muted-foreground mt-2">
+                        Adiciona 30 exercícios de exemplo ao banco do admin.
+                    </p>
+                  </div>
+                  <div>
+                      <Button variant="destructive" onClick={() => setIsClearConfirmOpen(true)} disabled={isClearing}>
+                          {isClearing ? <Loader2 className="animate-spin mr-2"/> : <Trash2 className="mr-2"/>}
+                          Limpar Dados de Usuários
+                      </Button>
+                      <p className="text-sm text-muted-foreground mt-2">
+                          Remove todos os professores (exceto admin) e alunos.
+                      </p>
+                  </div>
+                </div>
               </CardContent>
           </Card>
         
@@ -343,6 +393,23 @@ export default function AdminPage() {
           </Tabs>
         </>
       )}
+
+      <AlertDialog open={isClearConfirmOpen} onOpenChange={setIsClearConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é irreversível e excluirá permanentemente todos os perfis de professores (exceto o seu) e alunos. A ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isClearing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearData} disabled={isClearing} className="bg-destructive hover:bg-destructive/90">
+              {isClearing ? <Loader2 className="animate-spin mr-2" /> : null} Sim, Limpar Tudo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
