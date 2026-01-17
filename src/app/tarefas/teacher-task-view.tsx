@@ -137,7 +137,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
 
-  const specialChars = ['★', '☆', '✔', '✖', '●', '■', '▲', '♦', '→', '←', '👍', '🍎', '1️⃣', '2️⃣', '3️⃣'];
+  const specialChars = ['★', '☆', '✔', '✖', '●', '■', '▲', '♦', '♥', '♠', '→', '←', '↑', '↓', '👍', '👎', '🍎', '🍌', '🚗', '✈️', '🏠', '🌳', '☀️', '🌙', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '😀', '🤔', '🎉'];
 
   const exercisesQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'exercises'), [firestore, teacherId]);
   const { data: exercises, isLoading } = useCollection<Exercise>(exercisesQuery);
