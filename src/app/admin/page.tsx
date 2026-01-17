@@ -211,7 +211,8 @@ export default function AdminPage() {
   const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   const isAuthorized = user?.uid === ADMIN_UID;
   const [isSeeding, setIsSeeding] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchivedTeachers, setShowArchivedTeachers] = useState(false);
+  const [showArchivedStudents, setShowArchivedStudents] = useState(false);
 
   const handleSeedExercises = async () => {
     if (!user) {
@@ -308,13 +309,13 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between pt-1">
                     <CardDescription>Visualize, edite ou arquive perfis de professores.</CardDescription>
                      <div className="flex items-center space-x-2">
-                        <Switch id="show-archived-teachers" checked={showArchived} onCheckedChange={setShowArchived} />
+                        <Switch id="show-archived-teachers" checked={showArchivedTeachers} onCheckedChange={setShowArchivedTeachers} />
                         <Label htmlFor="show-archived-teachers">Mostrar Arquivados</Label>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <UserTable type="teacher" showArchived={showArchived} />
+                  <UserTable type="teacher" showArchived={showArchivedTeachers} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -325,13 +326,13 @@ export default function AdminPage() {
                    <div className="flex items-center justify-between pt-1">
                     <CardDescription>Visualize, edite ou arquive perfis de alunos.</CardDescription>
                     <div className="flex items-center space-x-2">
-                        <Switch id="show-archived-students" checked={showArchived} onCheckedChange={setShowArchived} />
+                        <Switch id="show-archived-students" checked={showArchivedStudents} onCheckedChange={setShowArchivedStudents} />
                         <Label htmlFor="show-archived-students">Mostrar Arquivados</Label>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <UserTable type="student" showArchived={showArchived}/>
+                  <UserTable type="student" showArchived={showArchivedStudents}/>
                 </CardContent>
               </Card>
             </TabsContent>
