@@ -51,9 +51,7 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showAr
 
   const users = useMemo(() => {
     if (!allUsers) return null;
-    // A user is considered archived if 'deletedAt' is not null or undefined.
-    // This is a more robust check than relying on truthiness.
-    const isArchived = (user: UserProfile) => user.deletedAt !== null && user.deletedAt !== undefined;
+    const isArchived = (user: UserProfile) => user.deletedAt != null;
     return allUsers.filter(user => showArchived ? isArchived(user) : !isArchived(user));
   }, [allUsers, showArchived]);
 
@@ -114,7 +112,6 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showAr
   };
   
   const handleRestore = (userToRestore: UserProfile) => {
-    // We don't need a separate loading state, isSubmitting can be used.
     const userRef = doc(firestore, collectionName, userToRestore.id);
     updateDoc(userRef, { deletedAt: deleteField() })
       .then(() => {
@@ -341,10 +338,10 @@ export default function AdminPage() {
                   <div>
                       <Button variant="destructive" onClick={() => setIsClearConfirmOpen(true)} disabled={isClearing}>
                           {isClearing ? <Loader2 className="animate-spin mr-2"/> : <Trash2 className="mr-2"/>}
-                          Limpar Dados de Usuários
+                          Limpar Perfis de Usuários
                       </Button>
                       <p className="text-sm text-muted-foreground mt-2">
-                          Remove todos os professores (exceto admin) e alunos.
+                          Remove todos os perfis de professores e alunos do banco de dados.
                       </p>
                   </div>
                 </div>
@@ -399,13 +396,15 @@ export default function AdminPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação é irreversível e excluirá permanentemente todos os perfis de professores (exceto o seu) e alunos. A ação não pode ser desfeita.
+              Esta ação excluirá permanentemente todos os perfis de professores e alunos do <strong>banco de dados (Firestore)</strong>.
+              <br/><br/>
+              <strong className="text-destructive">Importante:</strong> Esta ação <strong>NÃO</strong> exclui as contas de login (email e senha) do <strong>Firebase Authentication</strong>. Para liberar um e-mail para novo cadastro, você deve excluir a conta manualmente no Firebase Console.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isClearing}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleClearData} disabled={isClearing} className="bg-destructive hover:bg-destructive/90">
-              {isClearing ? <Loader2 className="animate-spin mr-2" /> : null} Sim, Limpar Tudo
+              {isClearing ? <Loader2 className="animate-spin mr-2" /> : null} Sim, Limpar Perfis
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
