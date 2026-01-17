@@ -31,6 +31,17 @@ service cloud.firestore {
       return request.auth.uid == task.teacherId;
     }
 
+    function isStudentUpdatingPerformance() {
+      // Check if the user is the assigned student
+      let isAssignedStudent = request.auth.uid == resource.data.studentId;
+      // Define the fields the student is allowed to update
+      let performanceFields = ['isCompleted', 'completedAt', 'totalTime', 'questions'];
+      
+      // Check that the update only affects the allowed fields
+      return isAssignedStudent && request.resource.data.diff(resource.data).affectedKeys().hasOnly(performanceFields);
+    }
+
+
     // -------------------------------------------------------------------------
     // Collection Rules
     // -------------------------------------------------------------------------
@@ -53,7 +64,9 @@ service cloud.firestore {
 
       match /tasks/{taskId} {
         // Teachers can manage tasks they have created. Admins have full access.
-        allow read, write: if isOwner(teacherId) || isAdmin();
+        // Students can update their own performance data on the teacher's copy of the task.
+        allow read, create, delete: if isOwner(teacherId) || isAdmin();
+        allow update: if isOwner(teacherId) || isAdmin() || isStudentUpdatingPerformance();
       }
     }
 
