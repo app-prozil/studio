@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -93,6 +93,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { width, height } = useWindowSize();
+  const { isUserLoading: isAuthLoading } = useUser();
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -117,118 +118,110 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const isTestDrive = taskId === 'test-drive';
 
   const [loadedTask, setLoadedTask] = useState<Task | null>(null);
-  const [isGloballyLoading, setIsGloballyLoading] = useState(true);
 
   const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
 
   const taskDocRef = useMemoFirebase(
-    () => (studentId && taskId && !isTestDrive ? doc(firestore, collectionPath, studentId, 'tasks', taskId) : null),
-    [firestore, studentId, taskId, isTestDrive, collectionPath]
+    () => (
+        !isTestDrive && !isAuthLoading && studentId && taskId 
+        ? doc(firestore, collectionPath, studentId, 'tasks', taskId) 
+        : null
+    ),
+    [firestore, studentId, taskId, isTestDrive, collectionPath, isAuthLoading]
   );
   
   const { data: taskDataFromHook, isLoading: isTaskLoadingFromHook } = useDoc<Task>(taskDocRef);
 
-  // This effect loads the task from DB or creates a mock one for test-drive.
-  // It only runs once or if the source data from the hook changes.
   useEffect(() => {
-    if (isGloballyLoading) {
-      if (isTestDrive) {
-          const questions = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
-          const mockTask: Task = { ...testDriveTaskBase, questions, subject };
-          setLoadedTask(mockTask);
-          setQuestions(mockTask.questions.map(q => ({...q, status: 'unanswered', attempts: 0 })));
-          setIsGloballyLoading(false);
-      } else if (taskDataFromHook) {
-          if (taskDataFromHook.isCompleted && !isTestMode && gameState !== 'finished') {
-              toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
-              router.push('/tarefas');
-              return;
-          }
-          setLoadedTask(taskDataFromHook);
-          setQuestions(taskDataFromHook.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 })));
-          setIsGloballyLoading(false);
-      } else if (!isTaskLoadingFromHook && !taskDataFromHook) {
-          setIsGloballyLoading(false);
-      }
+    if (isTestDrive) {
+        const questions = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
+        const mockTask: Task = { ...testDriveTaskBase, questions, subject };
+        setLoadedTask(mockTask);
+        setQuestions(mockTask.questions.map(q => ({...q, status: 'unanswered', attempts: 0 })));
+    } else if (taskDataFromHook) {
+        if (taskDataFromHook.isCompleted && !isTestMode && gameState !== 'finished') {
+            toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
+            router.push('/tarefas');
+            return;
+        }
+        setLoadedTask(taskDataFromHook);
+        setQuestions(taskDataFromHook.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 })));
     }
-  }, [taskDataFromHook, isTaskLoadingFromHook, isTestDrive, subject, router, toast, isTestMode, gameState, isGloballyLoading]);
+  }, [taskDataFromHook, isTestDrive, subject, router, toast, isTestMode, gameState]);
 
 
   useEffect(() => {
-    // When a new question is loaded, reset the timer for it.
     setQuestionStartTime(Date.now());
   }, [currentQuestionIndex]);
   
+  const completeTask = useCallback((finalQuestions: Question[]) => {
+      if (isTestMode || !taskDocRef || !firestore || !loadedTask?.teacherId || !loadedTask.id) return;
+        
+      const totalTime = Math.round((Date.now() - taskStartTime) / 1000);
+      const performanceData = {
+        isCompleted: true,
+        completedAt: new Date().toISOString(),
+        totalTime: totalTime,
+        questions: finalQuestions,
+      };
+
+      const batch = writeBatch(firestore);
+      batch.update(taskDocRef, performanceData);
+      const teacherTaskRef = doc(firestore, 'teachers', loadedTask.teacherId, 'tasks', loadedTask.id);
+      batch.update(teacherTaskRef, performanceData);
+      batch.commit().catch(e => {
+          console.error("Erro ao finalizar tarefa: ", e);
+          toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível salvar o resultado da tarefa.' });
+      });
+  }, [isTestMode, taskDocRef, firestore, loadedTask, taskStartTime, toast]);
+
   const handleNextQuestion = useCallback((updatedQuestions: Question[]) => {
     const isLastQuestion = currentQuestionIndex >= updatedQuestions.length - 1;
 
     if (isLastQuestion) {
         setGameState('finished');
         
-        // Final save
         const correctCount = updatedQuestions.filter(q => q.status === 'correct').length;
         const score = Math.round((correctCount / updatedQuestions.length) * 100);
         setFinalScore(score);
-
-        if (isTestMode || !taskDocRef || !firestore || !loadedTask?.teacherId || !loadedTask.id) return;
         
-        const totalTime = Math.round((Date.now() - taskStartTime) / 1000);
-        const performanceData = {
-          isCompleted: true,
-          completedAt: new Date().toISOString(),
-          totalTime: totalTime,
-          questions: updatedQuestions,
-        };
-
-        const batch = writeBatch(firestore);
-        batch.update(taskDocRef, performanceData);
-        const teacherTaskRef = doc(firestore, 'teachers', loadedTask.teacherId, 'tasks', loadedTask.id);
-        batch.update(teacherTaskRef, performanceData);
-        batch.commit().catch(e => {
-            console.error("Erro ao finalizar tarefa: ", e);
-            toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível salvar o resultado da tarefa.' });
-        });
-
+        completeTask(updatedQuestions);
     } else {
         setCurrentQuestionIndex(prev => prev + 1);
         setSelectedAnswer(null);
         setIsCorrect(null);
         setGameState('playing');
     }
-  }, [currentQuestionIndex, questions.length, taskDocRef, taskStartTime, toast, isTestMode, firestore, loadedTask]);
+  }, [currentQuestionIndex, questions.length, completeTask]);
 
   const handleAnswer = useCallback((option: string) => {
     if (gameState !== 'playing') return;
 
     const timeTaken = Date.now() - questionStartTime;
     const currentQuestion = questions[currentQuestionIndex];
-
     const isAnswerCorrect = option.toUpperCase() === currentQuestion.answer.toUpperCase();
     
     setGameState('showingAnswer'); 
     setSelectedAnswer(option);
     setIsCorrect(isAnswerCorrect);
 
-    // Create a new array with the updated question to ensure state update
     const updatedQuestions = questions.map((q, index) => {
         if (index === currentQuestionIndex) {
+            const isAlreadyCorrect = q.status === 'correct';
             const newAttempts = (q.attempts || 0) + 1;
-            // Only set status on first attempt to be 'correct' or 'incorrect'
-            const newStatus = newAttempts === 1 ? (isAnswerCorrect ? 'correct' : 'incorrect') : q.status;
             
             return {
                 ...q,
                 studentAnswer: option,
                 attempts: newAttempts,
+                status: isAlreadyCorrect ? 'correct' : (isAnswerCorrect ? 'correct' : 'incorrect'),
                 timeTaken: (q.timeTaken || 0) + timeTaken,
-                status: isAnswerCorrect ? 'correct' : newStatus, // if they get it right, it's correct regardless of attempts.
             };
         }
         return q;
     });
-    setQuestions(updatedQuestions); // Update the state with the new questions array
+    setQuestions(updatedQuestions);
 
-    // Persist progress in the background
     if (taskDocRef && !isTestMode) {
         updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
             console.error("Failed to update question performance", e)
@@ -236,15 +229,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
 
     setTimeout(() => {
-        if (isAnswerCorrect) {
-            handleNextQuestion(updatedQuestions);
-        } else {
-            // reset for another try on the same question
-            setSelectedAnswer(null);
-            setIsCorrect(null);
-            setGameState('playing');
-        }
-    }, 1500); // Wait for feedback animation
+        handleNextQuestion(updatedQuestions);
+    }, isAnswerCorrect ? 1500 : 2500);
   }, [gameState, questionStartTime, questions, currentQuestionIndex, taskDocRef, isTestMode, handleNextQuestion]);
 
   useEffect(() => {
@@ -268,7 +254,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     };
   }, [gameState, handleAnswer, questions, currentQuestionIndex]);
 
-  if (isGloballyLoading) {
+  const isLoading = isTestDrive ? false : (isAuthLoading || (isTaskLoadingFromHook && !taskDataFromHook));
+
+  if (isLoading) {
     return (
         <div className="space-y-8">
             <Skeleton className="h-32 w-full" />
@@ -281,7 +269,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     );
   }
 
-  if (!loadedTask || questions.length === 0) {
+  if (!isTestDrive && !isLoading && !loadedTask) {
     return <div className="text-destructive text-center">Não foi possível carregar a atividade. Verifique se o link está correto ou tente novamente.</div>;
   }
   
@@ -374,8 +362,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         </div>
         {gameState === 'showingAnswer' && (
           <div className={`flex items-center justify-center text-4xl font-bold`}>
-              {isCorrect ? <CheckCircle className="w-16 h-16 text-success mr-4"/> : <XCircle className="w-16 h-16 text-destructive mr-4"/>}
-              {isCorrect ? 'MUITO BEM!' : 'TENTE DE NOVO!'}
+              {isCorrect === true && <CheckCircle className="w-16 h-16 text-success mr-4"/>}
+              {isCorrect === false && <XCircle className="w-16 h-16 text-destructive mr-4"/>}
+              {isCorrect === true ? 'MUITO BEM!' : (isCorrect === false ? 'TENTE DE NOVO!' : '')}
           </div>
         )}
       </div>
