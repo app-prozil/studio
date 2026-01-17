@@ -15,9 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Edit, ShieldAlert, PlusCircle, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
+import { Loader2, Edit, ShieldAlert, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import seedData from '@/lib/seed-exercises.json';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 
@@ -210,38 +209,11 @@ export default function AdminPage() {
   const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   const isAuthorized = user?.uid === ADMIN_UID;
   
-  const [isSeeding, setIsSeeding] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
 
   const [showArchivedTeachers, setShowArchivedTeachers] = useState(false);
   const [showArchivedStudents, setShowArchivedStudents] = useState(false);
-
-  const handleSeedExercises = async () => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Você precisa estar logado.' });
-        return;
-    }
-    setIsSeeding(true);
-    const adminTeacherId = user.uid;
-    const exercisesCollectionRef = collection(firestore, 'teachers', adminTeacherId, 'exercises');
-
-    try {
-        const batch = writeBatch(firestore);
-        (seedData.exercises as any[]).forEach(exercise => {
-            const newExerciseRef = doc(exercisesCollectionRef);
-            const exerciseWithId = { ...exercise, id: newExerciseRef.id, teacherId: adminTeacherId };
-            batch.set(newExerciseRef, exerciseWithId);
-        });
-        await batch.commit();
-        toast({ title: 'Sucesso!', description: `${seedData.exercises.length} exercícios foram adicionados ao seu banco.` });
-    } catch (e) {
-        console.error("Error seeding exercises: ", e);
-        toast({ variant: 'destructive', title: 'Erro ao popular o banco', description: 'Verifique o console para mais detalhes.' });
-    } finally {
-        setIsSeeding(false);
-    }
-  };
 
   const handleClearData = async () => {
     if (!isAuthorized) {
@@ -269,7 +241,7 @@ export default function AdminPage() {
         });
 
         await batch.commit();
-        toast({ title: 'Sucesso!', description: 'Todos os dados de professores e alunos (exceto o admin) foram removidos.' });
+        toast({ title: 'Sucesso!', description: 'Todos os perfis de professores e alunos (exceto o admin) foram removidos.' });
     } catch (e) {
         console.error("Error clearing data: ", e);
         toast({ variant: 'destructive', title: 'Erro ao limpar dados', description: 'Verifique as permissões ou tente novamente.' });
@@ -322,19 +294,10 @@ export default function AdminPage() {
           <Card>
               <CardHeader>
                   <CardTitle>Ações do Administrador</CardTitle>
-                  <CardDescription>Use estas ações para gerenciar o conteúdo da plataforma.</CardDescription>
+                  <CardDescription>Use estas ações para gerenciar os dados da plataforma.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-4">
-                  <div>
-                    <Button onClick={handleSeedExercises} disabled={isSeeding}>
-                        {isSeeding ? <Loader2 className="animate-spin mr-2"/> : <PlusCircle className="mr-2"/>}
-                        Popular Banco de Exercícios
-                    </Button>
-                    <p className="text-sm text-muted-foreground mt-2">
-                        Adiciona 30 exercícios de exemplo ao banco do admin.
-                    </p>
-                  </div>
                   <div>
                       <Button variant="destructive" onClick={() => setIsClearConfirmOpen(true)} disabled={isClearing}>
                           {isClearing ? <Loader2 className="animate-spin mr-2"/> : <Trash2 className="mr-2"/>}

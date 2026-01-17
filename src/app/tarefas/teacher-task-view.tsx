@@ -19,6 +19,7 @@ import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
+import seedData from '@/lib/seed-exercises.json';
 import {
   Dialog,
   DialogContent,
@@ -130,6 +131,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
@@ -152,6 +154,30 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     return exercises.filter((ex) => ex.subject === subjectFilter);
   }, [exercises, subjectFilter, isLoading]);
 
+  const handleSeedExercises = async () => {
+    if (!teacherId) {
+        toast({ variant: 'destructive', title: 'Ocorreu um erro.', description: 'ID do professor não encontrado.' });
+        return;
+    }
+    setIsSeeding(true);
+    const exercisesCollectionRef = collection(firestore, 'teachers', teacherId, 'exercises');
+
+    try {
+        const batch = writeBatch(firestore);
+        (seedData.exercises as any[]).forEach(exercise => {
+            const newExerciseRef = doc(exercisesCollectionRef);
+            const exerciseWithId = { ...exercise, id: newExerciseRef.id, teacherId: teacherId };
+            batch.set(newExerciseRef, exerciseWithId);
+        });
+        await batch.commit();
+        toast({ title: 'Sucesso!', description: `${seedData.exercises.length} exercícios de exemplo foram adicionados ao seu banco.` });
+    } catch (e) {
+        console.error("Error seeding exercises: ", e);
+        toast({ variant: 'destructive', title: 'Erro ao popular o banco', description: 'Verifique o console para mais detalhes.' });
+    } finally {
+        setIsSeeding(false);
+    }
+  };
 
   useEffect(() => {
     if (editingExercise) {
@@ -263,18 +289,27 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Seu Banco de Exercícios</CardTitle>
-           <CardDescription>Visualize e gerencie os exercícios que você criou.</CardDescription>
-           <div className="flex flex-wrap items-center gap-2 pt-4">
-              <Button variant={subjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('all')}>
-                Todos ({exercises?.length || 0})
-              </Button>
-              <Button variant={subjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('matematica')}>
-                Matemática ({exercises?.filter(e => e.subject === 'matematica').length || 0})
-              </Button>
-              <Button variant={subjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('portugues')}>
-                Português ({exercises?.filter(e => e.subject === 'portugues').length || 0})
-              </Button>
+            <CardTitle>Seu Banco de Exercícios</CardTitle>
+            <CardDescription>Visualize, gerencie e adicione exercícios de exemplo.</CardDescription>
+            <div className="flex flex-wrap items-center gap-2 pt-4 justify-between">
+                <div className="flex items-center gap-2">
+                    <Button variant={subjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('all')}>
+                        Todos ({exercises?.length || 0})
+                    </Button>
+                    <Button variant={subjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('matematica')}>
+                        Matemática ({exercises?.filter(e => e.subject === 'matematica').length || 0})
+                    </Button>
+                    <Button variant={subjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('portugues')}>
+                        Português ({exercises?.filter(e => e.subject === 'portugues').length || 0})
+                    </Button>
+                </div>
+                <Button 
+                    onClick={handleSeedExercises} 
+                    disabled={isLoading || isSeeding || (exercises && exercises.length > 0)}
+                >
+                    {isSeeding ? <Loader2 className="animate-spin mr-2"/> : <PlusCircle className="mr-2"/>}
+                    Popular com Exemplos
+                </Button>
             </div>
         </CardHeader>
         <CardContent>
@@ -299,7 +334,14 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
               </li>
             )) : (
               <div className="text-center text-muted-foreground py-8">
-                Nenhum exercício encontrado para este filtro.
+                 {subjectFilter === 'all' ? (
+                  <>
+                    <p className="font-semibold">Seu banco de exercícios está vazio.</p>
+                    <p className="text-sm mt-2">Use o botão "Popular com Exemplos" para adicionar 30 exercícios e começar.</p>
+                  </>
+                ) : (
+                  <p>Nenhum exercício encontrado para este filtro.</p>
+                )}
               </div>
             )}
           </ul>
