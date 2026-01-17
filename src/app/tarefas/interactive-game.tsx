@@ -111,15 +111,19 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   // Task parameters from URL
   const taskId = searchParams.get('taskId');
-  const studentId = searchParams.get('studentId');
+  const studentId = searchParams.get('studentId'); // Can be student or teacher ID
+  const taskSource = searchParams.get('source') || 'student';
+  const isTestMode = taskId === 'test-drive' || searchParams.get('mode') === 'test';
   const isTestDrive = taskId === 'test-drive';
 
   const [loadedTask, setLoadedTask] = useState<Task | null>(null);
   const [isGloballyLoading, setIsGloballyLoading] = useState(true);
 
+  const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
+
   const taskDocRef = useMemoFirebase(
-    () => (studentId && taskId && !isTestDrive ? doc(firestore, 'students', studentId, 'tasks', taskId) : null),
-    [firestore, studentId, taskId, isTestDrive]
+    () => (studentId && taskId && !isTestDrive ? doc(firestore, collectionPath, studentId, 'tasks', taskId) : null),
+    [firestore, studentId, taskId, isTestDrive, collectionPath]
   );
   const { data: taskDataFromHook, isLoading: isTaskLoadingFromHook } = useDoc<Task>(taskDocRef);
 
@@ -130,7 +134,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         setLoadedTask(mockTask);
         setIsGloballyLoading(false);
     } else if (taskDataFromHook) {
-        if (taskDataFromHook.isCompleted) {
+        if (taskDataFromHook.isCompleted && !isTestMode) {
             toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
             router.push('/tarefas');
             return;
@@ -140,7 +144,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     } else if (!isTaskLoadingFromHook && !taskDataFromHook && !isTestDrive) {
         setIsGloballyLoading(false);
     }
-  }, [taskDataFromHook, isTaskLoadingFromHook, isTestDrive, subject, router, toast]);
+  }, [taskDataFromHook, isTaskLoadingFromHook, isTestDrive, subject, router, toast, isTestMode]);
 
   useEffect(() => {
     if (loadedTask && loadedTask.questions) {
@@ -166,7 +170,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const score = Math.round((correctCount / finalQuestions.length) * 100);
     setFinalScore(score);
 
-    if (isTestDrive || !taskDocRef) {
+    if (isTestMode || !taskDocRef) {
         return;
     }
     
@@ -183,7 +187,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       console.error("Erro ao finalizar tarefa: ", e);
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível marcar a tarefa como concluída.' });
     }
-  }, [taskDocRef, taskStartTime, toast, isTestDrive]);
+  }, [taskDocRef, taskStartTime, toast, isTestMode]);
 
   const handleAnswer = useCallback(async (option: string) => {
     if (gameState !== 'playing') return;
@@ -227,7 +231,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     });
     setQuestions(updatedQuestions);
 
-    if (taskDocRef && !isTestDrive) {
+    if (taskDocRef && !isTestMode) {
         updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
             console.error("Failed to update question performance", e)
         });
@@ -245,7 +249,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             setGameState('playing');
         }, 2000);
     }
-  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, taskDocRef, isTestDrive]);
+  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, taskDocRef, isTestMode]);
 
   const handleNextQuestion = useCallback(() => {
     setShowMainConfetti(false);

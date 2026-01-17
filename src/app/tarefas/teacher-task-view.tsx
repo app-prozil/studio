@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText, Calendar, Clock, Target, Check, Circle } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText, Calendar, Clock, Target, Check, Circle, TestTube } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
@@ -715,6 +715,11 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                                     <DropdownMenuItem asChild className="cursor-pointer">
                                         <Link href={`/${task.subject}?taskId=${task.id}&studentId=${task.studentId}`}>
                                             <Eye className="mr-2 h-4 w-4"/> Visualizar Jogo
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="cursor-pointer">
+                                        <Link href={`/${task.subject}?taskId=${task.id}&studentId=${teacherId}&source=teacher&mode=test`}>
+                                            <TestTube className="mr-2 h-4 w-4"/> Testar Tarefa
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => setEditingTask(task as Task)} className="cursor-pointer">
