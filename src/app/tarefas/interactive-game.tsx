@@ -142,25 +142,22 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   }, [currentQuestionIndex]);
 
   const completeTask = useCallback(async (finalQuestions: Question[]) => {
-    if (isTestDrive) {
-        const correctCount = finalQuestions.filter(q => q.status === 'correct').length;
-        const score = Math.round((correctCount / finalQuestions.length) * 100);
-        setFinalScore(score);
-        return;
-    }
-    
-    if (!taskDocRef) return;
-    const totalTime = Math.round((Date.now() - taskStartTime) / 1000); // in seconds
-    
     const correctCount = finalQuestions.filter(q => q.status === 'correct').length;
     const score = Math.round((correctCount / finalQuestions.length) * 100);
     setFinalScore(score);
+
+    if (isTestDrive || !taskDocRef) {
+        return;
+    }
+    
+    const totalTime = Math.round((Date.now() - taskStartTime) / 1000); // in seconds
     
     try {
       await updateDoc(taskDocRef, { 
         isCompleted: true,
         completedAt: new Date().toISOString(),
         totalTime: totalTime,
+        questions: finalQuestions, // Make sure final question state is saved
       });
     } catch (e) {
       console.error("Erro ao finalizar tarefa: ", e);
@@ -182,17 +179,23 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
     setIsCorrect(correct);
 
-    const updatedQuestions = questions.map((q, index) =>
-        index === currentQuestionIndex
-        ? {
-            ...q,
-            studentAnswer: option,
-            attempts: currentAttempts,
-            timeTaken: timeTaken,
-            status: correct ? 'correct' : 'incorrect',
+    const updatedQuestions = questions.map((q, index) => {
+      if (index === currentQuestionIndex) {
+        const updatedQuestion = { ...q };
+
+        updatedQuestion.studentAnswer = option;
+        updatedQuestion.attempts = currentAttempts;
+        updatedQuestion.timeTaken = timeTaken;
+
+        // The final "status" for scoring is only set on the FIRST attempt.
+        if (currentAttempts === 1) {
+          updatedQuestion.status = correct ? 'correct' : 'incorrect';
         }
-        : q
-    );
+        
+        return updatedQuestion;
+      }
+      return q;
+    });
     setQuestions(updatedQuestions);
 
     if (taskDocRef && !isTestDrive) {
@@ -269,7 +272,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   }
   
   if (gameState === 'finished') {
-    const studentName = loadedTask?.studentName || 'aluno(a)';
+    const studentName = loadedTask?.studentName || 'Visitante';
     return (
       <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-4">
         {!isGiftOpened ? (
