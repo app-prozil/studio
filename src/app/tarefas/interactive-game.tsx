@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift, Check } from 'lucide-react';
@@ -93,7 +93,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { width, height } = useWindowSize();
-  const { isUserLoading: isAuthLoading } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -104,6 +104,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   // Animation & reward state
   const [isGiftOpened, setIsGiftOpened] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Performance tracking state
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
@@ -112,7 +113,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   // Task parameters from URL
   const taskId = searchParams.get('taskId');
-  const studentId = searchParams.get('studentId'); // Can be student or teacher ID
+  const studentId = searchParams.get('studentId'); 
   const taskSource = searchParams.get('source') || 'student';
   const isTestMode = taskId === 'test-drive' || searchParams.get('mode') === 'test';
   const isTestDrive = taskId === 'test-drive';
@@ -123,11 +124,11 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   const taskDocRef = useMemoFirebase(
     () => (
-        !isTestDrive && !isAuthLoading && studentId && taskId 
+        !isTestDrive && !isAuthLoading && user && studentId && taskId 
         ? doc(firestore, collectionPath, studentId, 'tasks', taskId) 
         : null
     ),
-    [firestore, studentId, taskId, isTestDrive, collectionPath, isAuthLoading]
+    [firestore, studentId, taskId, isTestDrive, collectionPath, isAuthLoading, user]
   );
   
   const { data: taskDataFromHook, isLoading: isTaskLoadingFromHook } = useDoc<Task>(taskDocRef);
@@ -145,9 +146,11 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             return;
         }
         setLoadedTask(taskDataFromHook);
-        setQuestions(taskDataFromHook.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 })));
+        if (questions.length === 0 || (loadedTask && taskDataFromHook.id !== loadedTask.id)) {
+          setQuestions(taskDataFromHook.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 })));
+        }
     }
-  }, [taskDataFromHook, isTestDrive, subject, router, toast, isTestMode, gameState]);
+  }, [taskDataFromHook, isTestDrive, subject, router, toast, isTestMode, questions.length, loadedTask, gameState]);
 
 
   useEffect(() => {
@@ -165,13 +168,14 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         questions: finalQuestions,
       };
 
-      const batch = writeBatch(firestore);
-      batch.update(taskDocRef, performanceData);
+      updateDoc(taskDocRef, performanceData).catch(e => {
+        console.error("Erro ao finalizar tarefa (aluno): ", e);
+      });
+      
       const teacherTaskRef = doc(firestore, 'teachers', loadedTask.teacherId, 'tasks', loadedTask.id);
-      batch.update(teacherTaskRef, performanceData);
-      batch.commit().catch(e => {
-          console.error("Erro ao finalizar tarefa: ", e);
-          toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível salvar o resultado da tarefa.' });
+      updateDoc(teacherTaskRef, performanceData).catch(e => {
+          console.error("Erro ao finalizar tarefa (professor): ", e);
+          toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível sincronizar o resultado da tarefa com o professor.' });
       });
   }, [isTestMode, taskDocRef, firestore, loadedTask, taskStartTime, toast]);
 
@@ -192,18 +196,23 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         setIsCorrect(null);
         setGameState('playing');
     }
-  }, [currentQuestionIndex, questions.length, completeTask]);
+  }, [currentQuestionIndex, completeTask, questions.length]);
 
   const handleAnswer = useCallback((option: string) => {
     if (gameState !== 'playing') return;
 
     const timeTaken = Date.now() - questionStartTime;
     const currentQuestion = questions[currentQuestionIndex];
+    if (!currentQuestion) return;
     const isAnswerCorrect = option.toUpperCase() === currentQuestion.answer.toUpperCase();
     
     setGameState('showingAnswer'); 
     setSelectedAnswer(option);
     setIsCorrect(isAnswerCorrect);
+
+    if (isAnswerCorrect) {
+      setShowConfetti(true);
+    }
 
     const updatedQuestions = questions.map((q, index) => {
         if (index === currentQuestionIndex) {
@@ -229,8 +238,11 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
 
     setTimeout(() => {
+        if (isAnswerCorrect) {
+            setShowConfetti(false);
+        }
         handleNextQuestion(updatedQuestions);
-    }, isAnswerCorrect ? 1500 : 2500);
+    }, isAnswerCorrect ? 2000 : 2500);
   }, [gameState, questionStartTime, questions, currentQuestionIndex, taskDocRef, isTestMode, handleNextQuestion]);
 
   useEffect(() => {
@@ -254,7 +266,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     };
   }, [gameState, handleAnswer, questions, currentQuestionIndex]);
 
-  const isLoading = isTestDrive ? false : (isAuthLoading || (isTaskLoadingFromHook && !taskDataFromHook));
+  const isLoading = isAuthLoading || (isTaskLoadingFromHook && !taskDataFromHook) || !loadedTask;
 
   if (isLoading) {
     return (
@@ -328,6 +340,15 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   return (
     <div className="relative">
+      {showConfetti && width > 0 && height > 0 && (
+        <Confetti
+          width={width}
+          height={height}
+          recycle={false}
+          numberOfPieces={200}
+          gravity={0.1}
+        />
+      )}
       <div className="space-y-8">
         <div className="relative p-8 border-4 border-dashed rounded-lg border-accent">
           <p className={`font-bold ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>
