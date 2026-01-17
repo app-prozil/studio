@@ -137,11 +137,13 @@ function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile, setOpen } = useSidebar();
 
   const handleMenuItemClick = () => {
     if (isMobile) {
       setOpenMobile(false);
+    } else {
+      setOpen(false)
     }
   };
 
