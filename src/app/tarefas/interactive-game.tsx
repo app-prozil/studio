@@ -133,7 +133,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         const mockTask: Task = { ...testDriveTaskBase, questions, subject };
         setLoadedTask(mockTask);
         setIsGloballyLoading(false);
-    } else if (taskDataFromHook) {
+    } else if (taskDataFromHook && !loadedTask) {
         if (taskDataFromHook.isCompleted && !isTestMode && gameState !== 'finished') {
             toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
             router.push('/tarefas');
@@ -144,7 +144,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     } else if (!isTaskLoadingFromHook && !taskDataFromHook && !isTestDrive) {
         setIsGloballyLoading(false);
     }
-  }, [taskDataFromHook, isTaskLoadingFromHook, isTestDrive, subject, router, toast, isTestMode, gameState]);
+  }, [taskDataFromHook, isTaskLoadingFromHook, isTestDrive, subject, router, toast, isTestMode, gameState, loadedTask]);
 
   useEffect(() => {
     if (loadedTask && loadedTask.questions) {
@@ -230,8 +230,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             return {
                 ...q,
                 studentAnswer: option,
-                timeTaken: (q.timeTaken || 0) + timeTaken,
                 attempts: (q.attempts || 0) + 1,
+                timeTaken: (q.timeTaken || 0) + timeTaken,
+                // Only set status on the first attempt
                 status: isFirstAttempt ? (correct ? 'correct' : 'incorrect') : q.status,
             };
         }
@@ -265,7 +266,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             setGameState('playing');
         }, 2000);
     }
-  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, taskDocRef, isTestMode, completeTask]);
+  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, taskDocRef, isTestMode, completeTask, router]);
 
    useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
