@@ -36,29 +36,29 @@ type Task = {
 }
 
 const testDriveMathQuestions: Question[] = [
-    { text: 'Quanto é 5 + 3?', options: ['7', '8', '9'], answer: '8' },
-    { text: 'Qual número vem depois de 9?', options: ['8', '10', '11'], answer: '10' },
-    { text: 'Conte os emojis: 👍👍👍👍👍', options: ['4', '5', '6'], answer: '5' },
-    { text: 'Quanto é 4 - 2?', options: ['1', '2', '3'], answer: '2' },
-    { text: 'Qual número vem antes de 7?', options: ['5', '6', '8'], answer: '6' },
-    { text: 'Quanto é 10 + 0?', options: ['0', '1', '10'], answer: '10' },
-    { text: 'Conte os emojis: 🚗🚗🚗', options: ['2', '3', '4'], answer: '3' },
-    { text: 'Qual forma tem 4 lados iguais?', options: ['Círculo', 'Triângulo', 'Quadrado'], answer: 'Quadrado' },
-    { text: 'Quanto é 3 + 3?', options: ['5', '6', '7'], answer: '6' },
-    { text: 'Qual número é maior: 8 ou 6?', options: ['8', '6', 'Iguais'], answer: '8' },
+    { text: 'QUANTO É 5 + 3?', options: ['7', '8', '9'], answer: '8' },
+    { text: 'QUAL NÚMERO VEM DEPOIS DE 9?', options: ['8', '10', '11'], answer: '10' },
+    { text: 'CONTE OS EMOJIS: 👍👍👍👍👍', options: ['4', '5', '6'], answer: '5' },
+    { text: 'QUANTO É 4 - 2?', options: ['1', '2', '3'], answer: '2' },
+    { text: 'QUAL NÚMERO VEM ANTES DE 7?', options: ['5', '6', '8'], answer: '6' },
+    { text: 'QUANTO É 10 + 0?', options: ['0', '1', '10'], answer: '10' },
+    { text: 'CONTE OS EMOJIS: 🚗🚗🚗', options: ['2', '3', '4'], answer: '3' },
+    { text: 'QUAL FORMA TEM 4 LADOS IGUAIS?', options: ['CÍRCULO', 'TRIÂNGULO', 'QUADRADO'], answer: 'QUADRADO' },
+    { text: 'QUANTO É 3 + 3?', options: ['5', '6', '7'], answer: '6' },
+    { text: 'QUAL NÚMERO É MAIOR: 8 OU 6?', options: ['8', '6', 'IGUAIS'], answer: '8' },
 ];
 
 const testDrivePortugueseQuestions: Question[] = [
-    { text: "Qual o sinônimo de 'bonito'?", options: ["feio", "belo", "grande"], answer: "belo" },
-    { text: "Complete com o verbo correto: Eu ___ pão.", options: ["como", "come", "comemos"], answer: "como" },
-    { text: "O plural de 'menino' é ___.", options: ["menina", "meninos", "meninas"], answer: "meninos" },
-    { text: "O contrário de 'abrir' é ___.", options: ["fechar", "correr", "pular"], answer: "fechar" },
-    { text: "Qual animal faz 'Miau'?", options: ["Cachorro", "Gato", "Pássaro"], answer: "Gato" },
-    { text: "A cor do sol é ___.", options: ["Azul", "Verde", "Amarelo"], answer: "Amarelo" },
-    { text: "O que usamos para escrever?", options: ["Lápis", "Garfo", "Cama"], answer: "Lápis" },
-    { text: "A primeira letra do alfabeto é ___.", options: ["B", "C", "A"], answer: "A" },
-    { text: "O plural de 'cão' é ___.", options: ["cãos", "cães", "cãs"], answer: "cães" },
-    { text: "Qual o feminino de 'pai'?", options: ["Tia", "Mãe", "Avó"], answer: "Mãe" },
+    { text: "QUAL O SINÔNIMO DE 'BONITO'?", options: ["FEIO", "BELO", "GRANDE"], answer: "BELO" },
+    { text: "COMPLETE COM O VERBO CORRETO: EU ___ PÃO.", options: ["COMO", "COME", "COMEMOS"], answer: "COMO" },
+    { text: "O PLURAL DE 'MENINO' É ___.", options: ["MENINA", "MENINOS", "MENINAS"], answer: "MENINOS" },
+    { text: "O CONTRÁRIO DE 'ABRIR' É ___.", options: ["FECHAR", "CORRER", "PULAR"], answer: "FECHAR" },
+    { text: "QUAL ANIMAL FAZ 'MIAU'?", options: ["CACHORRO", "GATO", "PÁSSARO"], answer: "GATO" },
+    { text: "A COR DO SOL É ___.", options: ["AZUL", "VERDE", "AMARELO"], answer: "AMARELO" },
+    { text: "O QUE USAMOS PARA ESCREVER?", options: ["LÁPIS", "GARFO", "CAMA"], answer: "LÁPIS" },
+    { text: "A PRIMEIRA LETRA DO ALFABETO É ___.", options: ["B", "C", "A"], answer: "A" },
+    { text: "O PLURAL DE 'CÃO' É ___.", options: ["CÃOS", "CÃES", "CÃS"], answer: "CÃES" },
+    { text: "QUAL O FEMININO DE 'PAI'?", options: ["TIA", "MÃE", "AVÓ"], answer: "MÃE" },
 ];
 
 
@@ -216,16 +216,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       const optionAsNumber = parseFloat(option);
       const answerAsNumber = parseFloat(currentQuestion.answer);
 
-      // If both the selected option and the correct answer can be successfully parsed as numbers,
-      // compare them as numbers. Otherwise, fall back to a string comparison.
       if (!isNaN(optionAsNumber) && !isNaN(answerAsNumber)) {
         correct = optionAsNumber === answerAsNumber;
       } else {
-        correct = option === currentQuestion.answer;
+        correct = option.toUpperCase() === currentQuestion.answer.toUpperCase();
       }
     } else {
-      // For subjects other than math, always use string comparison.
-      correct = option === currentQuestion.answer;
+      correct = option.toUpperCase() === currentQuestion.answer.toUpperCase();
     }
 
     setIsCorrect(correct);
@@ -331,22 +328,22 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-4">
         {!isGiftOpened ? (
           <>
-            <h2 className="text-4xl font-bold">Parabéns, {studentName}!</h2>
-            <p className="text-2xl text-muted-foreground">Você concluiu a tarefa!</p>
+            <h2 className="text-4xl font-bold">PARABÉNS, {studentName.toUpperCase()}!</h2>
+            <p className="text-2xl text-muted-foreground">VOCÊ CONCLUIU A TAREFA!</p>
             <button onClick={() => setIsGiftOpened(true)} className="animate-gift-bounce focus:outline-none">
               <Gift className="w-40 h-40 text-primary" />
-              <span className="mt-4 block text-lg font-semibold">Clique no seu prêmio!</span>
+              <span className="mt-4 block text-lg font-semibold">CLIQUE NO SEU PRÊMIO!</span>
             </button>
           </>
         ) : (
           <>
             {width > 0 && height > 0 && <Confetti width={width} height={height} recycle={false} numberOfPieces={800} gravity={0.08} />}
             <div className="animate-score-reveal flex flex-col items-center gap-4 p-8 bg-card/80 backdrop-blur-sm rounded-lg shadow-2xl">
-              <h2 className="text-3xl font-bold">Sua pontuação!</h2>
+              <h2 className="text-3xl font-bold">SUA PONTUAÇÃO!</h2>
               <p className="text-7xl font-bold text-accent">{finalScore}%</p>
-              <p className="text-xl font-medium">de acertos</p>
+              <p className="text-xl font-medium">DE ACERTOS</p>
               <Button onClick={() => router.push('/tarefas')} size="lg" className="text-lg mt-4">
-                  Voltar para Tarefas <ArrowRight className="ml-2" />
+                  VOLTAR PARA TAREFAS <ArrowRight className="ml-2" />
               </Button>
             </div>
           </>
@@ -362,9 +359,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
               <Confetti width={width} height={height} recycle={false} numberOfPieces={400} gravity={0.1} />
             )}
             <CheckCircle className="w-24 h-24 text-success" />
-            <h2 className="text-5xl font-bold">Muito bem!</h2>
+            <h2 className="text-5xl font-bold">MUITO BEM!</h2>
             <Button onClick={handleNextQuestion} size="lg" className="text-2xl mt-4">
-                Próxima Pergunta <ArrowRight className="ml-2" />
+                PRÓXIMA PERGUNTA <ArrowRight className="ml-2" />
             </Button>
         </div>
     )
@@ -411,7 +408,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         {gameState === 'showingAnswer' && isCorrect !== null && (
           <div className={`flex items-center justify-center text-4xl font-bold`}>
               {isCorrect ? <CheckCircle className="w-16 h-16 text-success mr-4"/> : <XCircle className="w-16 h-16 text-destructive mr-4"/>}
-              {isCorrect ? 'Correto!' : 'Tente de novo!'}
+              {isCorrect ? 'CORRETO!' : 'TENTE DE NOVO!'}
           </div>
         )}
       </div>
