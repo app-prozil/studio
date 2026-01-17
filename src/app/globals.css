@@ -176,11 +176,7 @@
     height: 1px;
     pointer-events: none;
     transform: translate(-50%, -50%);
-    opacity: 0;
-  }
-
-  .particle-burst.is-active {
-    opacity: 1;
+    z-index: 5;
   }
 
   .particle-burst .particle {
