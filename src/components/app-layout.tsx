@@ -137,18 +137,16 @@ function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
-  const { isMobile, setOpenMobile, setOpen } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const handleMenuItemClick = () => {
     if (isMobile) {
       setOpenMobile(false);
-    } else {
-      setOpen(false);
     }
   };
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 p-2">
           <Bot className="w-8 h-8 text-primary" />
