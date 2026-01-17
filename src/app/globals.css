@@ -91,31 +91,35 @@
 
 @layer utilities {
   .animate-gift-bounce {
-    animation: gift-bounce 2s infinite;
+    animation: gift-bounce 1.5s ease-in-out infinite;
+    transform-origin: bottom center;
   }
 
   @keyframes gift-bounce {
-    0%, 20%, 50%, 80%, 100% {
-      transform: translateY(0) scale(1);
-    }
-    40% {
-      transform: translateY(-30px) scale(1.1);
-    }
-    60% {
-      transform: translateY(-15px) scale(1.05);
-    }
+    0%, 100% { transform: translateY(0) scaleY(1); }
+    25% { transform: translateY(-30px) scaleY(1.05); }
+    50% { transform: translateY(0) scaleY(1); }
+    75% { transform: translateY(-15px) scaleY(1.02); }
+    95% { transform: translateY(0) scaleY(1) scaleX(1.05); }
   }
 
   .animate-score-reveal {
-    animation: score-reveal 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    animation: score-reveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
 
   @keyframes score-reveal {
-    from {
-      transform: scale(0.5) rotate(-15deg);
+    0% {
+      transform: scale(0.5) rotate(-30deg);
       opacity: 0;
     }
-    to {
+    60% {
+      transform: scale(1.1) rotate(5deg);
+      opacity: 1;
+    }
+    80% {
+      transform: scale(0.95) rotate(-2deg);
+    }
+    100% {
       transform: scale(1) rotate(0deg);
       opacity: 1;
     }
@@ -126,14 +130,8 @@
   }
 
   @keyframes option-click {
-    0% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.08);
-    }
-    100% {
-      transform: scale(1);
-    }
+    0% { transform: scale(1); }
+    40% { transform: scale(1.1) rotate(-3deg); }
+    100% { transform: scale(1) rotate(0deg); }
   }
 }
