@@ -6,7 +6,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift, Check } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -99,7 +99,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [gameState, setGameState] = useState<'playing' | 'showingAnswer' | 'finished'>('playing');
+  const [gameState, setGameState] = useState<'loading' | 'playing' | 'showingAnswer' | 'finished'>('loading');
   
   // Animation & reward state
   const [isGiftOpened, setIsGiftOpened] = useState(false);
@@ -134,11 +134,18 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const { data: taskDataFromHook, isLoading: isTaskLoadingFromHook } = useDoc<Task>(taskDocRef);
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return; 
+    }
+    
+    setGameState('loading');
+    
     if (isTestDrive) {
         const questions = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
         const mockTask: Task = { ...testDriveTaskBase, questions, subject };
         setLoadedTask(mockTask);
         setQuestions(mockTask.questions.map(q => ({...q, status: 'unanswered', attempts: 0 })));
+        setGameState('playing');
     } else if (taskDataFromHook) {
         if (taskDataFromHook.isCompleted && !isTestMode && gameState !== 'finished') {
             toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
@@ -146,11 +153,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             return;
         }
         setLoadedTask(taskDataFromHook);
-        if (questions.length === 0 || (loadedTask && taskDataFromHook.id !== loadedTask.id)) {
-          setQuestions(taskDataFromHook.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 })));
-        }
+        setQuestions(taskDataFromHook.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 })));
+        setGameState('playing');
     }
-  }, [taskDataFromHook, isTestDrive, subject, router, toast, isTestMode, questions.length, loadedTask, gameState]);
+  }, [taskDataFromHook, isTestDrive, subject, router, toast, isTestMode, isAuthLoading, gameState]);
 
 
   useEffect(() => {
@@ -196,7 +202,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         setIsCorrect(null);
         setGameState('playing');
     }
-  }, [currentQuestionIndex, completeTask, questions.length]);
+  }, [currentQuestionIndex, completeTask]);
 
   const handleAnswer = useCallback((option: string) => {
     if (gameState !== 'playing') return;
@@ -240,8 +246,12 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setTimeout(() => {
         if (isAnswerCorrect) {
             setShowConfetti(false);
+            handleNextQuestion(updatedQuestions);
+        } else {
+            setGameState('playing');
+            setSelectedAnswer(null);
+            setIsCorrect(null);
         }
-        handleNextQuestion(updatedQuestions);
     }, isAnswerCorrect ? 2000 : 2500);
   }, [gameState, questionStartTime, questions, currentQuestionIndex, taskDocRef, isTestMode, handleNextQuestion]);
 
@@ -266,7 +276,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     };
   }, [gameState, handleAnswer, questions, currentQuestionIndex]);
 
-  const isLoading = isAuthLoading || (isTaskLoadingFromHook && !taskDataFromHook) || !loadedTask;
+  const isLoading = gameState === 'loading' || isAuthLoading || (isTaskLoadingFromHook && !isTestDrive);
 
   if (isLoading) {
     return (
@@ -289,7 +299,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const studentName = loadedTask?.studentName || 'Visitante';
     return (
       <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-4">
-        <div className={cn("particle-burst absolute inset-0", isGiftOpened && "is-active")}>
+        <div className={cn("particle-burst", isGiftOpened && "is-active")}>
           {Array.from({ length: 30 }).map((_, i) => (
             <div key={i} className="particle" style={{'--i': i} as React.CSSProperties} />
           ))}
