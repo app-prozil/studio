@@ -309,11 +309,19 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const studentName = loadedTask?.studentName || 'Visitante';
     return (
       <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-4">
+        {isGiftOpened && (
+          <div className="particle-burst is-active absolute inset-0">
+            {Array.from({ length: 30 }).map((_, i) => (
+              <div key={i} className="particle" style={{'--i': i} as React.CSSProperties} />
+            ))}
+          </div>
+        )}
+
         {!isGiftOpened ? (
           <>
-            <h2 className="text-4xl font-bold">PARABÉNS, {studentName.toUpperCase()}!</h2>
-            <p className="text-2xl text-muted-foreground">VOCÊ CONCLUIU A TAREFA!</p>
-            <button onClick={() => setIsGiftOpened(true)} className="animate-gift-bounce focus:outline-none">
+            <h2 className="text-4xl font-bold z-10">PARABÉNS, {studentName.toUpperCase()}!</h2>
+            <p className="text-2xl text-muted-foreground z-10">VOCÊ CONCLUIU A TAREFA!</p>
+            <button onClick={() => setIsGiftOpened(true)} className="animate-gift-bounce focus:outline-none relative z-10">
               <Gift className="w-40 h-40 text-primary" />
               <span className="mt-4 block text-lg font-semibold">CLIQUE NO SEU PRÊMIO!</span>
             </button>
@@ -321,7 +329,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         ) : (
           <>
             {width > 0 && height > 0 && <Confetti width={width} height={height} recycle={false} numberOfPieces={800} gravity={0.08} />}
-            <div className="animate-score-reveal flex flex-col items-center gap-4 p-8 bg-card/80 backdrop-blur-sm rounded-lg shadow-2xl">
+            <div className="animate-score-reveal flex flex-col items-center gap-4 p-8 bg-card/80 backdrop-blur-sm rounded-lg shadow-2xl relative z-10">
               <h2 className="text-3xl font-bold">SUA PONTUAÇÃO!</h2>
               <p className="text-7xl font-bold text-accent">{finalScore}%</p>
               <p className="text-xl font-medium">DE ACERTOS</p>

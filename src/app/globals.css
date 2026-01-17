@@ -167,4 +167,76 @@
       opacity: 0;
     }
   }
+  
+  .particle-burst {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+  }
+
+  .particle-burst.is-active {
+    opacity: 1;
+  }
+
+  .particle-burst .particle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    border-radius: 50%;
+    opacity: 0;
+    --size: 8px;
+    width: var(--size);
+    height: var(--size);
+  }
+
+  .particle-burst.is-active .particle {
+    animation: burst 800ms cubic-bezier(0.1, 0.5, 0.5, 1) forwards;
+  }
+
+  @keyframes burst {
+    from {
+      transform: translate(-50%, -50%) scale(0.5);
+      opacity: 1;
+    }
+    to {
+      transform: var(--transform-end);
+      opacity: 0;
+    }
+  }
+
+  .particle-burst .particle {
+    --angle: calc(var(--i) * 12deg);
+    --radius: 120px;
+    --transform-end: rotate(var(--angle)) translateX(var(--radius)) rotate(-360deg);
+    animation-delay: calc(var(--i) * 10ms);
+  }
+
+  .particle-burst .particle:nth-child(3n) {
+    background-color: hsl(var(--primary));
+  }
+  .particle-burst .particle:nth-child(3n + 1) {
+    background-color: hsl(var(--accent));
+  }
+  .particle-burst .particle:nth-child(3n + 2) {
+    background-color: hsl(var(--success));
+  }
+
+  .particle-burst .particle:nth-child(5n) {
+    --size: 12px;
+  }
+  .particle-burst .particle:nth-child(5n + 2) {
+    --size: 6px;
+  }
+
+  .particle-burst .particle:nth-child(4n) {
+    --radius: 150px;
+  }
+  .particle-burst .particle:nth-child(4n + 1) {
+    --radius: 100px;
+  }
 }
