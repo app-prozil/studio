@@ -1,32 +1,12 @@
 /**
- * Core Philosophy: This ruleset enforces a strict role-based security model
- * for a teacher/student application. Data access is segregated based on user
- * ownership, meaning users can only interact with their own documents and
- * subcollections. Teachers have full control over the tasks and exercises they
- * create, while students have read-only access to their assigned tasks, with
- * the limited ability to update task status.
+ * Core Philosophy: This ruleset enforces a strict role-based security model.
+ * It is architected with an "admin-first" principle: a global rule grants
+ * an administrator (identified by a specific UID) full read/write access to
+ * the entire database. This ensures admin operations are never blocked by
+ * more restrictive rules intended for other users.
  *
- * Data Structure: The data is hierarchically organized and segregated by role.
- * Teacher and student profiles are stored in separate top-level collections
- * (`/teachers/{teacherId}` and `/students/{studentId}`).To ensure simple,
- * performant, and secure queries, tasks are denormalized and stored in two
- * locations: under the teacher who created them (`/teachers/{teacherId}/tasks`)
- * and under the student they are assigned to (`/students/{studentId}/tasks`).
- * A teacher's private exercise bank is stored at `/teachers/{teacherId}/exercises`.
- *
- * Key Security Decisions:
- * - User data is generally private. Single user profiles can only be read by their owner or an admin.
- * - The `students` collection is listable by teachers or admins. This is necessary to allow
- *   teachers to query for their students. Client-side queries MUST be used to filter
- *   students by `teacherId` to enforce data visibility.
- * - Teachers have full Create, Read, Update, Delete (CRUD) permissions on tasks
- *   and exercises within their own subcollections.
- * - Students can only read and update tasks assigned to them. They are
- *   explicitly forbidden from creating or deleting tasks.
- * - An admin role (identified by a specific UID) has full access to manage all users.
- * - Authorization logic relies on path-based security, using the UID in the
- *   document path to verify ownership. This avoids slow and costly `get()`
- *   calls in rules.
+ * Following the admin override, granular rules define the capabilities for
+ * teachers and students, enforcing data segregation and user ownership.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -45,8 +25,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // In production, it's recommended to use custom claims: request.auth.token.admin == true
-      // For this prototype, we will use the admin's specific UID for reliability.
+      // For this prototype, we use the admin's specific UID.
       return isSignedIn() && request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
     }
     
@@ -56,6 +35,11 @@ service cloud.firestore {
 
     function isExistingOwner(userId) {
       return isOwner(userId) && isExistingDoc();
+    }
+    
+    function isTeacher() {
+      // Checks if the requesting user has a profile in the /teachers collection.
+      return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
 
     // --- Create Validation Helpers ---
@@ -102,31 +86,17 @@ service cloud.firestore {
     }
     
     function hasValidExerciseDataOnUpdate() {
-      // The teacherId must always be immutable.
       let isTeacherIdImmutable = request.resource.data.teacherId == resource.data.teacherId;
-      
-      // The id field must also be immutable. To support legacy documents that
-      // were created without an 'id' field, we allow it to be written once.
-      // If 'id' does not exist in the old document, the check passes.
-      // If it does exist, it must match the incoming value.
       let isIdImmutable = !('id' in resource.data) || request.resource.data.id == resource.data.id;
-
       return isTeacherIdImmutable && isIdImmutable;
     }
 
     function canStudentUpdateTask() {
         let incoming = request.resource.data;
         let existing = resource.data;
-
-        // A student can update performance fields (`questions`, `isCompleted`, `completedAt`, `totalTime`).
-        // All other fields must remain identical.
-        
-        // Prevent student from re-doing an already completed task.
-        // A teacher can re-open it, which is handled by `canTeacherUpdateTask`.
         if (existing.isCompleted == true) {
           return false;
         }
-
         return incoming.id == existing.id &&
               incoming.title == existing.title &&
               incoming.teacherId == existing.teacherId &&
@@ -145,66 +115,66 @@ service cloud.firestore {
     }
     
     function canTeacherUpdateTask() {
-      // The teacher can modify task details, but not its core IDs.
       let incoming = request.resource.data;
       let existing = resource.data;
-
-      // Allow isCompleted to be changed by the teacher (e.g. reopening a task)
       let isCompletionStateValid = incoming.isCompleted == true || incoming.isCompleted == false;
-
       return isCompletionStateValid &&
              incoming.id == existing.id &&
              incoming.teacherId == existing.teacherId &&
              incoming.studentId == existing.studentId;
     }
+    
+    // -------------------------------------------------------------------------
+    // Global Admin Override
+    // -------------------------------------------------------------------------
+    
+    // This rule grants the admin full read/write access to the entire database.
+    // It is checked first and will bypass all other more restrictive rules.
+    match /{path=**} {
+      allow read, write: if isAdmin();
+    }
 
     // -------------------------------------------------------------------------
-    // Collection Rules
+    // Collection Rules (for non-admin users)
     // -------------------------------------------------------------------------
 
     match /teachers/{teacherId} {
-      // DEBUGGING: Temporarily restrict all access to admins only
-      allow read, write: if isAdmin();
+      // Any signed-in user can read a teacher's profile (for student registration).
+      allow get: if isSignedIn();
+      // Any signed-in user can list teachers (for student registration).
+      allow list: if isSignedIn();
       
-      // Original rules are commented out below for reference
-      // allow get: if isSignedIn();
-      // allow list: if isSignedIn();
-      // allow create: if isOwner(teacherId) && hasValidTeacherDataOnCreate(teacherId);
-      // allow update: if (isExistingOwner(teacherId) && hasValidTeacherDataOnUpdate()) || isAdmin();
-      // allow delete: if isExistingOwner(teacherId) || isAdmin();
+      allow create: if isOwner(teacherId) && hasValidTeacherDataOnCreate(teacherId);
+      allow update: if isExistingOwner(teacherId) && hasValidTeacherDataOnUpdate();
+      allow delete: if isExistingOwner(teacherId);
 
       match /tasks/{taskId} {
-        allow read, write: if isAdmin() || isOwner(teacherId);
+        allow read, write: if isOwner(teacherId);
       }
       
       match /exercises/{exerciseId} {
-        allow read, write: if isAdmin() || isOwner(teacherId);
+        allow read, write: if isOwner(teacherId);
       }
     }
 
     match /students/{studentId} {
-       // DEBUGGING: Temporarily restrict all access to admins only
-      allow read, write: if isAdmin();
-      
-      // Original rules are commented out below for reference
-      // allow get: if isOwner(studentId)
-      //           || isAdmin()
-      //           || (request.auth.uid == resource.data.teacherId);
-      // allow list: if isAdmin() || get(/databases/$(database)/documents/teachers/$(request.auth.uid)) != null;
-      // allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
-      // allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
-      // allow delete: if isExistingOwner(studentId) || isAdmin();
+      allow get: if isOwner(studentId) || (isExistingDoc() && isTeacher() && resource.data.teacherId == request.auth.uid);
+      // Only teachers can list students.
+      allow list: if isTeacher();
+      allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
+      allow update: if isExistingOwner(studentId) && hasValidStudentDataOnUpdate();
+      allow delete: if isExistingOwner(studentId);
 
       match /tasks/{taskId} {
-        allow get: if isOwner(studentId) || isTaskAuthor() || isAdmin();
-        allow list: if isOwner(studentId) || isAdmin();
+        allow get: if isOwner(studentId) || isTaskAuthor();
+        allow list: if isOwner(studentId);
         // Only a teacher can create a task for a student.
-        allow create: if hasValidStudentDataOnCreate(studentId);
-        // A student can only update performance data, a teacher can update other fields, or an admin.
+        allow create: if hasValidStudentTaskDataOnCreate(studentId);
+        // A student can only update performance data; a teacher can update other fields.
         allow update: if (isExistingOwner(studentId) && canStudentUpdateTask()) || 
-                         (isTaskAuthor() && canTeacherUpdateTask()) || isAdmin();
-        // Only the authoring teacher can delete a task from a student's list.
-        allow delete: if isTaskAuthor() || isAdmin();
+                         (isTaskAuthor() && canTeacherUpdateTask());
+        // Only the authoring teacher can delete a task.
+        allow delete: if isTaskAuthor();
       }
     }
   }
