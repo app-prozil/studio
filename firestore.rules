@@ -59,12 +59,6 @@ service cloud.firestore {
       // On create, IDs must be consistent.
       return exerciseData.teacherId == teacherId && exerciseData.id == exerciseId;
     }
-
-    function isExerciseUpdateValid() {
-      // When updating, core IDs cannot change.
-      return request.resource.data.id == resource.data.id &&
-             request.resource.data.teacherId == resource.data.teacherId;
-    }
     
     function isValidNewTeacherTask(taskData, teacherId) {
       // On create, teacherId must match and task must have questions.
@@ -127,9 +121,10 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
 
     match /teachers/{teacherId} {
-      // Anyone logged in can read teacher profiles (needed for student sign-up).
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      // Read access is open to any signed-in user. This is necessary for two reasons:
+      // 1. To allow students to search for their teacher's ProZil ID during signup.
+      // 2. To allow the Admin user to list all teachers on the admin dashboard.
+      allow read: if isSignedIn();
       
       // A user can only create, update, or delete their own teacher profile.
       allow create: if isOwner(teacherId) && isValidTeacherProfile(request.resource.data, teacherId);
@@ -157,7 +152,8 @@ service cloud.firestore {
       // A teacher can read the profiles of their assigned students.
       allow get: if isOwner(studentId) || (isTeacher() && resource.data.teacherId == request.auth.uid);
       
-      // Teachers can query the students collection (client query must filter by teacherId). Admins can also list.
+      // Teachers can query for their students. Admins can query for all students.
+      // Client-side queries by teachers MUST include a `where("teacherId", "==", auth.uid)` clause.
       allow list: if isTeacher() || isAdmin();
       
       // A user can only create, update, or delete their own student profile.
