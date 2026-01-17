@@ -193,9 +193,22 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setSelectedAnswer(option);
 
     const currentQuestion = questions[currentQuestionIndex];
-    const correct = subject === 'math'
-      ? parseFloat(option) === parseFloat(currentQuestion.answer)
-      : option === currentQuestion.answer;
+    let correct;
+    if (subject === 'math') {
+      const optionAsNumber = parseFloat(option);
+      const answerAsNumber = parseFloat(currentQuestion.answer);
+
+      // If both the selected option and the correct answer can be successfully parsed as numbers,
+      // compare them as numbers. Otherwise, fall back to a string comparison.
+      if (!isNaN(optionAsNumber) && !isNaN(answerAsNumber)) {
+        correct = optionAsNumber === answerAsNumber;
+      } else {
+        correct = option === currentQuestion.answer;
+      }
+    } else {
+      // For subjects other than math, always use string comparison.
+      correct = option === currentQuestion.answer;
+    }
 
     setIsCorrect(correct);
 
