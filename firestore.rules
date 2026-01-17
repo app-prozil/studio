@@ -166,9 +166,8 @@ service cloud.firestore {
       // GET: Allow any signed-in user to read a teacher's profile. This is
       // necessary for students to look up a teacher by their ProZil ID.
       allow get: if isSignedIn();
-      // LIST: Allow any signed-in user to perform queries (e.g., find a teacher
-      // by ID). The admin page needs to list all teachers.
-      allow list: if isSignedIn();
+      // LIST: Only an admin can list all teachers.
+      allow list: if isAdmin();
       allow create: if isOwner(teacherId) && hasValidTeacherDataOnCreate(teacherId);
       allow update: if (isExistingOwner(teacherId) && hasValidTeacherDataOnUpdate()) || isAdmin();
       allow delete: if isExistingOwner(teacherId) || isAdmin();

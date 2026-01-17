@@ -40,7 +40,6 @@ const menuItems = [
 ];
 
 const settingsMenuItem = { href: '/configuracoes', label: 'Configurações', icon: Settings };
-const ADMIN_EMAIL = 'admin@prozil.com';
 
 function UserNav() {
   const { user, isUserLoading } = useUser();
@@ -132,6 +131,7 @@ function UserNav() {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useUser();
+  const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
   return (
     <SidebarProvider>
@@ -158,7 +158,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
-            {user?.email === ADMIN_EMAIL && (
+            {user?.uid === ADMIN_UID && (
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild

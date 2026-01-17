@@ -19,8 +19,6 @@ import { Loader2, Trash2, Edit, ShieldAlert, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import seedData from '@/lib/seed-exercises.json';
 
-const ADMIN_EMAIL = 'admin@prozil.com';
-
 const userSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
   prozilId: z.string().min(1, 'O ProZil ID é obrigatório.'),
@@ -41,14 +39,13 @@ const NotAuthorizedMessage = () => (
 );
 
 function UserTable({ type }: { type: 'teacher' | 'student' }) {
-  const [shouldFetch, setShouldFetch] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
   
   const query = useMemoFirebase(
-    () => (shouldFetch ? collection(firestore, collectionName) : null),
-    [firestore, collectionName, shouldFetch]
+    () => collection(firestore, collectionName),
+    [firestore, collectionName]
   );
   
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
@@ -97,14 +94,6 @@ function UserTable({ type }: { type: 'teacher' | 'student' }) {
       })
       .finally(() => setIsSubmitting(false));
   };
-
-  if (!shouldFetch) {
-    return (
-      <div className="flex justify-center items-center h-48 border-2 border-dashed rounded-lg">
-        <Button onClick={() => setShouldFetch(true)}>Carregar {type === 'teacher' ? 'Professores' : 'Alunos'}</Button>
-      </div>
-    );
-  }
   
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Erro ao carregar usuários: {error.message}</p>;
@@ -182,7 +171,8 @@ export default function AdminPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const isAuthorized = user?.email === ADMIN_EMAIL;
+  const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+  const isAuthorized = user?.uid === ADMIN_UID;
   const [isSeeding, setIsSeeding] = useState(false);
 
   const handleSeedExercises = async () => {
