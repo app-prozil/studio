@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
@@ -113,64 +113,83 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   const taskId = searchParams.get('taskId');
   const studentId = searchParams.get('studentId'); 
-  const taskSource = searchParams.get('source') || 'student';
-  const isTestMode = taskId === 'test-drive' || searchParams.get('mode') === 'test';
-  const isTestDrive = taskId === 'test-drive';
-
-  const [loadedTask, setLoadedTask] = useState<Task | null>(null);
-
-  const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
-
-  const taskDocRef = useMemoFirebase(
-    () => (
-        !isTestDrive && user && studentId && taskId 
-        ? doc(firestore, collectionPath, studentId, 'tasks', taskId) 
-        : null
-    ),
-    [firestore, studentId, taskId, isTestDrive, collectionPath, user]
-  );
   
   useEffect(() => {
-    if (isAuthLoading) return;
+    const isTestDrive = taskId === 'test-drive';
+    const isTestMode = isTestDrive || searchParams.get('mode') === 'test';
+    const taskSource = searchParams.get('source') || 'student';
+    const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
+
+    if (isAuthLoading) {
+      setGameState('loading');
+      return;
+    }
+
+    if (isTestDrive) {
+      setGameState('loading');
+      const questions = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
+      const mockTask: Task = { ...testDriveTaskBase, questions, subject };
+      setLoadedTask(mockTask);
+      setQuestions(mockTask.questions.map(q => ({...q, status: 'unanswered', attempts: 0 })));
+      setGameState('playing');
+      return;
+    }
+
+    if (!user) {
+      if (!isAuthLoading) {
+        toast({ variant: "destructive", title: "Acesso Negado", description: "Você precisa estar logado."});
+        router.push('/login');
+      }
+      return;
+    }
+
+    if (!studentId || !taskId) {
+      setGameState('loading');
+      toast({ variant: "destructive", title: "Tarefa não encontrada", description: "O link da tarefa parece estar incompleto."});
+      setGameState('finished');
+      return;
+    }
 
     setGameState('loading');
+    const taskDocRef = doc(firestore, collectionPath, studentId, 'tasks', taskId);
     
-    if (isTestDrive) {
-        const questions = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
-        const mockTask: Task = { ...testDriveTaskBase, questions, subject };
-        setLoadedTask(mockTask);
-        setQuestions(mockTask.questions.map(q => ({...q, status: 'unanswered', attempts: 0 })));
+    getDoc(taskDocRef).then(docSnap => {
+      if (docSnap.exists()) {
+        const taskData = docSnap.data() as Task;
+        if (taskData.isCompleted && !isTestMode) {
+          toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
+          router.push('/tarefas');
+          return;
+        }
+        setLoadedTask(taskData);
+        const initialQuestions = taskData.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 }));
+        setQuestions(initialQuestions);
+        
+        const lastUnansweredIndex = initialQuestions.findIndex(q => q.status !== 'correct');
+        setCurrentQuestionIndex(lastUnansweredIndex >= 0 ? lastUnansweredIndex : 0);
+
         setGameState('playing');
-        return;
-    }
+      } else {
+        toast({ variant: "destructive", title: "Tarefa não encontrada"});
+        setGameState('finished');
+      }
+    }).catch(e => {
+      console.error("Error loading task:", e);
+      toast({ variant: "destructive", title: "Erro ao carregar tarefa" });
+      setGameState('finished');
+    });
 
-    if (taskDocRef) {
-        getDoc(taskDocRef).then(docSnap => {
-            if (docSnap.exists()) {
-                const taskData = docSnap.data() as Task;
-                if (taskData.isCompleted && !isTestMode && gameState !== 'finished') {
-                    toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
-                    router.push('/tarefas');
-                    return;
-                }
-                setLoadedTask(taskData);
-                setQuestions(taskData.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 })));
-                setGameState('playing');
-            } else {
-                setGameState('finished'); // Or some error state
-                toast({ variant: "destructive", title: "Tarefa não encontrada"});
-            }
-        });
-    }
-  }, [taskDocRef, isTestDrive, subject, router, toast, isTestMode, isAuthLoading, gameState]);
+  }, [isAuthLoading, user, taskId, studentId, subject, firestore, router, toast]);
 
+  const [loadedTask, setLoadedTask] = useState<Task | null>(null);
 
   useEffect(() => {
     setQuestionStartTime(Date.now());
   }, [currentQuestionIndex]);
   
   const completeTask = useCallback((finalQuestions: Question[]) => {
-      if (isTestMode || !taskDocRef || !firestore || !loadedTask?.teacherId || !loadedTask.id) return;
+    const isTestDrive = taskId === 'test-drive';
+    if (isTestDrive || !firestore || !user || !loadedTask?.teacherId || !loadedTask.id || !studentId) return;
         
       const totalTime = Math.round((Date.now() - taskStartTime) / 1000);
       const performanceData = {
@@ -179,8 +198,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         totalTime: totalTime,
         questions: finalQuestions,
       };
-
-      updateDoc(taskDocRef, performanceData).catch(e => {
+      
+      const studentTaskRef = doc(firestore, 'students', studentId, 'tasks', loadedTask.id);
+      updateDoc(studentTaskRef, performanceData).catch(e => {
         console.error("Erro ao finalizar tarefa (aluno): ", e);
       });
       
@@ -189,7 +209,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           console.error("Erro ao finalizar tarefa (professor): ", e);
           toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível sincronizar o resultado da tarefa com o professor.' });
       });
-  }, [isTestMode, taskDocRef, firestore, loadedTask, taskStartTime, toast]);
+  }, [firestore, user, loadedTask, taskStartTime, toast, studentId, taskId]);
 
   const handleNextQuestion = useCallback((updatedQuestions: Question[]) => {
     const isLastQuestion = currentQuestionIndex >= updatedQuestions.length - 1;
@@ -213,6 +233,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const handleAnswer = useCallback((option: string) => {
     if (gameState !== 'playing') return;
 
+    const isTestMode = taskId === 'test-drive' || searchParams.get('mode') === 'test';
+    const taskSource = searchParams.get('source') || 'student';
+    const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
     const timeTaken = Date.now() - questionStartTime;
     const currentQuestion = questions[currentQuestionIndex];
     if (!currentQuestion) return;
@@ -239,7 +262,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     });
     setQuestions(updatedQuestions);
 
-    if (taskDocRef && !isTestMode) {
+    if (!isTestMode && firestore && user && studentId && taskId) {
+        const taskDocRef = doc(firestore, collectionPath, studentId, 'tasks', taskId);
         updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
             console.error("Failed to update question performance", e)
         });
@@ -258,7 +282,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         setIsCorrect(null);
       }, 2500);
     }
-  }, [gameState, questionStartTime, questions, currentQuestionIndex, taskDocRef, isTestMode, handleNextQuestion]);
+  }, [gameState, questionStartTime, questions, currentQuestionIndex, handleNextQuestion, firestore, user, studentId, taskId, searchParams]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -296,8 +320,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     );
   }
 
+  const isTestDrive = taskId === 'test-drive';
   if (!isTestDrive && !isLoading && !loadedTask) {
-    return <div className="text-destructive text-center">Não foi possível carregar a atividade. Verifique se o link está correto ou tente novamente.</div>;
+    return <div className="text-destructive text-center p-8">Não foi possível carregar a atividade. Verifique se o link está correto ou tente novamente.</div>;
   }
   
   if (gameState === 'finished') {
@@ -359,7 +384,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const questionText = subject === 'portuguese' ? currentQuestion.text.replace('___', '_____') : currentQuestion.text;
 
   return (
-    <div className="relative">
+    <>
       {showConfetti && width > 0 && height > 0 && (
           <Confetti
             width={width}
@@ -370,7 +395,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           />
       )}
       
-      <Dialog open={showConfetti} onOpenChange={setShowConfetti}>
+      <Dialog open={showConfetti && isCorrect} onOpenChange={(open) => !open && setShowConfetti(false)}>
         <DialogContent className="max-w-md text-center bg-transparent border-none shadow-none" onPointerDownOutside={(e) => e.preventDefault()}>
             <DialogHeader>
                 <DialogTitle className="text-5xl font-bold font-headline mx-auto text-success">
@@ -416,12 +441,12 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           ))}
         </div>
         {gameState === 'showingAnswer' && isCorrect === false && (
-          <div className="flex items-center justify-center text-4xl font-bold">
+          <div className="flex items-center justify-center text-4xl font-bold text-destructive mt-6">
               <XCircle className="w-16 h-16 text-destructive mr-4"/>
               TENTE DE NOVO!
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
