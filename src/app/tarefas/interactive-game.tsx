@@ -98,7 +98,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [gameState, setGameState] = useState<'playing' | 'showingAnswer' | 'feedback' | 'finished'>('playing');
+  const [gameState, setGameState] = useState<'playing' | 'showingAnswer' | 'finished'>('playing');
   
   // Animation & reward state
   const [showMainConfetti, setShowMainConfetti] = useState(false);
@@ -153,8 +153,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     if (loadedTask && loadedTask.questions) {
         const initialQuestions = loadedTask.questions.map(q => ({
             ...q,
-            status: 'unanswered',
-            attempts: 0,
+            status: q.status || 'unanswered',
+            attempts: q.attempts || 0,
         }));
         setQuestions(initialQuestions);
         setGameState('playing');
@@ -203,7 +203,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
   }, [taskDocRef, taskStartTime, toast, isTestMode, firestore, loadedTask]);
 
-  const handleAnswer = useCallback(async (option: string) => {
+  const handleAnswer = useCallback((option: string) => {
     if (gameState !== 'playing') return;
 
     setGameState('showingAnswer');
@@ -213,7 +213,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const currentQuestion = questions[currentQuestionIndex];
     let correct;
     if (subject === 'math') {
-      // Use parseFloat for number comparison, but fallback to string comparison for non-numeric answers
       const optionAsNumber = parseFloat(option);
       const answerAsNumber = parseFloat(currentQuestion.answer);
 
@@ -228,56 +227,53 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setIsCorrect(correct);
 
     setQuestions(prevQuestions => {
-        const updatedQuestions = [...prevQuestions];
-        const questionToUpdate = { ...updatedQuestions[currentQuestionIndex] };
+        const updatedQuestions = prevQuestions.map((q, index) => {
+            if (index === currentQuestionIndex) {
+                const updatedQuestion = { ...q };
+                updatedQuestion.studentAnswer = option;
+                updatedQuestion.timeTaken = (updatedQuestion.timeTaken || 0) + timeTaken;
+                updatedQuestion.attempts = (updatedQuestion.attempts || 0) + 1;
+                
+                if (updatedQuestion.attempts === 1) {
+                    updatedQuestion.status = correct ? 'correct' : 'incorrect';
+                }
+                return updatedQuestion;
+            }
+            return q;
+        });
 
-        questionToUpdate.studentAnswer = option;
-        questionToUpdate.timeTaken = (questionToUpdate.timeTaken || 0) + timeTaken;
-        questionToUpdate.attempts = (questionToUpdate.attempts || 0) + 1;
-
-        if (questionToUpdate.attempts === 1) {
-            questionToUpdate.status = correct ? 'correct' : 'incorrect';
-        }
-        
-        updatedQuestions[currentQuestionIndex] = questionToUpdate;
-        
         if (taskDocRef && !isTestMode) {
              updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
                 console.error("Failed to update question performance", e)
             });
         }
         
+        if (correct) {
+            setShowMainConfetti(true);
+            setTimeout(() => {
+                const isLastQuestion = currentQuestionIndex >= updatedQuestions.length - 1;
+                if (isLastQuestion) {
+                    completeTask(updatedQuestions);
+                    setGameState('finished');
+                } else {
+                    setShowMainConfetti(false);
+                    setSelectedAnswer(null);
+                    setIsCorrect(null);
+                    setCurrentQuestionIndex(prev => prev + 1);
+                    setGameState('playing');
+                }
+            }, 1500);
+        } else {
+            setTimeout(() => {
+                setSelectedAnswer(null);
+                setIsCorrect(null);
+                setGameState('playing');
+            }, 2000);
+        }
+
         return updatedQuestions;
     });
-
-    if (correct) {
-        setShowMainConfetti(true);
-        setTimeout(() => {
-             setGameState('feedback');
-        }, 1500);
-    } else {
-        setTimeout(() => {
-            setSelectedAnswer(null);
-            setIsCorrect(null);
-            setGameState('playing');
-        }, 2000);
-    }
-  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, taskDocRef, isTestMode]);
-
-  const handleNextQuestion = useCallback(() => {
-    setShowMainConfetti(false);
-    setSelectedAnswer(null);
-    setIsCorrect(null);
-    
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex((prev) => prev + 1);
-      setGameState('playing');
-    } else {
-      // This is the end of the task, finalize and save.
-      completeTask(questions);
-      setGameState('finished');
-    }
-  }, [currentQuestionIndex, questions, completeTask]);
+  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, taskDocRef, isTestMode, completeTask]);
 
    useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -346,28 +342,15 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       </div>
     );
   }
-  
-  if (gameState === 'feedback') {
-    return (
-        <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-6">
-            {width > 0 && height > 0 && showMainConfetti && (
-              <Confetti width={width} height={height} recycle={false} numberOfPieces={400} gravity={0.1} />
-            )}
-            <CheckCircle className="w-24 h-24 text-success" />
-            <h2 className="text-5xl font-bold">MUITO BEM!</h2>
-            <Button onClick={handleNextQuestion} size="lg" className="text-2xl mt-4">
-                PRÓXIMA PERGUNTA <ArrowRight className="ml-2" />
-            </Button>
-        </div>
-    )
-  }
-
 
   const currentQuestion = questions[currentQuestionIndex];
   const questionText = subject === 'portuguese' ? currentQuestion.text.replace('___', '_____') : currentQuestion.text;
 
   return (
     <div className="relative">
+       {width > 0 && height > 0 && showMainConfetti && (
+          <Confetti width={width} height={height} recycle={false} numberOfPieces={400} gravity={0.1} />
+        )}
       <div className="space-y-8">
         <div className="relative p-8 border-4 border-dashed rounded-lg border-accent">
           <p className={`font-bold ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>
@@ -403,7 +386,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         {gameState === 'showingAnswer' && isCorrect !== null && (
           <div className={`flex items-center justify-center text-4xl font-bold`}>
               {isCorrect ? <CheckCircle className="w-16 h-16 text-success mr-4"/> : <XCircle className="w-16 h-16 text-destructive mr-4"/>}
-              {isCorrect ? 'CORRETO!' : 'TENTE DE NOVO!'}
+              {isCorrect ? 'MUITO BEM!' : 'TENTE DE NOVO!'}
           </div>
         )}
       </div>
