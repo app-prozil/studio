@@ -34,6 +34,25 @@ type Task = {
     totalTime?: number;
 }
 
+const testDriveMathQuestions: Question[] = [
+    { text: 'Quanto é 5 + 3?', options: ['7', '8', '9'], answer: '8' },
+    { text: 'Qual número vem depois de 9?', options: ['8', '10', '11'], answer: '10' },
+    { text: 'Conte os emojis: 👍👍👍👍👍', options: ['4', '5', '6'], answer: '5' }
+];
+
+const testDrivePortugueseQuestions: Question[] = [
+    { text: "Qual o sinônimo de 'bonito'?", options: ["feio", "belo", "grande"], answer: "belo" },
+    { text: "Complete com o verbo correto: Eu ___ pão.", options: ["como", "come", "comemos"], answer: "como" },
+    { text: "O plural de 'menino' é ___.", options: ["menina", "meninos", "meninas"], answer: "meninos" },
+];
+
+const testDriveTaskBase = {
+  id: 'test-drive',
+  studentName: 'Visitante',
+  isCompleted: false,
+};
+
+
 type InteractiveGameProps = {
   subject: 'math' | 'portuguese';
 };
@@ -78,23 +97,43 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   // Task parameters from URL
   const taskId = searchParams.get('taskId');
   const studentId = searchParams.get('studentId');
+  const isTestDrive = taskId === 'test-drive';
+
+  const [loadedTask, setLoadedTask] = useState<Task | null>(null);
+  const [isGloballyLoading, setIsGloballyLoading] = useState(true);
 
   const taskDocRef = useMemoFirebase(
-    () => (studentId && taskId ? doc(firestore, 'students', studentId, 'tasks', taskId) : null),
-    [firestore, studentId, taskId]
+    () => (studentId && taskId && !isTestDrive ? doc(firestore, 'students', studentId, 'tasks', taskId) : null),
+    [firestore, studentId, taskId, isTestDrive]
   );
-  const { data: taskData, isLoading: isTaskLoading } = useDoc<Task>(taskDocRef);
+  const { data: taskDataFromHook, isLoading: isTaskLoadingFromHook } = useDoc<Task>(taskDocRef);
 
   useEffect(() => {
-    if (taskData && taskData.questions) {
-      if (taskData.isCompleted) {
-        toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
-        router.push('/tarefas');
-        return;
-      }
-      setQuestions(taskData.questions);
+    if (isTestDrive) {
+        const questions = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
+        const mockTask: Task = { ...testDriveTaskBase, questions, subject };
+        setLoadedTask(mockTask);
+        setIsGloballyLoading(false);
+    } else if (taskDataFromHook) {
+        if (taskDataFromHook.isCompleted) {
+            toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
+            router.push('/tarefas');
+            return;
+        }
+        setLoadedTask(taskDataFromHook);
+        setIsGloballyLoading(false);
+    } else if (!isTaskLoadingFromHook && !taskDataFromHook && !isTestDrive) {
+        setIsGloballyLoading(false);
     }
-  }, [taskData, router, toast]);
+  }, [taskDataFromHook, isTaskLoadingFromHook, isTestDrive, subject, router, toast]);
+
+  useEffect(() => {
+    if (loadedTask && loadedTask.questions) {
+        setQuestions(loadedTask.questions);
+        setGameState('playing');
+    }
+  }, [loadedTask]);
+
 
   useEffect(() => {
     // When a new question is loaded, reset attempts and start the timer for it.
@@ -103,6 +142,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   }, [currentQuestionIndex]);
 
   const completeTask = useCallback(async (finalQuestions: Question[]) => {
+    if (isTestDrive) {
+        const correctCount = finalQuestions.filter(q => q.status === 'correct').length;
+        const score = Math.round((correctCount / finalQuestions.length) * 100);
+        setFinalScore(score);
+        return;
+    }
+    
     if (!taskDocRef) return;
     const totalTime = Math.round((Date.now() - taskStartTime) / 1000); // in seconds
     
@@ -120,7 +166,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       console.error("Erro ao finalizar tarefa: ", e);
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível marcar a tarefa como concluída.' });
     }
-  }, [taskDocRef, taskStartTime, toast]);
+  }, [taskDocRef, taskStartTime, toast, isTestDrive]);
 
   const handleAnswer = useCallback(async (option: string) => {
     if (gameState !== 'playing') return;
@@ -149,7 +195,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     );
     setQuestions(updatedQuestions);
 
-    if (taskDocRef) {
+    if (taskDocRef && !isTestDrive) {
         updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
             console.error("Failed to update question performance", e)
         });
@@ -168,7 +214,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             setCurrentAttempts(prev => prev + 1);
         }, 2000);
     }
-  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, currentAttempts, taskDocRef]);
+  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, currentAttempts, taskDocRef, isTestDrive]);
 
   const handleNextQuestion = useCallback(() => {
     setShowCorrectAnswerConfetti(false);
@@ -205,7 +251,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     };
   }, [gameState, handleAnswer, questions, currentQuestionIndex]);
 
-  if (isTaskLoading) {
+  if (isGloballyLoading) {
     return (
         <div className="space-y-8">
             <Skeleton className="h-32 w-full" />
@@ -218,12 +264,12 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     );
   }
 
-  if (!taskData || questions.length === 0) {
+  if (!loadedTask || questions.length === 0) {
     return <div className="text-destructive-foreground text-center">Não foi possível carregar a atividade. Verifique se o link está correto ou tente novamente.</div>;
   }
   
   if (gameState === 'finished') {
-    const studentName = taskData?.studentName || 'aluno(a)';
+    const studentName = loadedTask?.studentName || 'aluno(a)';
     return (
       <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-4">
         {!isGiftOpened ? (

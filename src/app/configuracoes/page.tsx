@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Moon, Sun, Monitor } from 'lucide-react';
+import { Moon, Sun, Monitor, TestTube } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -78,6 +79,22 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Testar Funcionalidades</CardTitle>
+          <CardDescription>Use esta tarefa de demonstração para testar as novas animações e efeitos do jogo interativo.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <Link href="/matematica?taskId=test-drive&studentId=test-user">
+              <TestTube className="mr-2" />
+              Testar Animações da Tarefa
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
