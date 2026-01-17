@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User as UserIcon, LogIn, ClipboardCheck, Shield } from 'lucide-react';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 import {
@@ -63,34 +62,6 @@ function UserNav() {
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
   const isLoading = isUserLoading || isTeacherLoading || isStudentLoading;
-
-  useEffect(() => {
-    // This is the most secure way to identify the admin.
-    const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
-    
-    // Don't run this logic if we're still loading things or if there's no user.
-    if (isLoading || !user) {
-      return;
-    }
-
-    // For the admin user, skip the profile check. Their identity and permissions 
-    // are based on their UID in the security rules, not on a profile document.
-    if (user.uid === ADMIN_UID) {
-      return;
-    }
-    
-    // If we have a regular authenticated user but no corresponding profile document...
-    if (!teacherProfile && !studentProfile) {
-      // This is an "orphan" auth account, likely because their profile was deleted/archived.
-      // We should log them out for security and to prevent app errors.
-      toast({
-        variant: 'destructive',
-        title: 'Sessão Encerrada',
-        description: 'Seu perfil de usuário não foi encontrado e sua sessão foi finalizada.',
-      });
-      auth.signOut();
-    }
-  }, [isLoading, user, teacherProfile, studentProfile, auth, toast]);
 
   if (isLoading) {
     return (
