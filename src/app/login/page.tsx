@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirebase } from '@/firebase/provider';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, User } from 'firebase/auth';
 import { collection, doc, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -76,10 +76,14 @@ export default function LoginPage() {
 
   async function handleSignUp(values: z.infer<typeof signUpSchema>) {
     setIsLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
+    let createdUser: User | null = null;
 
+    try {
+      // Step 1: Create the auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      createdUser = userCredential.user;
+
+      // Step 2: Prepare the profile data for Firestore
       const firstName = values.name.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '');
       const randomDigits = Math.floor(100000 + Math.random() * 900000);
       const prozilId = `${firstName}-${randomDigits}`;
@@ -87,77 +91,70 @@ export default function LoginPage() {
       let teacherUid: string | undefined;
       if (values.role === 'student') {
         if (!values.teacherProzilId) {
-            toast({ variant: 'destructive', title: 'Erro', description: 'O ID ProZil do professor é obrigatório.' });
-            setIsLoading(false);
-            return;
+          throw new Error("O ID ProZil do Professor é obrigatório para alunos.");
         }
         const teachersRef = collection(firestore, 'teachers');
         const q = query(teachersRef, where("prozilId", "==", values.teacherProzilId));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
-            signUpForm.setError("teacherProzilId", { message: "Professor não encontrado com este ID ProZil." });
-            setIsLoading(false);
-            return;
+          signUpForm.setError("teacherProzilId", { message: "Professor não encontrado com este ID ProZil." });
+          throw new Error("Professor não encontrado.");
         }
         teacherUid = querySnapshot.docs[0].id;
       }
       
       const roleCollection = values.role === 'teacher' ? 'teachers' : 'students';
-      const userDocRef = doc(firestore, roleCollection, user.uid);
+      const userDocRef = doc(firestore, roleCollection, createdUser.uid);
       
-      let userData: { id: string; prozilId: string; name: string; email: string; teacherId?: string };
-      
-      if (values.role === 'teacher') {
-        userData = {
-          id: user.uid,
-          prozilId: prozilId,
-          name: values.name,
-          email: values.email,
-        };
-      } else {
-        userData = {
-          id: user.uid,
-          prozilId: prozilId,
-          name: values.name,
-          email: values.email,
-          teacherId: teacherUid,
-        };
-      }
+      const userData = {
+        id: createdUser.uid,
+        prozilId: prozilId,
+        name: values.name,
+        email: values.email,
+        ...(values.role === 'student' && { teacherId: teacherUid }),
+      };
 
-      setDoc(userDocRef, userData)
-        .catch(async (serverError) => {
-          console.error("Failed to create user profile:", serverError);
-          const permissionError = new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'create',
-            requestResourceData: userData,
-          });
-          errorEmitter.emit('permission-error', permissionError);
-          await auth.signOut();
-          toast({
-            variant: "destructive",
-            title: "Erro ao criar perfil",
-            description: "Não foi possível salvar seu perfil. Tente se cadastrar novamente.",
-          });
-        });
+      // Step 3: Write the profile data to Firestore and wait for it to complete.
+      await setDoc(userDocRef, userData);
 
+      // Step 4: Success! Redirect to the main page.
       router.push('/');
       
     } catch (error: any) {
-      let description = 'Ocorreu um erro inesperado.';
-      if (error.code === 'auth/email-already-in-use') {
-        description = 'Este email já está em uso.';
+      // If the user was created but the process failed afterwards (e.g., Firestore write failed),
+      // we must delete the auth user to prevent an orphaned account.
+      if (createdUser) {
+        try {
+          await createdUser.delete();
+        } catch (deleteError) {
+          console.error("CRITICAL: Failed to clean up orphaned auth user. Please delete manually in Firebase Console:", createdUser.email, deleteError);
+        }
       }
-      
+
+      // Display a user-friendly error message
+      let title = 'Erro ao criar conta';
+      let description = 'Ocorreu um erro inesperado. Por favor, tente novamente.';
+
+      if (error.message === "Professor não encontrado.") {
+        // This is a validation error we threw ourselves.
+        description = "Professor não encontrado com o ID ProZil fornecido.";
+      } else if (error.code === 'auth/email-already-in-use') {
+        description = 'Este email já está em uso.';
+      } else if (error.name === 'FirebaseError') { // Firestore error
+        title = 'Erro ao salvar perfil';
+        description = 'Não foi possível salvar seu perfil. Verifique as permissões de escrita no Firestore.';
+        // The permission error will be thrown to the overlay by the global listener
+      }
+
       toast({
         variant: 'destructive',
-        title: 'Erro ao criar conta',
+        title: title,
         description: description,
       });
 
-      if (error.code !== 'auth/email-already-in-use') {
-        console.error(error);
+      if (error.message !== "Professor não encontrado.") {
+          console.error(error);
       }
     } finally {
       setIsLoading(false);
