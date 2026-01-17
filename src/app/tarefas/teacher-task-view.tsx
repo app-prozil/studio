@@ -431,6 +431,11 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const tasksQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'tasks'), [firestore, teacherId]);
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 
+  const sortedTasks = useMemo(() => {
+    if (!tasks) return [];
+    return [...tasks].sort((a, b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
+  }, [tasks]);
+
   const filteredBankExercises = useMemo(() => {
     if (!exercises) return [];
     if (bankSubjectFilter === 'all') return exercises;
@@ -705,44 +710,45 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                 <CardDescription>Visualize e gerencie as tarefas que você atribuiu.</CardDescription>
             </CardHeader>
             <CardContent>
-                {isLoadingTasks && <p>Carregando tarefas...</p>}
-                <ul className="space-y-2 h-[500px] overflow-y-auto">
-                    {tasks?.sort((a,b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()).map(task => (
-                        <li key={task.id} className="p-3 border rounded-lg flex justify-between items-start">
-                            <div className="flex-1 space-y-1">
-                                <p className="font-semibold">{task.title}</p>
-                                <p className="text-sm text-muted-foreground">Para: {task.studentName || task.studentId}</p>
-                                <div><Badge variant={task.isCompleted ? 'secondary' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge></div>
-                            </div>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">...</Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                    <DropdownMenuItem asChild className="cursor-pointer">
-                                        <Link href={`/${task.subject}?taskId=${task.id}&studentId=${task.studentId}`}>
-                                            <Eye className="mr-2 h-4 w-4"/> Visualizar Jogo
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem asChild className="cursor-pointer">
-                                        <Link href={`/${task.subject}?taskId=${task.id}&studentId=${teacherId}&source=teacher&mode=test`}>
-                                            <TestTube className="mr-2 h-4 w-4"/> Testar Tarefa
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setEditingTask(task as Task)} className="cursor-pointer">
-                                        <Edit className="mr-2 h-4 w-4"/> Editar
-                                    </DropdownMenuItem>
-                                     <DropdownMenuItem onClick={() => handleReuse(task as Task)} className="cursor-pointer">
-                                        <BookCopy className="mr-2 h-4 w-4"/> Reutilizar
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setDeletingTask(task as Task)} className="cursor-pointer text-destructive focus:text-destructive">
-                                        <Trash2 className="mr-2 h-4 w-4"/> Excluir
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </li>
-                    ))}
-                </ul>
+                {isLoadingTasks ? <p>Carregando tarefas...</p> : (
+                  <ul className="space-y-2 h-[500px] overflow-y-auto">
+                      {sortedTasks.map(task => (
+                          <li key={task.id} className="p-3 border rounded-lg flex justify-between items-start">
+                              <div className="flex-1 space-y-1">
+                                  <p className="font-semibold">{task.title}</p>
+                                  <p className="text-sm text-muted-foreground">Para: {task.studentName || task.studentId}</p>
+                                  <div><Badge variant={task.isCompleted ? 'secondary' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge></div>
+                              </div>
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">...</Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent>
+                                      <DropdownMenuItem asChild className="cursor-pointer">
+                                          <Link href={`/${task.subject}?taskId=${task.id}&studentId=${task.studentId}`}>
+                                              <Eye className="mr-2 h-4 w-4"/> Visualizar Jogo
+                                          </Link>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem asChild className="cursor-pointer">
+                                          <Link href={`/${task.subject}?taskId=${task.id}&studentId=${teacherId}&source=teacher&mode=test`}>
+                                              <TestTube className="mr-2 h-4 w-4"/> Testar Tarefa
+                                          </Link>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setEditingTask(task as Task)} className="cursor-pointer">
+                                          <Edit className="mr-2 h-4 w-4"/> Editar
+                                      </DropdownMenuItem>
+                                       <DropdownMenuItem onClick={() => handleReuse(task as Task)} className="cursor-pointer">
+                                          <BookCopy className="mr-2 h-4 w-4"/> Reutilizar
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setDeletingTask(task as Task)} className="cursor-pointer text-destructive focus:text-destructive">
+                                          <Trash2 className="mr-2 h-4 w-4"/> Excluir
+                                      </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+                          </li>
+                      ))}
+                  </ul>
+                )}
             </CardContent>
         </Card>
       </div>
@@ -1004,7 +1010,7 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
                 </AccordionTrigger>
                 <AccordionContent>
                   <ul className="space-y-3 pt-2 pl-4">
-                    {studentTasks.sort((a,b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()).map(task => (
+                    {[...studentTasks].sort((a,b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()).map(task => (
                        <li key={task.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg bg-background/50 gap-4">
                            <div className="grid gap-1.5 flex-1">
                                <p className={`font-semibold ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>

@@ -11,6 +11,7 @@ import { ArrowRight, BookOpen, FileText, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { useMemo } from 'react';
 
 type PerformanceQuestion = {
   text: string;
@@ -48,6 +49,11 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
     [firestore, studentId]
   );
   const { data: tasks, isLoading, error } = useCollection<Task>(tasksQuery);
+  
+  const sortedTasks = useMemo(() => {
+    if (!tasks) return [];
+    return [...tasks].sort((a, b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
+  }, [tasks]);
 
   const handleTaskCompletion = async (task: Task, isCompleted: boolean) => {
     if (!studentId || !task.teacherId || !task.id) return;
@@ -87,9 +93,9 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
         <CardContent>
             {isLoading && <p>Carregando suas tarefas...</p>}
             {error && <p className="text-destructive">Ocorreu um erro ao buscar suas tarefas.</p>}
-            {tasks && tasks.length > 0 ? (
+            {tasks && sortedTasks.length > 0 ? (
                  <ul className="space-y-4">
-                    {tasks.sort((a,b) => a.isCompleted - b.isCompleted).map(task => (
+                    {sortedTasks.map(task => (
                         <li key={task.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-card gap-4">
                            <div className="grid gap-1.5 flex-1">
                                <p className={`font-bold text-lg ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
