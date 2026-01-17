@@ -40,7 +40,7 @@ const NotAuthorizedMessage = () => (
     </div>
 );
 
-function UserTableContent({ type }: { type: 'teacher' | 'student' }) {
+function UserTable({ type }: { type: 'teacher' | 'student' }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
@@ -169,15 +169,6 @@ function UserTableContent({ type }: { type: 'teacher' | 'student' }) {
   );
 }
 
-
-function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: boolean }) {
-    if (!canQuery) {
-        return <NotAuthorizedMessage />;
-    }
-    return <UserTableContent type={type} />;
-}
-
-
 export default function AdminPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -280,7 +271,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
             </CardHeader>
             <CardContent>
-               <UserTable type="teacher" canQuery={isAuthorized} />
+               {isAuthorized ? <UserTable type="teacher" /> : <NotAuthorizedMessage />}
             </CardContent>
           </Card>
         </TabsContent>
@@ -291,7 +282,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
             </CardHeader>
             <CardContent>
-              <UserTable type="student" canQuery={isAuthorized} />
+              {isAuthorized ? <UserTable type="student" /> : <NotAuthorizedMessage />}
             </CardContent>
           </Card>
         </TabsContent>
