@@ -195,11 +195,12 @@ service cloud.firestore {
                  || isAdmin()
                  || (request.auth.uid == resource.data.teacherId);
                  
-      // LIST: Any signed-in user can attempt a query. The security is
-      // enforced by the 'get' rule, which Firestore checks for every potential
-      // document in the query result. This allows a teacher's query for their
-      // own students (`where('teacherId', '==', uid)`) to succeed.
-      allow list: if isSignedIn();
+      // A user can query the students collection if:
+      // 1. They are an admin (can list all students).
+      // 2. They are a teacher (can query for their own students). We identify a teacher
+      //    by checking for their document in the /teachers collection.
+      // The `get` rule above will then secure the results of the query.
+      allow list: if isAdmin() || get(/databases/$(database)/documents/teachers/$(request.auth.uid)) != null;
 
       allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
       allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
