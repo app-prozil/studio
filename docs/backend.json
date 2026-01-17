@@ -22,6 +22,11 @@
           "type": "string",
           "description": "The teacher's email address.",
           "format": "email"
+        },
+        "deletedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the user was soft-deleted. If present, the user is considered archived."
         }
       },
       "required": [
@@ -57,6 +62,11 @@
         "teacherId": {
           "type": "string",
           "description": "The Auth UID of the teacher. (Relationship: Teacher 1:N Student)"
+        },
+        "deletedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the user was soft-deleted. If present, the user is considered archived."
         }
       },
       "required": [

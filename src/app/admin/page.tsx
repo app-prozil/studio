@@ -1,8 +1,8 @@
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
-import { useState, useEffect } from 'react';
+import { collection, doc, updateDoc, writeBatch, deleteField } from 'firebase/firestore';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,9 +15,12 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Trash2, Edit, ShieldAlert, PlusCircle } from 'lucide-react';
+import { Loader2, Edit, ShieldAlert, PlusCircle, Archive, ArchiveRestore } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import seedData from '@/lib/seed-exercises.json';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+
 
 const userSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
@@ -30,24 +33,30 @@ type UserProfile = {
   name: string;
   email: string;
   prozilId: string;
+  deletedAt?: string;
 };
 
-function UserTable({ type }: { type: 'teacher' | 'student'}) {
+function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showArchived: boolean}) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
   const isAuthorized = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   
-  const query = useMemoFirebase(
+  const usersQuery = useMemoFirebase(
     () => (firestore && isAuthorized) ? collection(firestore, collectionName) : null,
     [firestore, collectionName, isAuthorized]
   );
   
-  const { data: users, isLoading, error } = useCollection<UserProfile>(query);
+  const { data: allUsers, isLoading, error } = useCollection<UserProfile>(usersQuery);
+
+  const users = useMemo(() => {
+    if (!allUsers) return null;
+    return allUsers.filter(user => showArchived ? !!user.deletedAt : !user.deletedAt);
+  }, [allUsers, showArchived]);
 
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [deletingUser, setDeletingUser] = useState<UserProfile | null>(null);
+  const [archivingUser, setArchivingUser] = useState<UserProfile | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof userSchema>>({
@@ -75,22 +84,35 @@ function UserTable({ type }: { type: 'teacher' | 'student'}) {
       .finally(() => setIsSubmitting(false));
   };
 
-  const handleDelete = () => {
-    if (!deletingUser) return;
+  const handleArchive = () => {
+    if (!archivingUser) return;
     setIsSubmitting(true);
-    const userRef = doc(firestore, collectionName, deletingUser.id);
-    deleteDoc(userRef)
+    const userRef = doc(firestore, collectionName, archivingUser.id);
+    updateDoc(userRef, { deletedAt: new Date().toISOString() })
       .then(() => {
-        toast({ title: 'Perfil removido!', description: 'Lembre-se de excluir a conta no Firebase Console > Authentication.' });
-        setDeletingUser(null);
+        toast({ title: 'Usuário arquivado com sucesso!' });
+        setArchivingUser(null);
       })
       .catch((e) => {
         console.error(e);
-        toast({ variant: 'destructive', title: 'Erro ao remover perfil', description: 'Não foi possível remover o perfil do usuário.' });
+        toast({ variant: 'destructive', title: 'Erro ao arquivar', description: 'Não foi possível arquivar o usuário.' });
       })
       .finally(() => setIsSubmitting(false));
   };
   
+  const handleRestore = (userToRestore: UserProfile) => {
+    // We don't need a separate loading state, isSubmitting can be used.
+    const userRef = doc(firestore, collectionName, userToRestore.id);
+    updateDoc(userRef, { deletedAt: deleteField() })
+      .then(() => {
+        toast({ title: 'Usuário restaurado com sucesso!' });
+      })
+      .catch((e) => {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Erro ao restaurar', description: 'Não foi possível restaurar o usuário.' });
+      });
+  };
+
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Ocorreu um erro ao carregar os usuários. Verifique as permissões do Firestore.</p>;
   if (!users) return <p>Nenhum usuário encontrado.</p>
@@ -114,8 +136,16 @@ function UserTable({ type }: { type: 'teacher' | 'student'}) {
                 <TableCell>{user.email}</TableCell>
                 <TableCell><code>{user.prozilId}</code></TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}><Edit className="w-4 h-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={() => setDeletingUser(user)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                   {showArchived ? (
+                    <Button variant="outline" size="sm" onClick={() => handleRestore(user)}>
+                        <ArchiveRestore className="mr-2 h-4 w-4"/> Restaurar
+                    </Button>
+                  ) : (
+                    <>
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}><Edit className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setArchivingUser(user)} className="text-destructive hover:text-destructive"><Archive className="w-4 h-4" /></Button>
+                    </>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -143,31 +173,18 @@ function UserTable({ type }: { type: 'teacher' | 'student'}) {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingUser} onOpenChange={(open) => !open && setDeletingUser(null)}>
+      <AlertDialog open={!!archivingUser} onOpenChange={(open) => !open && setArchivingUser(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Ação em Duas Etapas: Remover Usuário</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-               <div className="space-y-4 pt-2">
-                <p>
-                  <strong className="text-foreground">Importante:</strong> Para excluir completamente um usuário e liberar o email para um novo cadastro, são necessárias duas etapas.
-                </p>
-                <p>
-                  <strong>Etapa 1 (Esta Ação):</strong> Remove o <strong className="text-foreground">perfil do banco de dados</strong>. O usuário não aparecerá mais nas listas do aplicativo e será desconectado.
-                </p>
-                <p>
-                  <strong>Etapa 2 (Manual):</strong> A <strong className="text-foreground">conta de login</strong> continuará existindo. Para concluir a exclusão, você DEVE ir ao <strong className="text-foreground">Firebase Console &gt; Authentication</strong> e excluir o usuário de lá.
-                </p>
-                <p className="text-xs text-muted-foreground pt-2 border-t mt-4">
-                  Se a Etapa 2 não for feita, o e-mail não poderá ser usado para um novo cadastro.
-                </p>
-              </div>
+            <AlertDialogTitle>Arquivar Usuário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá arquivar o perfil do usuário, removendo-o das listas ativas. O usuário não poderá mais acessar o aplicativo até que seja restaurado. A conta de autenticação permanecerá ativa.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={isSubmitting} className="bg-destructive hover:bg-destructive/90">
-              {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null} Entendi, Remover Perfil
+            <AlertDialogAction onClick={handleArchive} disabled={isSubmitting} className="bg-destructive hover:bg-destructive/90">
+              {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null} Sim, Arquivar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -183,6 +200,7 @@ export default function AdminPage() {
   const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   const isAuthorized = user?.uid === ADMIN_UID;
   const [isSeeding, setIsSeeding] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   const handleSeedExercises = async () => {
     if (!user) {
@@ -276,10 +294,16 @@ export default function AdminPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Gerenciar Professores</CardTitle>
-                  <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
+                  <div className="flex items-center justify-between pt-1">
+                    <CardDescription>Visualize, edite ou arquive perfis de professores.</CardDescription>
+                     <div className="flex items-center space-x-2">
+                        <Switch id="show-archived-teachers" checked={showArchived} onCheckedChange={setShowArchived} />
+                        <Label htmlFor="show-archived-teachers">Mostrar Arquivados</Label>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <UserTable type="teacher" />
+                  <UserTable type="teacher" showArchived={showArchived} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -287,10 +311,16 @@ export default function AdminPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Gerenciar Alunos</CardTitle>
-                  <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
+                   <div className="flex items-center justify-between pt-1">
+                    <CardDescription>Visualize, edite ou arquive perfis de alunos.</CardDescription>
+                    <div className="flex items-center space-x-2">
+                        <Switch id="show-archived-students" checked={showArchived} onCheckedChange={setShowArchived} />
+                        <Label htmlFor="show-archived-students">Mostrar Arquivados</Label>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <UserTable type="student" />
+                  <UserTable type="student" showArchived={showArchived}/>
                 </CardContent>
               </Card>
             </TabsContent>
