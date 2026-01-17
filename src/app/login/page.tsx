@@ -152,8 +152,9 @@ export default function LoginPage() {
         title: title,
         description: description,
       });
-
-      if (error.message !== "Professor não encontrado.") {
+      
+      // Don't log expected validation errors to the console
+      if (error.message !== "Professor não encontrado." && error.code !== 'auth/email-already-in-use') {
           console.error(error);
       }
     } finally {
