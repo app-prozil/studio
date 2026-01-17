@@ -157,8 +157,8 @@ service cloud.firestore {
       // A teacher can read the profiles of their assigned students.
       allow get: if isOwner(studentId) || (isTeacher() && resource.data.teacherId == request.auth.uid);
       
-      // Teachers can query the students collection (client query must filter by teacherId).
-      allow list: if isTeacher();
+      // Teachers can query the students collection (client query must filter by teacherId). Admins can also list.
+      allow list: if isTeacher() || isAdmin();
       
       // A user can only create, update, or delete their own student profile.
       allow create: if isOwner(studentId) && isValidStudentProfile(request.resource.data, studentId);
