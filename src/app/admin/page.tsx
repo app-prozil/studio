@@ -86,6 +86,17 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showAr
 
   const handleArchive = () => {
     if (!archivingUser) return;
+    
+    if (archivingUser.id === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1') {
+      toast({
+        variant: 'destructive',
+        title: 'Ação não permitida',
+        description: 'O administrador não pode arquivar a si mesmo.',
+      });
+      setArchivingUser(null);
+      return;
+    }
+
     setIsSubmitting(true);
     const userRef = doc(firestore, collectionName, archivingUser.id);
     updateDoc(userRef, { deletedAt: new Date().toISOString() })
