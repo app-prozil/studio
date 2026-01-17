@@ -137,7 +137,14 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
 
-  const specialChars = ['★', '☆', '✔', '✖', '●', '■', '▲', '♦', '♥', '♠', '→', '←', '↑', '↓', '👍', '👎', '🍎', '🍌', '🚗', '✈️', '🏠', '🌳', '☀️', '🌙', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '😀', '🤔', '🎉'];
+  const specialCharsCategories = {
+    'Símbolos': ['★', '☆', '✔', '✖', '●', '■', '▲', '♦', '♥', '♠', '→', '←', '↑', '↓', '↔', '↩', '↪'],
+    'Pessoas e Emojis': ['😀', '😁', '😂', '😊', '😍', '🤔', '👍', '👎', '👏', '🙏', '💪', '👨‍🏫', '👩‍🏫', '👨‍🎓', '👩‍🎓'],
+    'Animais e Natureza': ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🦉', '🐞', '🦋', '🌻', '🌹', '🌳', '🌲', '🌵', '☀️', '🌙', '⭐', '☁️', '💧', '🔥'],
+    'Comida e Bebida': ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🥝', '🍅', '🍔', '🍕', '🍟', '🍿', '🍰', '🍦', '🍩', '🍪', '🍫', '🍭'],
+    'Objetos': ['🚗', '✈️', '🏠', '⏰', '🔔', '🎁', '🎈', '🔑', '💡', '💎', '📚', '✏️', '✂️', '☎️', '💻', '📷'],
+    'Números': ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'],
+  };
 
   const exercisesQuery = useMemoFirebase(() => collection(firestore, 'teachers', teacherId, 'exercises'), [firestore, teacherId]);
   const { data: exercises, isLoading } = useCollection<Exercise>(exercisesQuery);
@@ -260,23 +267,30 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 <FormItem><FormLabel>Pergunta</FormLabel><FormControl><Textarea {...field} placeholder="Ex: Quanto é 2 + 2?" /></FormControl><FormMessage /></FormItem>
               )}/>
 
-              <div>
-                <Label className="text-xs text-muted-foreground">Inserir símbolo</Label>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {specialChars.map(char => (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      key={char}
-                      className="h-8 w-8 text-lg"
-                      onClick={() => {
-                        const currentText = form.getValues('text') || '';
-                        form.setValue('text', currentText + char, { shouldValidate: true });
-                      }}
-                    >
-                      {char}
-                    </Button>
+              <div className="space-y-3 rounded-lg border p-4">
+                <Label className="font-medium">Inserir Símbolo</Label>
+                <div className="max-h-40 overflow-y-auto space-y-3 pr-2">
+                  {Object.entries(specialCharsCategories).map(([category, chars]) => (
+                    <div key={category}>
+                      <Label className="text-xs text-muted-foreground">{category}</Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {chars.map(char => (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            key={char}
+                            className="h-9 w-9 text-lg"
+                            onClick={() => {
+                              const currentText = form.getValues('text') || '';
+                              form.setValue('text', currentText + char, { shouldValidate: true });
+                            }}
+                          >
+                            {char}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
