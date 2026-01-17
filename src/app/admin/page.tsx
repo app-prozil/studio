@@ -2,7 +2,7 @@
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,14 +38,18 @@ const NotAuthorizedMessage = () => (
     </div>
 );
 
-function UserTable({ type }: { type: 'teacher' | 'student' }) {
+function UserTable({ type, isAuthorized }: { type: 'teacher' | 'student'; isAuthorized: boolean }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
   
   const query = useMemoFirebase(
-    () => collection(firestore, collectionName),
-    [firestore, collectionName]
+    () => {
+      // Only construct the query if the user is authorized.
+      if (!isAuthorized) return null;
+      return collection(firestore, collectionName);
+    },
+    [firestore, collectionName, isAuthorized]
   );
   
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
@@ -94,8 +98,12 @@ function UserTable({ type }: { type: 'teacher' | 'student' }) {
       })
       .finally(() => setIsSubmitting(false));
   };
+
+  if (!isAuthorized) {
+    return <NotAuthorizedMessage />;
+  }
   
-  if (isLoading) return <Skeleton className="h-64 w-full" />;
+  if (isLoading && !users) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Erro ao carregar usuários: {error.message}</p>;
 
   return (
@@ -174,6 +182,16 @@ export default function AdminPage() {
   const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   const isAuthorized = user?.uid === ADMIN_UID;
   const [isSeeding, setIsSeeding] = useState(false);
+
+  useEffect(() => {
+    console.log('[Depuração AdminPage]', {
+      isUserLoading,
+      isAuthorized,
+      userExists: !!user,
+      uid: user?.uid,
+    });
+  }, [isUserLoading, isAuthorized, user]);
+
 
   const handleSeedExercises = async () => {
     if (!user) {
@@ -270,7 +288,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
             </CardHeader>
             <CardContent>
-               {isAuthorized ? <UserTable type="teacher" /> : <NotAuthorizedMessage />}
+               <UserTable type="teacher" isAuthorized={isAuthorized} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -281,7 +299,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
             </CardHeader>
             <CardContent>
-              {isAuthorized ? <UserTable type="student" /> : <NotAuthorizedMessage />}
+              <UserTable type="student" isAuthorized={isAuthorized} />
             </CardContent>
           </Card>
         </TabsContent>
