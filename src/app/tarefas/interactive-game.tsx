@@ -125,80 +125,77 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     () => (studentId && taskId && !isTestDrive ? doc(firestore, collectionPath, studentId, 'tasks', taskId) : null),
     [firestore, studentId, taskId, isTestDrive, collectionPath]
   );
+  
   const { data: taskDataFromHook, isLoading: isTaskLoadingFromHook } = useDoc<Task>(taskDocRef);
 
+  // This effect loads the task from DB or creates a mock one for test-drive.
+  // It only runs once or if the source data from the hook changes.
   useEffect(() => {
-    if (isTestDrive) {
-        const questions = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
-        const mockTask: Task = { ...testDriveTaskBase, questions, subject };
-        setLoadedTask(mockTask);
-        setIsGloballyLoading(false);
-    } else if (taskDataFromHook && !loadedTask) {
-        if (taskDataFromHook.isCompleted && !isTestMode && gameState !== 'finished') {
-            toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
-            router.push('/tarefas');
-            return;
-        }
-        setLoadedTask(taskDataFromHook);
-        setIsGloballyLoading(false);
-    } else if (!isTaskLoadingFromHook && !taskDataFromHook && !isTestDrive) {
-        setIsGloballyLoading(false);
+    if (isGloballyLoading) {
+      if (isTestDrive) {
+          const questions = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
+          const mockTask: Task = { ...testDriveTaskBase, questions, subject };
+          setLoadedTask(mockTask);
+          setQuestions(mockTask.questions.map(q => ({...q, status: 'unanswered', attempts: 0 })));
+          setIsGloballyLoading(false);
+      } else if (taskDataFromHook) {
+          if (taskDataFromHook.isCompleted && !isTestMode && gameState !== 'finished') {
+              toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
+              router.push('/tarefas');
+              return;
+          }
+          setLoadedTask(taskDataFromHook);
+          setQuestions(taskDataFromHook.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 })));
+          setIsGloballyLoading(false);
+      } else if (!isTaskLoadingFromHook && !taskDataFromHook) {
+          setIsGloballyLoading(false);
+      }
     }
-  }, [taskDataFromHook, isTaskLoadingFromHook, isTestDrive, subject, router, toast, isTestMode, gameState, loadedTask]);
-
-  useEffect(() => {
-    if (loadedTask && loadedTask.questions) {
-        const initialQuestions = loadedTask.questions.map(q => ({
-            ...q,
-            status: q.status || 'unanswered',
-            attempts: q.attempts || 0,
-        }));
-        setQuestions(initialQuestions);
-        setGameState('playing');
-    }
-  }, [loadedTask]);
+  }, [taskDataFromHook, isTaskLoadingFromHook, isTestDrive, subject, router, toast, isTestMode, gameState, isGloballyLoading]);
 
 
   useEffect(() => {
     // When a new question is loaded, reset the timer for it.
     setQuestionStartTime(Date.now());
   }, [currentQuestionIndex]);
+  
+  const handleNextQuestion = useCallback((updatedQuestions: Question[]) => {
+    const isLastQuestion = currentQuestionIndex >= updatedQuestions.length - 1;
 
-  const completeTask = useCallback(async (finalQuestions: Question[]) => {
-    const correctCount = finalQuestions.filter(q => q.status === 'correct').length;
-    const score = Math.round((correctCount / finalQuestions.length) * 100);
-    setFinalScore(score);
+    if (isLastQuestion) {
+        setGameState('finished');
+        
+        // Final save
+        const correctCount = updatedQuestions.filter(q => q.status === 'correct').length;
+        const score = Math.round((correctCount / updatedQuestions.length) * 100);
+        setFinalScore(score);
 
-    if (isTestMode || !taskDocRef || !firestore || !loadedTask?.teacherId || !loadedTask.id) {
-        return;
+        if (isTestMode || !taskDocRef || !firestore || !loadedTask?.teacherId || !loadedTask.id) return;
+        
+        const totalTime = Math.round((Date.now() - taskStartTime) / 1000);
+        const performanceData = {
+          isCompleted: true,
+          completedAt: new Date().toISOString(),
+          totalTime: totalTime,
+          questions: updatedQuestions,
+        };
+
+        const batch = writeBatch(firestore);
+        batch.update(taskDocRef, performanceData);
+        const teacherTaskRef = doc(firestore, 'teachers', loadedTask.teacherId, 'tasks', loadedTask.id);
+        batch.update(teacherTaskRef, performanceData);
+        batch.commit().catch(e => {
+            console.error("Erro ao finalizar tarefa: ", e);
+            toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível salvar o resultado da tarefa.' });
+        });
+
+    } else {
+        setCurrentQuestionIndex(prev => prev + 1);
+        setSelectedAnswer(null);
+        setIsCorrect(null);
+        setGameState('playing');
     }
-    
-    const totalTime = Math.round((Date.now() - taskStartTime) / 1000); // in seconds
-    
-    const performanceData = {
-      isCompleted: true,
-      completedAt: new Date().toISOString(),
-      totalTime: totalTime,
-      questions: finalQuestions,
-    };
-
-    try {
-      const batch = writeBatch(firestore);
-      
-      // Update student's task document (path is in taskDocRef)
-      batch.update(taskDocRef, performanceData);
-
-      // Update teacher's task document
-      const teacherTaskRef = doc(firestore, 'teachers', loadedTask.teacherId, 'tasks', loadedTask.id);
-      batch.update(teacherTaskRef, performanceData);
-
-      await batch.commit();
-
-    } catch (e) {
-      console.error("Erro ao finalizar tarefa: ", e);
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível salvar o resultado da tarefa.' });
-    }
-  }, [taskDocRef, taskStartTime, toast, isTestMode, firestore, loadedTask]);
+  }, [currentQuestionIndex, questions.length, taskDocRef, taskStartTime, toast, isTestMode, firestore, loadedTask]);
 
   const handleAnswer = useCallback((option: string) => {
     if (gameState !== 'playing') return;
@@ -206,69 +203,51 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const timeTaken = Date.now() - questionStartTime;
     const currentQuestion = questions[currentQuestionIndex];
 
-    let correct;
-    if (subject === 'math') {
-      const optionAsNumber = parseFloat(option);
-      const answerAsNumber = parseFloat(currentQuestion.answer);
-
-      if (!isNaN(optionAsNumber) && !isNaN(answerAsNumber)) {
-        correct = optionAsNumber === answerAsNumber;
-      } else {
-        correct = option.toUpperCase() === currentQuestion.answer.toUpperCase();
-      }
-    } else {
-      correct = option.toUpperCase() === currentQuestion.answer.toUpperCase();
-    }
+    const isAnswerCorrect = option.toUpperCase() === currentQuestion.answer.toUpperCase();
     
-    setSelectedAnswer(option);
-    setIsCorrect(correct);
     setGameState('showingAnswer'); 
+    setSelectedAnswer(option);
+    setIsCorrect(isAnswerCorrect);
 
+    // Create a new array with the updated question to ensure state update
     const updatedQuestions = questions.map((q, index) => {
         if (index === currentQuestionIndex) {
-            const isFirstAttempt = (q.attempts || 0) === 0;
+            const newAttempts = (q.attempts || 0) + 1;
+            // Only set status on first attempt to be 'correct' or 'incorrect'
+            const newStatus = newAttempts === 1 ? (isAnswerCorrect ? 'correct' : 'incorrect') : q.status;
+            
             return {
                 ...q,
                 studentAnswer: option,
-                attempts: (q.attempts || 0) + 1,
+                attempts: newAttempts,
                 timeTaken: (q.timeTaken || 0) + timeTaken,
-                // Only set status on the first attempt
-                status: isFirstAttempt ? (correct ? 'correct' : 'incorrect') : q.status,
+                status: isAnswerCorrect ? 'correct' : newStatus, // if they get it right, it's correct regardless of attempts.
             };
         }
         return q;
     });
-    setQuestions(updatedQuestions);
+    setQuestions(updatedQuestions); // Update the state with the new questions array
 
+    // Persist progress in the background
     if (taskDocRef && !isTestMode) {
         updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
             console.error("Failed to update question performance", e)
         });
     }
 
-    if (correct) {
-        setTimeout(() => {
-            const isLastQuestion = currentQuestionIndex >= questions.length - 1;
-            if (isLastQuestion) {
-                completeTask(updatedQuestions);
-                setGameState('finished');
-            } else {
-                setCurrentQuestionIndex(prev => prev + 1);
-                setSelectedAnswer(null);
-                setIsCorrect(null);
-                setGameState('playing');
-            }
-        }, 1500);
-    } else {
-        setTimeout(() => {
+    setTimeout(() => {
+        if (isAnswerCorrect) {
+            handleNextQuestion(updatedQuestions);
+        } else {
+            // reset for another try on the same question
             setSelectedAnswer(null);
             setIsCorrect(null);
             setGameState('playing');
-        }, 2000);
-    }
-  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, taskDocRef, isTestMode, completeTask, router]);
+        }
+    }, 1500); // Wait for feedback animation
+  }, [gameState, questionStartTime, questions, currentQuestionIndex, taskDocRef, isTestMode, handleNextQuestion]);
 
-   useEffect(() => {
+  useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (gameState !== 'playing') return;
       const currentQuestion = questions[currentQuestionIndex];
@@ -303,20 +282,18 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   }
 
   if (!loadedTask || questions.length === 0) {
-    return <div className="text-destructive-foreground text-center">Não foi possível carregar a atividade. Verifique se o link está correto ou tente novamente.</div>;
+    return <div className="text-destructive text-center">Não foi possível carregar a atividade. Verifique se o link está correto ou tente novamente.</div>;
   }
   
   if (gameState === 'finished') {
     const studentName = loadedTask?.studentName || 'Visitante';
     return (
       <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-4">
-        {isGiftOpened && (
-          <div className="particle-burst is-active absolute inset-0">
-            {Array.from({ length: 30 }).map((_, i) => (
-              <div key={i} className="particle" style={{'--i': i} as React.CSSProperties} />
-            ))}
-          </div>
-        )}
+        <div className={cn("particle-burst absolute inset-0", isGiftOpened && "is-active")}>
+          {Array.from({ length: 30 }).map((_, i) => (
+            <div key={i} className="particle" style={{'--i': i} as React.CSSProperties} />
+          ))}
+        </div>
 
         {!isGiftOpened ? (
           <>
@@ -345,17 +322,17 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-
+  
   if (!currentQuestion) {
-    return (
-      <div className="space-y-8">
-        <Skeleton className="h-32 w-full" />
-        <div className="grid grid-cols-3 gap-6">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
+     return (
+        <div className="space-y-8">
+            <Skeleton className="h-32 w-full" />
+            <div className="grid grid-cols-3 gap-6">
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+            </div>
         </div>
-      </div>
     );
   }
   
@@ -395,7 +372,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             </Button>
           ))}
         </div>
-        {gameState === 'showingAnswer' && isCorrect !== null && (
+        {gameState === 'showingAnswer' && (
           <div className={`flex items-center justify-center text-4xl font-bold`}>
               {isCorrect ? <CheckCircle className="w-16 h-16 text-success mr-4"/> : <XCircle className="w-16 h-16 text-destructive mr-4"/>}
               {isCorrect ? 'MUITO BEM!' : 'TENTE DE NOVO!'}
