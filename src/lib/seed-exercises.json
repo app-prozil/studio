@@ -1,0 +1,214 @@
+{
+  "exercises": [
+    {
+      "subject": "matematica",
+      "difficulty": "easy",
+      "text": "Quanto é 2 + 3?",
+      "options": ["4", "5", "6"],
+      "answer": "5"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "easy",
+      "text": "Qual número vem depois de 7?",
+      "options": ["8", "6", "9"],
+      "answer": "8"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "easy",
+      "text": "Quantos lados tem um triângulo?",
+      "options": ["3", "4", "5"],
+      "answer": "3"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "easy",
+      "text": "Quanto é 5 - 1?",
+      "options": ["3", "2", "4"],
+      "answer": "4"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "easy",
+      "text": "Conte as estrelas: ★ ★ ★ ★",
+      "options": ["3", "5", "4"],
+      "answer": "4"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "medium",
+      "text": "Quanto é 7 x 3?",
+      "options": ["21", "24", "20"],
+      "answer": "21"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "medium",
+      "text": "Se você tem 10 maçãs e come 3, quantas restam?",
+      "options": ["6", "8", "7"],
+      "answer": "7"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "medium",
+      "text": "Quanto é 15 + 8?",
+      "options": ["22", "23", "24"],
+      "answer": "23"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "medium",
+      "text": "Divida 12 por 4.",
+      "options": ["3", "4", "2"],
+      "answer": "3"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "medium",
+      "text": "Qual é o dobro de 9?",
+      "options": ["16", "18", "20"],
+      "answer": "18"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "hard",
+      "text": "Quanto é 12 x 11?",
+      "options": ["121", "132", "144"],
+      "answer": "132"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "hard",
+      "text": "Se um relógio marca 3:00, qual o ângulo entre os ponteiros?",
+      "options": ["90 graus", "60 graus", "120 graus"],
+      "answer": "90 graus"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "hard",
+      "text": "Qual é a raiz quadrada de 81?",
+      "options": ["8", "7", "9"],
+      "answer": "9"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "hard",
+      "text": "Quanto é 5 + (3 x 4)?",
+      "options": ["32", "17", "23"],
+      "answer": "17"
+    },
+    {
+      "subject": "matematica",
+      "difficulty": "hard",
+      "text": "Se a área de um quadrado é 25 cm², qual o comprimento de um lado?",
+      "options": ["4 cm", "5 cm", "6 cm"],
+      "answer": "5 cm"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "easy",
+      "text": "Qual a primeira letra da palavra 'gato'?",
+      "options": ["g", "a", "t"],
+      "answer": "g"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "easy",
+      "text": "Complete a frase: O cachorro ___.",
+      "options": ["voa", "late", "mia"],
+      "answer": "late"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "easy",
+      "text": "Qual destas palavras é um animal? 'casa', 'bola', 'pato'",
+      "options": ["casa", "bola", "pato"],
+      "answer": "pato"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "easy",
+      "text": "A palavra 'sol' termina com qual letra?",
+      "options": ["s", "o", "l"],
+      "answer": "l"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "easy",
+      "text": "O plural de 'menino' é ___.",
+      "options": ["menina", "meninos", "meninas"],
+      "answer": "meninos"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "medium",
+      "text": "Qual o sinônimo de 'bonito'?",
+      "options": ["feio", "belo", "grande"],
+      "answer": "belo"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "medium",
+      "text": "Complete com o verbo correto: Eu ___ pão todos os dias.",
+      "options": ["como", "come", "comemos"],
+      "answer": "como"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "medium",
+      "text": "Qual palavra está escrita incorretamente? 'casa', 'meza', 'carro'",
+      "options": ["casa", "meza", "carro"],
+      "answer": "meza"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "medium",
+      "text": "O antônimo de 'rápido' é ___.",
+      "options": ["veloz", "lento", "forte"],
+      "answer": "lento"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "medium",
+      "text": "Qual é o sujeito da frase: 'A menina leu o livro.'?",
+      "options": ["o livro", "leu", "A menina"],
+      "answer": "A menina"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "hard",
+      "text": "Identifique a figura de linguagem em: 'Seus olhos são duas esmeraldas.'",
+      "options": ["Metáfora", "Hipérbole", "Ironia"],
+      "answer": "Metáfora"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "hard",
+      "text": "Qual o tempo verbal da frase: 'Ele estudara muito para a prova.'?",
+      "options": ["Pretérito perfeito", "Futuro do presente", "Pretérito mais-que-perfeito"],
+      "answer": "Pretérito mais-que-perfeito"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "hard",
+      "text": "A palavra 'embora' é uma conjunção ___.",
+      "options": ["Aditiva", "Adversativa", "Concessiva"],
+      "answer": "Concessiva"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "hard",
+      "text": "Qual a função sintática de 'da prova' em 'Gosto da prova de matemática.'?",
+      "options": ["Objeto direto", "Objeto indireto", "Complemento nominal"],
+      "answer": "Objeto indireto"
+    },
+    {
+      "subject": "portugues",
+      "difficulty": "hard",
+      "text": "Classifique o sujeito da oração: 'Choveu muito ontem.'",
+      "options": ["Sujeito simples", "Sujeito indeterminado", "Oração sem sujeito"],
+      "answer": "Oração sem sujeito"
+    }
+  ]
+}

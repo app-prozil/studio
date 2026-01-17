@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,8 +15,9 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Trash2, Edit, ShieldAlert } from 'lucide-react';
+import { Loader2, Trash2, Edit, ShieldAlert, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import seedData from '@/lib/seed-exercises.json';
 
 const ADMIN_EMAIL = 'admin@prozil.com';
 
@@ -39,14 +40,14 @@ const NotAuthorizedMessage = () => (
     </div>
 );
 
-function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: boolean }) {
+function UserTableContent({ type }: { type: 'teacher' | 'student' }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
   
   const query = useMemoFirebase(
-    () => (canQuery ? collection(firestore, collectionName) : null),
-    [firestore, collectionName, canQuery]
+    () => collection(firestore, collectionName),
+    [firestore, collectionName]
   );
   
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
@@ -98,8 +99,6 @@ function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: 
   
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Erro ao carregar usuários: {error.message}</p>;
-  if (!canQuery) return <NotAuthorizedMessage />;
-
 
   return (
     <>
@@ -171,9 +170,47 @@ function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: 
 }
 
 
+function UserTable({ type, canQuery }: { type: 'teacher' | 'student', canQuery: boolean }) {
+    if (!canQuery) {
+        return <NotAuthorizedMessage />;
+    }
+    return <UserTableContent type={type} />;
+}
+
+
 export default function AdminPage() {
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
   const isAuthorized = user?.email === ADMIN_EMAIL;
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeedExercises = async () => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Você precisa estar logado.' });
+        return;
+    }
+    setIsSeeding(true);
+    const adminTeacherId = user.uid;
+    const exercisesCollectionRef = collection(firestore, 'teachers', adminTeacherId, 'exercises');
+
+    try {
+        const batch = writeBatch(firestore);
+        (seedData.exercises as any[]).forEach(exercise => {
+            const newExerciseRef = doc(exercisesCollectionRef);
+            const exerciseWithId = { ...exercise, id: newExerciseRef.id, teacherId: adminTeacherId };
+            batch.set(newExerciseRef, exerciseWithId);
+        });
+        await batch.commit();
+        toast({ title: 'Sucesso!', description: `${seedData.exercises.length} exercícios foram adicionados ao seu banco.` });
+    } catch (e) {
+        console.error("Error seeding exercises: ", e);
+        toast({ variant: 'destructive', title: 'Erro ao popular o banco', description: 'Verifique o console para mais detalhes.' });
+    } finally {
+        setIsSeeding(false);
+    }
+  };
+
 
   if (isUserLoading) {
     return (
@@ -198,7 +235,7 @@ export default function AdminPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-4xl font-bold font-headline">Painel do Administrador</h1>
-        <p className="text-muted-foreground">Gerencie professores e alunos da plataforma.</p>
+        <p className="text-muted-foreground">Gerencie professores, alunos e o conteúdo da plataforma.</p>
       </div>
 
       {!isAuthorized && (
@@ -210,6 +247,24 @@ export default function AdminPage() {
               <CardDescription>Apenas administradores podem gerenciar usuários.</CardDescription>
             </div>
           </CardHeader>
+        </Card>
+      )}
+
+      {isAuthorized && (
+        <Card>
+            <CardHeader>
+                <CardTitle>Ações do Administrador</CardTitle>
+                <CardDescription>Use estas ações para gerenciar o conteúdo da plataforma.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button onClick={handleSeedExercises} disabled={isSeeding}>
+                    {isSeeding ? <Loader2 className="animate-spin mr-2"/> : <PlusCircle className="mr-2"/>}
+                    Popular Banco de Exercícios
+                </Button>
+                <p className="text-sm text-muted-foreground mt-2">
+                    Adiciona 30 exercícios de exemplo (matemática e português) ao banco de exercícios do usuário admin.
+                </p>
+            </CardContent>
         </Card>
       )}
       
