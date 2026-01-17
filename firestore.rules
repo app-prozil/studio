@@ -114,76 +114,67 @@ service cloud.firestore {
     }
 
     // -------------------------------------------------------------------------
-    // Global Admin Override Rule
-    // This rule is checked first and grants the admin full access everywhere.
-    // -------------------------------------------------------------------------
-    
-    match /{path=**} {
-      allow read, write: if isAdmin();
-    }
-
-    // -------------------------------------------------------------------------
-    // Collection Rules (for non-admin users)
+    // Collection Rules
     // -------------------------------------------------------------------------
 
     match /teachers/{teacherId} {
-      // Read access is open to any signed-in user. This is necessary for two reasons:
-      // 1. To allow students to search for their teacher's ProZil ID during signup.
-      // 2. To allow the Admin user to list all teachers on the admin dashboard.
-      allow read: if isSignedIn();
+      // Read access is open to any signed-in user for signup purposes, and for admins.
+      allow read: if isSignedIn() || isAdmin();
       
-      // A user can only create, update, or delete their own teacher profile.
-      allow create: if isOwner(teacherId) && isValidTeacherProfile(request.resource.data, teacherId);
-      allow update: if isOwner(teacherId) && isTeacherProfileUpdateValid();
-      allow delete: if isOwner(teacherId);
+      // A user can create their own profile, or an admin can.
+      allow create: if (isOwner(teacherId) && isValidTeacherProfile(request.resource.data, teacherId)) || isAdmin();
+      
+      // A user can update their own profile, or an admin can.
+      allow update: if (isOwner(teacherId) && isTeacherProfileUpdateValid()) || isAdmin();
+
+      // A user can delete their own profile, or an admin can.
+      allow delete: if isOwner(teacherId) || isAdmin();
 
       // --- Nested Teacher Collections ---
       match /exercises/{exerciseId} {
-        // Teachers can manage their own exercise bank.
-        allow read, delete: if isOwner(teacherId);
-        allow create: if isOwner(teacherId) && isValidNewExercise(request.resource.data, teacherId, exerciseId);
-        allow update: if isOwner(teacherId) && isExerciseUpdateValid();
+        // Teachers can manage their own exercise bank. Admins have full access.
+        allow read, delete: if isOwner(teacherId) || isAdmin();
+        allow create: if (isOwner(teacherId) && isValidNewExercise(request.resource.data, teacherId, exerciseId)) || isAdmin();
+        allow update: if (isOwner(teacherId) && isExerciseUpdateValid()) || isAdmin();
       }
 
       match /tasks/{taskId} {
-        // Teachers can manage tasks they have created.
-        allow read, delete: if isOwner(teacherId);
-        allow create: if isOwner(teacherId) && isValidNewTeacherTask(request.resource.data, teacherId);
-        allow update: if isOwner(teacherId) && canTeacherUpdateTask(request.resource.data, resource.data);
+        // Teachers can manage tasks they have created. Admins have full access.
+        allow read, delete: if isOwner(teacherId) || isAdmin();
+        allow create: if (isOwner(teacherId) && isValidNewTeacherTask(request.resource.data, teacherId)) || isAdmin();
+        allow update: if (isOwner(teacherId) && canTeacherUpdateTask(request.resource.data, resource.data)) || isAdmin();
       }
     }
 
     match /students/{studentId} {
-      // A student can read their own profile.
-      // A teacher can read the profiles of their assigned students.
-      allow get: if isOwner(studentId) || (isTeacher() && resource.data.teacherId == request.auth.uid);
+      // A student can read their own profile. A teacher can read their students' profiles. Admins can read all.
+      allow get: if isOwner(studentId) || (isTeacher() && resource.data.teacherId == request.auth.uid) || isAdmin();
       
-      // Teachers can query for their students. Admins can query for all students.
-      // Client-side queries by teachers MUST include a `where("teacherId", "==", auth.uid)` clause.
+      // Teachers and Admins can query for students.
       allow list: if isTeacher() || isAdmin();
       
-      // A user can only create, update, or delete their own student profile.
-      allow create: if isOwner(studentId) && isValidStudentProfile(request.resource.data, studentId);
-      allow update: if isOwner(studentId) && isStudentProfileUpdateValid();
-      allow delete: if isOwner(studentId);
+      // A user can create/update/delete their own student profile. Admins can do anything.
+      allow create: if (isOwner(studentId) && isValidStudentProfile(request.resource.data, studentId)) || isAdmin();
+      allow update: if (isOwner(studentId) && isStudentProfileUpdateValid()) || isAdmin();
+      allow delete: if isOwner(studentId) || isAdmin();
 
       // --- Nested Student Collections ---
       match /tasks/{taskId} {
-        // A student can get their own tasks. A teacher can get tasks they authored.
-        allow get: if isOwner(studentId) || isTaskAuthor(resource.data);
+        // Student can get their own tasks. Teacher can get tasks they authored. Admins can get any.
+        allow get: if isOwner(studentId) || isTaskAuthor(resource.data) || isAdmin();
         
-        // A student can list their own tasks.
-        allow list: if isOwner(studentId);
+        // A student can list their own tasks. Admins can list any student's tasks.
+        allow list: if isOwner(studentId) || isAdmin();
         
-        // Only a teacher can create a task for a student.
-        allow create: if isTeacher() && isValidNewStudentTask(request.resource.data, studentId);
+        // A teacher or admin can create a task for a student.
+        allow create: if (isTeacher() && isValidNewStudentTask(request.resource.data, studentId)) || isAdmin();
         
-        // A student can update their performance data. A teacher can update task metadata.
+        // A student/teacher can update task performance/metadata. Admins can update anything.
         allow update: if (isOwner(studentId) && canStudentUpdateTask(request.resource.data, resource.data)) ||
-                         canTeacherUpdateTask(request.resource.data, resource.data);
+                         canTeacherUpdateTask(request.resource.data, resource.data) || isAdmin();
                          
-        // Only the authoring teacher can delete a task.
-        allow delete: if isTaskAuthor(resource.data);
+        // The authoring teacher or an admin can delete a task.
+        allow delete: if isTaskAuthor(resource.data) || isAdmin();
       }
     }
   }
