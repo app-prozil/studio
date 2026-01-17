@@ -283,7 +283,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           </>
         ) : (
           <>
-            {width > 0 && height > 0 && <Confetti width={width} height={height} recycle={false} numberOfPieces={600} gravity={0.1} />}
+            {width > 0 && height > 0 && <Confetti width={width} height={height} recycle={false} numberOfPieces={800} gravity={0.08} />}
             <div className="animate-score-reveal flex flex-col items-center gap-4 p-8 bg-card/80 backdrop-blur-sm rounded-lg shadow-2xl">
               <h2 className="text-3xl font-bold">Sua pontuação!</h2>
               <p className="text-7xl font-bold text-accent">{finalScore}%</p>
@@ -302,7 +302,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     return (
         <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-6">
             {width > 0 && height > 0 && showCorrectAnswerConfetti && (
-              <Confetti width={width} height={height} recycle={false} numberOfPieces={200} gravity={0.2} />
+              <Confetti width={width} height={height} recycle={false} numberOfPieces={400} gravity={0.1} />
             )}
             <CheckCircle className="w-24 h-24 text-success" />
             <h2 className="text-5xl font-bold">Muito bem!</h2>

@@ -91,16 +91,15 @@
 
 @layer utilities {
   .animate-gift-bounce {
-    animation: gift-bounce 1.5s ease-in-out infinite;
+    animation: gift-bounce 1.2s cubic-bezier(0.5, 0.05, 1, 0.5) infinite;
     transform-origin: bottom center;
   }
 
   @keyframes gift-bounce {
-    0%, 100% { transform: translateY(0) scaleY(1); }
-    25% { transform: translateY(-30px) scaleY(1.05); }
-    50% { transform: translateY(0) scaleY(1); }
-    75% { transform: translateY(-15px) scaleY(1.02); }
-    95% { transform: translateY(0) scaleY(1) scaleX(1.05); }
+    0%, 100% { transform: translateY(0px) scaleY(1); }
+    25% { transform: translateY(-30px) scaleY(1.1); }
+    50% { transform: translateY(0px) scaleY(0.9) scaleX(1.1); }
+    75% { transform: translateY(-15px) scaleY(1.05); }
   }
 
   .animate-score-reveal {
@@ -109,15 +108,15 @@
 
   @keyframes score-reveal {
     0% {
-      transform: scale(0.5) rotate(-30deg);
+      transform: scale(0.5) rotate(-45deg);
       opacity: 0;
     }
-    60% {
-      transform: scale(1.1) rotate(5deg);
+    50% {
+      transform: scale(1.25) rotate(10deg);
       opacity: 1;
     }
-    80% {
-      transform: scale(0.95) rotate(-2deg);
+    70% {
+      transform: scale(0.9) rotate(-5deg);
     }
     100% {
       transform: scale(1) rotate(0deg);
@@ -126,12 +125,14 @@
   }
 
   .animate-option-click {
-    animation: option-click 0.4s ease-out;
+    animation: option-click 0.5s ease-out;
   }
 
   @keyframes option-click {
-    0% { transform: scale(1); }
-    40% { transform: scale(1.1) rotate(-3deg); }
+    0% { transform: scale(1) rotate(0deg); }
+    30% { transform: scale(1.1) rotate(-5deg); }
+    50% { transform: scale(1.05) rotate(5deg); }
+    70% { transform: scale(1.1) rotate(-2deg); }
     100% { transform: scale(1) rotate(0deg); }
   }
 }
