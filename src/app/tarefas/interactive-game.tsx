@@ -37,14 +37,29 @@ type Task = {
 const testDriveMathQuestions: Question[] = [
     { text: 'Quanto é 5 + 3?', options: ['7', '8', '9'], answer: '8' },
     { text: 'Qual número vem depois de 9?', options: ['8', '10', '11'], answer: '10' },
-    { text: 'Conte os emojis: 👍👍👍👍👍', options: ['4', '5', '6'], answer: '5' }
+    { text: 'Conte os emojis: 👍👍👍👍👍', options: ['4', '5', '6'], answer: '5' },
+    { text: 'Quanto é 4 - 2?', options: ['1', '2', '3'], answer: '2' },
+    { text: 'Qual número vem antes de 7?', options: ['5', '6', '8'], answer: '6' },
+    { text: 'Quanto é 10 + 0?', options: ['0', '1', '10'], answer: '10' },
+    { text: 'Conte os emojis: 🚗🚗🚗', options: ['2', '3', '4'], answer: '3' },
+    { text: 'Qual forma tem 4 lados iguais?', options: ['Círculo', 'Triângulo', 'Quadrado'], answer: 'Quadrado' },
+    { text: 'Quanto é 3 + 3?', options: ['5', '6', '7'], answer: '6' },
+    { text: 'Qual número é maior: 8 ou 6?', options: ['8', '6', 'Iguais'], answer: '8' },
 ];
 
 const testDrivePortugueseQuestions: Question[] = [
     { text: "Qual o sinônimo de 'bonito'?", options: ["feio", "belo", "grande"], answer: "belo" },
     { text: "Complete com o verbo correto: Eu ___ pão.", options: ["como", "come", "comemos"], answer: "como" },
     { text: "O plural de 'menino' é ___.", options: ["menina", "meninos", "meninas"], answer: "meninos" },
+    { text: "O contrário de 'abrir' é ___.", options: ["fechar", "correr", "pular"], answer: "fechar" },
+    { text: "Qual animal faz 'Miau'?", options: ["Cachorro", "Gato", "Pássaro"], answer: "Gato" },
+    { text: "A cor do sol é ___.", options: ["Azul", "Verde", "Amarelo"], answer: "Amarelo" },
+    { text: "O que usamos para escrever?", options: ["Lápis", "Garfo", "Cama"], answer: "Lápis" },
+    { text: "A primeira letra do alfabeto é ___.", options: ["B", "C", "A"], answer: "A" },
+    { text: "O plural de 'cão' é ___.", options: ["cãos", "cães", "cãs"], answer: "cães" },
+    { text: "Qual o feminino de 'pai'?", options: ["Tia", "Mãe", "Avó"], answer: "Mãe" },
 ];
+
 
 const testDriveTaskBase = {
   id: 'test-drive',
@@ -84,7 +99,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [gameState, setGameState] = useState<'playing' | 'showingAnswer' | 'feedback' | 'finished'>('playing');
   
   // Animation & reward state
-  const [showCorrectAnswerConfetti, setShowCorrectAnswerConfetti] = useState(false);
+  const [showMainConfetti, setShowMainConfetti] = useState(false);
   const [isGiftOpened, setIsGiftOpened] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
 
@@ -129,7 +144,12 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   useEffect(() => {
     if (loadedTask && loadedTask.questions) {
-        setQuestions(loadedTask.questions);
+        const initialQuestions = loadedTask.questions.map(q => ({
+            ...q,
+            status: 'unanswered',
+            attempts: 0,
+        }));
+        setQuestions(initialQuestions);
         setGameState('playing');
     }
   }, [loadedTask]);
@@ -181,18 +201,14 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
     const updatedQuestions = questions.map((q, index) => {
       if (index === currentQuestionIndex) {
-        const updatedQuestion = { ...q };
-
-        updatedQuestion.studentAnswer = option;
-        updatedQuestion.attempts = currentAttempts;
-        updatedQuestion.timeTaken = timeTaken;
-
-        // The final "status" for scoring is only set on the FIRST attempt.
-        if (currentAttempts === 1) {
-          updatedQuestion.status = correct ? 'correct' : 'incorrect';
-        }
-        
-        return updatedQuestion;
+        return {
+            ...q,
+            studentAnswer: option,
+            timeTaken: (q.timeTaken || 0) + timeTaken,
+            attempts: (q.attempts || 0) + 1,
+            // Only set final status on the first attempt
+            status: q.attempts === 0 ? (correct ? 'correct' : 'incorrect') : q.status,
+        };
       }
       return q;
     });
@@ -205,7 +221,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
 
     if (correct) {
-        setShowCorrectAnswerConfetti(true);
+        setShowMainConfetti(true);
         setTimeout(() => {
              setGameState('feedback');
         }, 1500);
@@ -214,18 +230,23 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             setSelectedAnswer(null);
             setIsCorrect(null);
             setGameState('playing');
-            setCurrentAttempts(prev => prev + 1);
         }, 2000);
     }
-  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, currentAttempts, taskDocRef, isTestDrive]);
+  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, taskDocRef, isTestDrive]);
 
   const handleNextQuestion = useCallback(() => {
-    setShowCorrectAnswerConfetti(false);
+    setShowMainConfetti(false);
     setSelectedAnswer(null);
     setIsCorrect(null);
     
     if (currentQuestionIndex === questions.length - 1) {
-      completeTask(questions);
+      const finalQuestions = questions.map(q => {
+          // If a question was never answered, mark it as unanswered.
+          if (q.status === 'unanswered') return { ...q, status: 'unanswered' as const };
+          return q;
+      })
+      setQuestions(finalQuestions);
+      completeTask(finalQuestions);
       setGameState('finished');
     } else {
       setCurrentQuestionIndex((prev) => prev + 1);
@@ -304,7 +325,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   if (gameState === 'feedback') {
     return (
         <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-6">
-            {width > 0 && height > 0 && showCorrectAnswerConfetti && (
+            {width > 0 && height > 0 && showMainConfetti && (
               <Confetti width={width} height={height} recycle={false} numberOfPieces={400} gravity={0.1} />
             )}
             <CheckCircle className="w-24 h-24 text-success" />
@@ -344,7 +365,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
               variant={selectedAnswer === option ? (isCorrect ? 'success' : 'destructive') : 'default'}
               className={cn(
                   'h-32 text-4xl font-bold relative',
-                  selectedAnswer === option && 'animate-option-click'
+                  selectedAnswer === option && 'animate-option-click',
+                  selectedAnswer === option && isCorrect === true && 'animate-correct-answer'
               )}
               disabled={gameState !== 'playing'}
             >
