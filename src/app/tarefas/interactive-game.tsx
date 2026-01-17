@@ -344,6 +344,20 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
+
+  if (!currentQuestion) {
+    return (
+      <div className="space-y-8">
+        <Skeleton className="h-32 w-full" />
+        <div className="grid grid-cols-3 gap-6">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
+  }
+  
   const questionText = subject === 'portuguese' ? currentQuestion.text.replace('___', '_____') : currentQuestion.text;
 
   return (
