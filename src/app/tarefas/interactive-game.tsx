@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import Confetti from 'react-confetti';
 
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ type Question = {
 
 type Task = {
     id: string;
+    teacherId: string;
     questions: Question[];
     subject: 'math' | 'portuguese';
     studentName?: string;
@@ -63,6 +64,7 @@ const testDrivePortugueseQuestions: Question[] = [
 
 const testDriveTaskBase = {
   id: 'test-drive',
+  teacherId: 'test-teacher',
   studentName: 'Visitante',
   isCompleted: false,
 };
@@ -170,24 +172,36 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const score = Math.round((correctCount / finalQuestions.length) * 100);
     setFinalScore(score);
 
-    if (isTestMode || !taskDocRef) {
+    if (isTestMode || !taskDocRef || !firestore || !loadedTask?.teacherId || !loadedTask.id) {
         return;
     }
     
     const totalTime = Math.round((Date.now() - taskStartTime) / 1000); // in seconds
     
+    const performanceData = {
+      isCompleted: true,
+      completedAt: new Date().toISOString(),
+      totalTime: totalTime,
+      questions: finalQuestions,
+    };
+
     try {
-      await updateDoc(taskDocRef, { 
-        isCompleted: true,
-        completedAt: new Date().toISOString(),
-        totalTime: totalTime,
-        questions: finalQuestions, // Make sure final question state is saved
-      });
+      const batch = writeBatch(firestore);
+      
+      // Update student's task document (path is in taskDocRef)
+      batch.update(taskDocRef, performanceData);
+
+      // Update teacher's task document
+      const teacherTaskRef = doc(firestore, 'teachers', loadedTask.teacherId, 'tasks', loadedTask.id);
+      batch.update(teacherTaskRef, performanceData);
+
+      await batch.commit();
+
     } catch (e) {
       console.error("Erro ao finalizar tarefa: ", e);
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível marcar a tarefa como concluída.' });
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível salvar o resultado da tarefa.' });
     }
-  }, [taskDocRef, taskStartTime, toast, isTestMode]);
+  }, [taskDocRef, taskStartTime, toast, isTestMode, firestore, loadedTask]);
 
   const handleAnswer = useCallback(async (option: string) => {
     if (gameState !== 'playing') return;
@@ -232,6 +246,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setQuestions(updatedQuestions);
 
     if (taskDocRef && !isTestMode) {
+        // This intermediate update only saves to the student's doc for real-time progress saving.
+        // The final `completeTask` will sync to the teacher's doc.
         updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
             console.error("Failed to update question performance", e)
         });
