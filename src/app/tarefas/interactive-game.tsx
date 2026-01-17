@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, writeBatch } from 'firebase/firestore';
-import Confetti from 'react-confetti';
 
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import Confetti from 'react-confetti';
 
 type Question = {
   text: string;
@@ -101,7 +101,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [gameState, setGameState] = useState<'playing' | 'showingAnswer' | 'finished'>('playing');
   
   // Animation & reward state
-  const [showMainConfetti, setShowMainConfetti] = useState(false);
   const [isGiftOpened, setIsGiftOpened] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
 
@@ -135,8 +134,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         setLoadedTask(mockTask);
         setIsGloballyLoading(false);
     } else if (taskDataFromHook) {
-        // If the task is completed AND the game isn't already on the finished screen, then redirect.
-        // This prevents redirecting away from the reward screen when the user has just finished.
         if (taskDataFromHook.isCompleted && !isTestMode && gameState !== 'finished') {
             toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
             router.push('/tarefas');
@@ -206,11 +203,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const handleAnswer = useCallback((option: string) => {
     if (gameState !== 'playing') return;
 
-    setGameState('showingAnswer');
     const timeTaken = Date.now() - questionStartTime;
-    setSelectedAnswer(option);
-
     const currentQuestion = questions[currentQuestionIndex];
+
     let correct;
     if (subject === 'math') {
       const optionAsNumber = parseFloat(option);
@@ -224,55 +219,52 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     } else {
       correct = option.toUpperCase() === currentQuestion.answer.toUpperCase();
     }
+    
+    setSelectedAnswer(option);
     setIsCorrect(correct);
+    setGameState('showingAnswer'); 
 
-    setQuestions(prevQuestions => {
-        const updatedQuestions = prevQuestions.map((q, index) => {
-            if (index === currentQuestionIndex) {
-                const updatedQuestion = { ...q };
-                updatedQuestion.studentAnswer = option;
-                updatedQuestion.timeTaken = (updatedQuestion.timeTaken || 0) + timeTaken;
-                updatedQuestion.attempts = (updatedQuestion.attempts || 0) + 1;
-                
-                if (updatedQuestion.attempts === 1) {
-                    updatedQuestion.status = correct ? 'correct' : 'incorrect';
-                }
-                return updatedQuestion;
-            }
-            return q;
-        });
-
-        if (taskDocRef && !isTestMode) {
-             updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
-                console.error("Failed to update question performance", e)
-            });
+    const updatedQuestions = questions.map((q, index) => {
+        if (index === currentQuestionIndex) {
+            const isFirstAttempt = (q.attempts || 0) === 0;
+            return {
+                ...q,
+                studentAnswer: option,
+                timeTaken: (q.timeTaken || 0) + timeTaken,
+                attempts: (q.attempts || 0) + 1,
+                status: isFirstAttempt ? (correct ? 'correct' : 'incorrect') : q.status,
+            };
         }
-        
-        if (correct) {
-            setShowMainConfetti(true);
-            setTimeout(() => {
-                const isLastQuestion = currentQuestionIndex >= updatedQuestions.length - 1;
-                if (isLastQuestion) {
-                    completeTask(updatedQuestions);
-                    setGameState('finished');
-                } else {
-                    setShowMainConfetti(false);
-                    setSelectedAnswer(null);
-                    setIsCorrect(null);
-                    setCurrentQuestionIndex(prev => prev + 1);
-                    setGameState('playing');
-                }
-            }, 1500);
-        } else {
-            setTimeout(() => {
+        return q;
+    });
+    setQuestions(updatedQuestions);
+
+    if (taskDocRef && !isTestMode) {
+        updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
+            console.error("Failed to update question performance", e)
+        });
+    }
+
+    if (correct) {
+        setTimeout(() => {
+            const isLastQuestion = currentQuestionIndex >= questions.length - 1;
+            if (isLastQuestion) {
+                completeTask(updatedQuestions);
+                setGameState('finished');
+            } else {
+                setCurrentQuestionIndex(prev => prev + 1);
                 setSelectedAnswer(null);
                 setIsCorrect(null);
                 setGameState('playing');
-            }, 2000);
-        }
-
-        return updatedQuestions;
-    });
+            }
+        }, 1500);
+    } else {
+        setTimeout(() => {
+            setSelectedAnswer(null);
+            setIsCorrect(null);
+            setGameState('playing');
+        }, 2000);
+    }
   }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, taskDocRef, isTestMode, completeTask]);
 
    useEffect(() => {
@@ -362,9 +354,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   return (
     <div className="relative">
-       {width > 0 && height > 0 && showMainConfetti && (
-          <Confetti width={width} height={height} recycle={false} numberOfPieces={400} gravity={0.1} />
-        )}
       <div className="space-y-8">
         <div className="relative p-8 border-4 border-dashed rounded-lg border-accent">
           <p className={`font-bold ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>
