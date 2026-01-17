@@ -215,8 +215,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex items-center justify-between p-4 border-b md:justify-end bg-card">
-          <SidebarTrigger className="md:hidden" />
+        <header className="flex items-center justify-between p-4 border-b bg-card">
+          <SidebarTrigger />
           <UserNav />
         </header>
         <div className="flex-1 p-4 overflow-auto sm:p-6 md:p-8">
