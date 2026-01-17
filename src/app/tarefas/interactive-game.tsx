@@ -135,7 +135,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         setLoadedTask(mockTask);
         setIsGloballyLoading(false);
     } else if (taskDataFromHook) {
-        if (taskDataFromHook.isCompleted && !isTestMode) {
+        // If the task is completed AND the game isn't already on the finished screen, then redirect.
+        // This prevents redirecting away from the reward screen when the user has just finished.
+        if (taskDataFromHook.isCompleted && !isTestMode && gameState !== 'finished') {
             toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
             router.push('/tarefas');
             return;
@@ -145,7 +147,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     } else if (!isTaskLoadingFromHook && !taskDataFromHook && !isTestDrive) {
         setIsGloballyLoading(false);
     }
-  }, [taskDataFromHook, isTaskLoadingFromHook, isTestDrive, subject, router, toast, isTestMode]);
+  }, [taskDataFromHook, isTaskLoadingFromHook, isTestDrive, subject, router, toast, isTestMode, gameState]);
 
   useEffect(() => {
     if (loadedTask && loadedTask.questions) {
@@ -225,36 +227,28 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
     setIsCorrect(correct);
 
-    // Create the new full questions array with updated performance data for the current question
-    const updatedQuestions = questions.map((q, index) => {
-      if (index === currentQuestionIndex) {
-        // Determine the new status. If it's the first attempt, set it ('correct'/'incorrect').
-        // Otherwise, keep the existing status.
-        const newStatus = (q.attempts || 0) === 0 
-          ? (correct ? 'correct' : 'incorrect')
-          : q.status;
+    setQuestions(prevQuestions => {
+        const updatedQuestions = [...prevQuestions];
+        const questionToUpdate = { ...updatedQuestions[currentQuestionIndex] };
+
+        questionToUpdate.studentAnswer = option;
+        questionToUpdate.timeTaken = (questionToUpdate.timeTaken || 0) + timeTaken;
+        questionToUpdate.attempts = (questionToUpdate.attempts || 0) + 1;
+
+        if (questionToUpdate.attempts === 1) {
+            questionToUpdate.status = correct ? 'correct' : 'incorrect';
+        }
         
-        return {
-          ...q,
-          studentAnswer: option,
-          timeTaken: (q.timeTaken || 0) + timeTaken,
-          attempts: (q.attempts || 0) + 1,
-          status: newStatus,
-        };
-      }
-      return q;
+        updatedQuestions[currentQuestionIndex] = questionToUpdate;
+        
+        if (taskDocRef && !isTestMode) {
+             updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
+                console.error("Failed to update question performance", e)
+            });
+        }
+        
+        return updatedQuestions;
     });
-
-    // Update state and Firestore for real-time progress saving
-    setQuestions(updatedQuestions);
-
-    if (taskDocRef && !isTestMode) {
-        // This intermediate update only saves to the student's doc.
-        // The final `completeTask` will sync to the teacher's doc.
-        updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
-            console.error("Failed to update question performance", e)
-        });
-    }
 
     if (correct) {
         setShowMainConfetti(true);
@@ -280,14 +274,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       setGameState('playing');
     } else {
       // This is the end of the task, finalize and save.
-      const finalQuestions = questions.map(q => {
-        // Ensure any question that was never touched is marked 'unanswered'
-        if (q.status === 'unanswered' && (q.attempts || 0) === 0) {
-          return { ...q, status: 'unanswered' as const };
-        }
-        return q;
-      });
-      completeTask(finalQuestions);
+      completeTask(questions);
       setGameState('finished');
     }
   }, [currentQuestionIndex, questions, completeTask]);
