@@ -38,18 +38,14 @@ const NotAuthorizedMessage = () => (
     </div>
 );
 
-function UserTable({ type, isAuthorized }: { type: 'teacher' | 'student'; isAuthorized: boolean }) {
+function UserTable({ type }: { type: 'teacher' | 'student' }) {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [loadData, setLoadData] = useState(false);
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
   
   const query = useMemoFirebase(
-    () => {
-      if (!isAuthorized || !loadData) return null;
-      return collection(firestore, collectionName);
-    },
-    [firestore, collectionName, isAuthorized, loadData]
+    () => collection(firestore, collectionName),
+    [firestore, collectionName]
   );
   
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
@@ -98,21 +94,6 @@ function UserTable({ type, isAuthorized }: { type: 'teacher' | 'student'; isAuth
       })
       .finally(() => setIsSubmitting(false));
   };
-
-  if (!isAuthorized) {
-    return <NotAuthorizedMessage />;
-  }
-
-  if (!loadData) {
-    return (
-        <div className="text-center py-8">
-            <Button onClick={() => setLoadData(true)}>
-                Carregar {type === 'teacher' ? 'Professores' : 'Alunos'}
-            </Button>
-            <p className="text-sm text-muted-foreground mt-2">Clique para carregar a lista de usuários.</p>
-        </div>
-    );
-  }
   
   if (isLoading && !users) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Erro ao carregar usuários: {error.message}</p>;
@@ -300,7 +281,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
             </CardHeader>
             <CardContent>
-               <UserTable type="teacher" isAuthorized={isAuthorized} />
+               {isAuthorized ? <UserTable type="teacher" /> : <NotAuthorizedMessage />}
             </CardContent>
           </Card>
         </TabsContent>
@@ -311,7 +292,7 @@ export default function AdminPage() {
               <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
             </CardHeader>
             <CardContent>
-              <UserTable type="student" isAuthorized={isAuthorized} />
+              {isAuthorized ? <UserTable type="student" /> : <NotAuthorizedMessage />}
             </CardContent>
           </Card>
         </TabsContent>

@@ -59,6 +59,12 @@ service cloud.firestore {
       // On create, IDs must be consistent.
       return exerciseData.teacherId == teacherId && exerciseData.id == exerciseId;
     }
+
+    function isExerciseUpdateValid() {
+      // When updating, the exercise ID and teacher ID cannot be changed.
+      return request.resource.data.id == resource.data.id &&
+             request.resource.data.teacherId == resource.data.teacherId;
+    }
     
     function isValidNewTeacherTask(taskData, teacherId) {
       // On create, teacherId must match and task must have questions.
