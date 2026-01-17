@@ -2,7 +2,7 @@
 
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import Link from 'next/link';
-import { collection, doc, updateDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -10,22 +10,65 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRight, BookOpen, FileText, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
+
+type PerformanceQuestion = {
+  text: string;
+  options: string[];
+  answer: string;
+  studentAnswer?: string;
+  attempts?: number;
+  status?: 'correct' | 'incorrect' | 'unanswered';
+  timeTaken?: number;
+};
+
+type Task = {
+  id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  teacherId: string;
+  studentId: string;
+  studentProzilId: string;
+  studentName?: string;
+  teacherName?: string;
+  subject: 'matematica' | 'portugues';
+  taskType: 'jogo_interativo' | 'folha_imprimivel';
+  isCompleted: boolean;
+  completedAt?: string;
+  totalTime?: number;
+  questions: PerformanceQuestion[];
+};
 
 export default function StudentTaskView({ studentId }: { studentId: string }) {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const tasksQuery = useMemoFirebase(
     () => (studentId ? collection(firestore, 'students', studentId, 'tasks') : null),
     [firestore, studentId]
   );
-  const { data: tasks, isLoading, error } = useCollection(tasksQuery);
+  const { data: tasks, isLoading, error } = useCollection<Task>(tasksQuery);
 
-  const handleTaskCompletion = async (taskId: string, isCompleted: boolean) => {
-    if (!studentId) return;
-    const taskRef = doc(firestore, 'students', studentId, 'tasks', taskId);
+  const handleTaskCompletion = async (task: Task, isCompleted: boolean) => {
+    if (!studentId || !task.teacherId || !task.id) return;
+
+    const { id: taskId, teacherId } = task;
+
+    const studentTaskRef = doc(firestore, 'students', studentId, 'tasks', taskId);
+    const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', taskId);
+
     try {
-      await updateDoc(taskRef, { isCompleted: isCompleted });
+      const batch = writeBatch(firestore);
+      const updateData = { isCompleted: isCompleted };
+      
+      batch.update(studentTaskRef, updateData);
+      batch.update(teacherTaskRef, updateData);
+
+      await batch.commit();
+      toast({ title: `Tarefa ${isCompleted ? 'marcada como concluída' : 'marcada como pendente'}.` });
     } catch (e) {
       console.error("Erro ao atualizar tarefa: ", e);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o status da tarefa.' });
     }
   };
 
@@ -86,7 +129,7 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
                                     <Checkbox
                                         id={`task-${task.id}`}
                                         checked={task.isCompleted}
-                                        onCheckedChange={(checked) => handleTaskCompletion(task.id, !!checked)}
+                                        onCheckedChange={(checked) => handleTaskCompletion(task, !!checked)}
                                         className="h-5 w-5"
                                     />
                                     <label htmlFor={`task-${task.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
