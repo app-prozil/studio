@@ -267,7 +267,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField control={form.control} name="text" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta</FormLabel><FormControl><Textarea {...field} placeholder="Ex: Quanto é 2 + 2?" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Pergunta</FormLabel><FormControl><Textarea {...field} placeholder="Ex: QUANTO É 2 + 2?" /></FormControl><FormMessage /></FormItem>
               )}/>
 
               <div className="space-y-3 rounded-lg border p-4">
@@ -922,7 +922,7 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
                             <TableCell>
                                 {q.status === 'correct' && <Check className="w-5 h-5 text-success" />}
                                 {q.status === 'incorrect' && <X className="w-5 h-5 text-destructive" />}
-                                {q.status === 'unanswered' || !q.status && <Circle className="w-5 h-5 text-muted-foreground"/>}
+                                {(q.status === 'unanswered' || !q.status) && <Circle className="w-5 h-5 text-muted-foreground"/>}
                             </TableCell>
                             <TableCell>{q.attempts || '-'}</TableCell>
                             <TableCell>{formatMs(q.timeTaken)}</TableCell>
