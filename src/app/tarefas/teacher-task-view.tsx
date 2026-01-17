@@ -203,13 +203,20 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
     
+    const uppercasedValues: Exercise = {
+        ...values,
+        text: values.text.toUpperCase(),
+        options: values.options.map(o => o.toUpperCase()),
+        answer: values.answer.toUpperCase(),
+    };
+
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-      updateDoc(exerciseRef, values).catch(async (serverError) => {
+      updateDoc(exerciseRef, uppercasedValues).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: exerciseRef.path,
           operation: 'update',
-          requestResourceData: values,
+          requestResourceData: uppercasedValues,
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({ variant: 'destructive', title: 'Erro ao atualizar exercício' });
@@ -221,7 +228,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       });
     } else {
       const newExerciseRef = doc(collection(firestore, 'teachers', teacherId, 'exercises'));
-      const newExercise = { ...values, id: newExerciseRef.id, teacherId };
+      const newExercise = { ...uppercasedValues, id: newExerciseRef.id, teacherId };
       setDoc(newExerciseRef, newExercise).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: newExerciseRef.path,
