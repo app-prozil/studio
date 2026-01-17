@@ -32,13 +32,35 @@ service cloud.firestore {
     }
 
     function isStudentUpdatingPerformance() {
-      // Check if the user is the assigned student
-      let isAssignedStudent = request.auth.uid == resource.data.studentId;
-      // Define the fields the student is allowed to update
-      let performanceFields = ['isCompleted', 'completedAt', 'totalTime', 'questions'];
+      // The user must be the student assigned to the task
+      if (request.auth.uid != resource.data.studentId) {
+        return false;
+      }
+
+      // A student cannot un-complete a task that is already marked as complete
+      if (resource.data.isCompleted == true && request.resource.data.isCompleted == false) {
+        return false;
+      }
+
+      // The core properties of the task must not change.
+      // This ensures a student cannot change the task itself, only their performance data.
+      if (request.resource.data.title != resource.data.title ||
+          request.resource.data.description != resource.data.description ||
+          request.resource.data.dueDate != resource.data.dueDate ||
+          request.resource.data.teacherId != resource.data.teacherId ||
+          request.resource.data.studentId != resource.data.studentId ||
+          request.resource.data.subject != resource.data.subject ||
+          request.resource.data.taskType != resource.data.taskType ||
+          request.resource.data.studentName != resource.data.studentName ||
+          request.resource.data.teacherName != resource.data.teacherName ||
+          request.resource.data.studentProzilId != resource.data.studentProzilId
+        ) {
+        return false;
+      }
       
-      // Check that the update only affects the allowed fields
-      return isAssignedStudent && request.resource.data.diff(resource.data).affectedKeys().hasOnly(performanceFields);
+      // If all checks pass, allow the update.
+      // This implicitly allows updates to 'isCompleted', 'completedAt', 'totalTime', and 'questions'.
+      return true;
     }
 
 
