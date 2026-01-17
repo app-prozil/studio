@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User as UserIcon, LogIn, ClipboardCheck, Shield } from 'lucide-react';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 import {
   SidebarProvider,
@@ -46,6 +48,7 @@ function UserNav() {
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
 
   const teacherDocRef = useMemoFirebase(
     () => (user ? doc(firestore, 'teachers', user.uid) : null),
@@ -60,6 +63,25 @@ function UserNav() {
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
   const isLoading = isUserLoading || isTeacherLoading || isStudentLoading;
+
+  useEffect(() => {
+    // Don't run this logic if we're still loading things
+    if (isLoading) {
+      return;
+    }
+
+    // If we have an authenticated user but no corresponding profile document...
+    if (user && !teacherProfile && !studentProfile) {
+      // This is an "orphan" auth account, likely because their profile was deleted.
+      // We should log them out for security and to prevent app errors.
+      toast({
+        variant: 'destructive',
+        title: 'Sessão Encerrada',
+        description: 'Seu perfil de usuário não foi encontrado e sua sessão foi finalizada.',
+      });
+      auth.signOut();
+    }
+  }, [isLoading, user, teacherProfile, studentProfile, auth, toast]);
 
   if (isLoading) {
     return (

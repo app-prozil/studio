@@ -32,14 +32,14 @@ type UserProfile = {
   prozilId: string;
 };
 
-function UserTable({ type, isAuthorized }: { type: 'teacher' | 'student', isAuthorized: boolean }) {
+function UserTable({ type }: { type: 'teacher' | 'student'}) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
   
   const query = useMemoFirebase(
-    () => (firestore && isAuthorized) ? collection(firestore, collectionName) : null,
-    [firestore, collectionName, isAuthorized]
+    () => (firestore) ? collection(firestore, collectionName) : null,
+    [firestore, collectionName]
   );
   
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
@@ -89,9 +89,9 @@ function UserTable({ type, isAuthorized }: { type: 'teacher' | 'student', isAuth
       .finally(() => setIsSubmitting(false));
   };
   
-  if (isLoading && isAuthorized) return <Skeleton className="h-64 w-full" />;
+  if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Ocorreu um erro ao carregar os usuários. Verifique as permissões do Firestore.</p>;
-  if (!users && isAuthorized) return <p>Nenhum usuário encontrado.</p>
+  if (!users) return <p>Nenhum usuário encontrado.</p>
 
   return (
     <>
@@ -146,8 +146,7 @@ function UserTable({ type, isAuthorized }: { type: 'teacher' | 'student', isAuth
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Usuário?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação removerá o perfil do usuário do Firestore, mas a conta de autenticação permanecerá.
-              As tarefas e exercícios associados não serão excluídos. Esta ação é irreversível.
+              Esta ação removerá APENAS o perfil de dados do usuário no Firestore. A conta de autenticação (login e senha) NÃO será excluída. Após esta ação, o usuário conseguirá fazer login, mas será desconectado automaticamente por não ter um perfil válido.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -265,7 +264,7 @@ export default function AdminPage() {
                   <CardDescription>Visualize, edite ou remova perfis de professores.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <UserTable type="teacher" isAuthorized={isAuthorized} />
+                  <UserTable type="teacher" />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -276,7 +275,7 @@ export default function AdminPage() {
                   <CardDescription>Visualize, edite ou remova perfis de alunos.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <UserTable type="student" isAuthorized={isAuthorized} />
+                  <UserTable type="student" />
                 </CardContent>
               </Card>
             </TabsContent>
