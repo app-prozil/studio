@@ -41,15 +41,15 @@ const NotAuthorizedMessage = () => (
 function UserTable({ type, isAuthorized }: { type: 'teacher' | 'student'; isAuthorized: boolean }) {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const [loadData, setLoadData] = useState(false);
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
   
   const query = useMemoFirebase(
     () => {
-      // Only construct the query if the user is authorized.
-      if (!isAuthorized) return null;
+      if (!isAuthorized || !loadData) return null;
       return collection(firestore, collectionName);
     },
-    [firestore, collectionName, isAuthorized]
+    [firestore, collectionName, isAuthorized, loadData]
   );
   
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
@@ -101,6 +101,17 @@ function UserTable({ type, isAuthorized }: { type: 'teacher' | 'student'; isAuth
 
   if (!isAuthorized) {
     return <NotAuthorizedMessage />;
+  }
+
+  if (!loadData) {
+    return (
+        <div className="text-center py-8">
+            <Button onClick={() => setLoadData(true)}>
+                Carregar {type === 'teacher' ? 'Professores' : 'Alunos'}
+            </Button>
+            <p className="text-sm text-muted-foreground mt-2">Clique para carregar a lista de usuários.</p>
+        </div>
+    );
   }
   
   if (isLoading && !users) return <Skeleton className="h-64 w-full" />;
@@ -184,6 +195,7 @@ export default function AdminPage() {
   const [isSeeding, setIsSeeding] = useState(false);
 
   useEffect(() => {
+    if (isUserLoading) return;
     console.log('[Depuração AdminPage]', {
       isUserLoading,
       isAuthorized,
