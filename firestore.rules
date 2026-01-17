@@ -164,7 +164,7 @@ service cloud.firestore {
 
     match /teachers/{teacherId} {
       allow get: if isOwner(teacherId) || isAdmin();
-      allow list: if isSignedIn();
+      allow list: if isAdmin();
       allow create: if isOwner(teacherId) && hasValidTeacherDataOnCreate(teacherId);
       allow update: if (isExistingOwner(teacherId) && hasValidTeacherDataOnUpdate()) || isAdmin();
       allow delete: if isExistingOwner(teacherId) || isAdmin();
