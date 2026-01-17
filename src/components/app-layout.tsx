@@ -65,14 +65,23 @@ function UserNav() {
   const isLoading = isUserLoading || isTeacherLoading || isStudentLoading;
 
   useEffect(() => {
-    // Don't run this logic if we're still loading things
-    if (isLoading) {
+    // This is the most secure way to identify the admin.
+    const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+    
+    // Don't run this logic if we're still loading things or if there's no user.
+    if (isLoading || !user) {
       return;
     }
 
-    // If we have an authenticated user but no corresponding profile document...
-    if (user && !teacherProfile && !studentProfile) {
-      // This is an "orphan" auth account, likely because their profile was deleted.
+    // For the admin user, skip the profile check. Their identity and permissions 
+    // are based on their UID in the security rules, not on a profile document.
+    if (user.uid === ADMIN_UID) {
+      return;
+    }
+    
+    // If we have a regular authenticated user but no corresponding profile document...
+    if (!teacherProfile && !studentProfile) {
+      // This is an "orphan" auth account, likely because their profile was deleted/archived.
       // We should log them out for security and to prevent app errors.
       toast({
         variant: 'destructive',
@@ -94,7 +103,9 @@ function UserNav() {
 
   if (user) {
     const profile = teacherProfile || studentProfile;
-    const displayName = profile?.name || user.displayName || 'Usuário';
+    const isAdmin = user.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+    // For the admin user, if their profile was deleted, we can default their name.
+    const displayName = profile?.name || (isAdmin ? 'Administrador' : (user.displayName || 'Usuário'));
 
     return (
       <div className="flex items-center gap-3">
