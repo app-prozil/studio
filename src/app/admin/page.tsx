@@ -34,12 +34,14 @@ type UserProfile = {
 
 function UserTable({ type }: { type: 'teacher' | 'student'}) {
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
+  const isAuthorized = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   
   const query = useMemoFirebase(
-    () => (firestore) ? collection(firestore, collectionName) : null,
-    [firestore, collectionName]
+    () => (firestore && isAuthorized) ? collection(firestore, collectionName) : null,
+    [firestore, collectionName, isAuthorized]
   );
   
   const { data: users, isLoading, error } = useCollection<UserProfile>(query);
@@ -79,12 +81,12 @@ function UserTable({ type }: { type: 'teacher' | 'student'}) {
     const userRef = doc(firestore, collectionName, deletingUser.id);
     deleteDoc(userRef)
       .then(() => {
-        toast({ title: 'Usuário excluído com sucesso!' });
+        toast({ title: 'Perfil removido!', description: 'Lembre-se de excluir a conta no Firebase Console > Authentication.' });
         setDeletingUser(null);
       })
       .catch((e) => {
         console.error(e);
-        toast({ variant: 'destructive', title: 'Erro ao excluir', description: 'Não foi possível excluir o documento do usuário. As tarefas associadas podem permanecer.' });
+        toast({ variant: 'destructive', title: 'Erro ao remover perfil', description: 'Não foi possível remover o perfil do usuário.' });
       })
       .finally(() => setIsSubmitting(false));
   };
@@ -144,15 +146,28 @@ function UserTable({ type }: { type: 'teacher' | 'student'}) {
       <AlertDialog open={!!deletingUser} onOpenChange={(open) => !open && setDeletingUser(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Usuário?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação removerá APENAS o perfil de dados do usuário no Firestore. A conta de autenticação (login e senha) NÃO será excluída. Após esta ação, o usuário conseguirá fazer login, mas será desconectado automaticamente por não ter um perfil válido.
+            <AlertDialogTitle>Ação em Duas Etapas: Remover Usuário</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+               <div className="space-y-4 pt-2">
+                <p>
+                  <strong className="text-foreground">Importante:</strong> Para excluir completamente um usuário e liberar o email para um novo cadastro, são necessárias duas etapas.
+                </p>
+                <p>
+                  <strong>Etapa 1 (Esta Ação):</strong> Remove o <strong className="text-foreground">perfil do banco de dados</strong>. O usuário não aparecerá mais nas listas do aplicativo e será desconectado.
+                </p>
+                <p>
+                  <strong>Etapa 2 (Manual):</strong> A <strong className="text-foreground">conta de login</strong> continuará existindo. Para concluir a exclusão, você DEVE ir ao <strong className="text-foreground">Firebase Console &gt; Authentication</strong> e excluir o usuário de lá.
+                </p>
+                <p className="text-xs text-muted-foreground pt-2 border-t mt-4">
+                  Se a Etapa 2 não for feita, o e-mail não poderá ser usado para um novo cadastro.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={isSubmitting} className="bg-destructive hover:bg-destructive/90">
-              {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null} Sim, Excluir
+              {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null} Entendi, Remover Perfil
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
