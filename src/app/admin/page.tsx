@@ -41,18 +41,22 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showAr
   const { user } = useUser();
   const { toast } = useToast();
   const collectionName = type === 'teacher' ? 'teachers' : 'students';
-  const isAuthorized = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   
   const usersQuery = useMemoFirebase(
-    () => (firestore && isAuthorized) ? collection(firestore, collectionName) : null,
-    [firestore, collectionName, isAuthorized]
+    () => (firestore && user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1') ? collection(firestore, collectionName) : null,
+    [firestore, collectionName, user]
   );
   
   const { data: allUsers, isLoading, error } = useCollection<UserProfile>(usersQuery);
 
   const users = useMemo(() => {
     if (!allUsers) return null;
-    return allUsers.filter(user => showArchived ? !!user.deletedAt : !user.deletedAt);
+    // A user is considered archived if 'deletedAt' is not null or undefined.
+    // This is a more robust check than relying on truthiness.
+    return allUsers.filter(user => {
+      const isArchived = user.deletedAt != null;
+      return showArchived ? isArchived : !isArchived;
+    });
   }, [allUsers, showArchived]);
 
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -189,7 +193,7 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showAr
           <AlertDialogHeader>
             <AlertDialogTitle>Arquivar Usuário?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação irá arquivar o perfil do usuário, removendo-o das listas ativas. O usuário não poderá mais acessar o aplicativo até que seja restaurado. A conta de autenticação permanecerá ativa.
+              Esta ação irá arquivar o perfil do usuário, impedindo o acesso. A conta de autenticação (login) não será removida. Para excluir permanentemente a conta de login e liberar o e-mail para um novo cadastro, você deve fazê-lo manualmente no Firebase Console.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
