@@ -967,7 +967,9 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
 
   const tasksByStudent = useMemo(() => {
     if (!tasks) return {};
-    return tasks.reduce((acc, task) => {
+    
+    // Group tasks by student
+    const grouped = tasks.reduce((acc, task) => {
       const studentIdentifier = task.studentName || task.studentId;
       if (!acc[studentIdentifier]) {
         acc[studentIdentifier] = [];
@@ -975,6 +977,13 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
       acc[studentIdentifier].push(task);
       return acc;
     }, {} as Record<string, Task[]>);
+
+    // Sort tasks within each group
+    Object.values(grouped).forEach(studentTasks => {
+      studentTasks.sort((a, b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
+    });
+
+    return grouped;
   }, [tasks]);
 
   if (isLoading) {
@@ -1010,7 +1019,7 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
                 </AccordionTrigger>
                 <AccordionContent>
                   <ul className="space-y-3 pt-2 pl-4">
-                    {[...studentTasks].sort((a,b) => (a.isCompleted ? 1 : -1) - (b.isCompleted ? 1 : -1) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()).map(task => (
+                    {studentTasks.map(task => (
                        <li key={task.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg bg-background/50 gap-4">
                            <div className="grid gap-1.5 flex-1">
                                <p className={`font-semibold ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
