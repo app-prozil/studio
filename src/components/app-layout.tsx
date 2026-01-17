@@ -137,22 +137,23 @@ function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
-  const { isMobile, setOpenMobile, setOpen } = useSidebar();
+  const { isMobile, setOpen } = useSidebar();
 
   const handleMenuItemClick = () => {
+    // We can't conditionally call the setter because it violates the rules of hooks.
+    // However, we can conditionally change the behavior based on the viewport.
     if (isMobile) {
-      setOpenMobile(false);
-    } else {
-      setOpen(false)
+      // On mobile, we always want to close the sidebar.
+      setOpen(false);
     }
   };
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-2 p-2">
-          <Bot className="w-8 h-8 text-primary" />
-          <h1 className="text-2xl font-bold font-headline text-foreground">ProZil</h1>
+        <div className="flex items-center gap-2 group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:gap-0">
+          <Bot className="w-8 h-8 shrink-0 text-primary" />
+          <h1 className="text-2xl font-bold font-headline text-foreground group-data-[state=collapsed]:hidden">ProZil</h1>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -216,7 +217,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <SidebarInset>
         <header className="flex items-center justify-between p-4 border-b bg-card">
-          <SidebarTrigger />
+          <SidebarTrigger className="md:hidden" />
+          <div/>
           <UserNav />
         </header>
         <div className="flex-1 p-4 overflow-auto sm:p-6 md:p-8">
