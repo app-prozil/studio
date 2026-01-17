@@ -107,7 +107,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   // Performance tracking state
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
-  const [currentAttempts, setCurrentAttempts] = useState(1);
   const taskStartTime = useMemo(() => Date.now(), []);
 
 
@@ -162,9 +161,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
 
   useEffect(() => {
-    // When a new question is loaded, reset attempts and start the timer for it.
+    // When a new question is loaded, reset the timer for it.
     setQuestionStartTime(Date.now());
-    setCurrentAttempts(1);
   }, [currentQuestionIndex]);
 
   const completeTask = useCallback(async (finalQuestions: Question[]) => {
@@ -213,6 +211,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const currentQuestion = questions[currentQuestionIndex];
     let correct;
     if (subject === 'math') {
+      // Use parseFloat for number comparison, but fallback to string comparison for non-numeric answers
       const optionAsNumber = parseFloat(option);
       const answerAsNumber = parseFloat(currentQuestion.answer);
 
@@ -224,26 +223,33 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     } else {
       correct = option.toUpperCase() === currentQuestion.answer.toUpperCase();
     }
-
     setIsCorrect(correct);
 
+    // Create the new full questions array with updated performance data for the current question
     const updatedQuestions = questions.map((q, index) => {
       if (index === currentQuestionIndex) {
+        // Determine the new status. If it's the first attempt, set it ('correct'/'incorrect').
+        // Otherwise, keep the existing status.
+        const newStatus = (q.attempts || 0) === 0 
+          ? (correct ? 'correct' : 'incorrect')
+          : q.status;
+        
         return {
-            ...q,
-            studentAnswer: option,
-            timeTaken: (q.timeTaken || 0) + timeTaken,
-            attempts: (q.attempts || 0) + 1,
-            // Only set final status on the first attempt
-            status: q.attempts === 0 ? (correct ? 'correct' : 'incorrect') : q.status,
+          ...q,
+          studentAnswer: option,
+          timeTaken: (q.timeTaken || 0) + timeTaken,
+          attempts: (q.attempts || 0) + 1,
+          status: newStatus,
         };
       }
       return q;
     });
+
+    // Update state and Firestore for real-time progress saving
     setQuestions(updatedQuestions);
 
     if (taskDocRef && !isTestMode) {
-        // This intermediate update only saves to the student's doc for real-time progress saving.
+        // This intermediate update only saves to the student's doc.
         // The final `completeTask` will sync to the teacher's doc.
         updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
             console.error("Failed to update question performance", e)
@@ -269,18 +275,20 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setSelectedAnswer(null);
     setIsCorrect(null);
     
-    if (currentQuestionIndex === questions.length - 1) {
-      const finalQuestions = questions.map(q => {
-          // If a question was never answered, mark it as unanswered.
-          if (q.status === 'unanswered') return { ...q, status: 'unanswered' as const };
-          return q;
-      })
-      setQuestions(finalQuestions);
-      completeTask(finalQuestions);
-      setGameState('finished');
-    } else {
+    if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1);
       setGameState('playing');
+    } else {
+      // This is the end of the task, finalize and save.
+      const finalQuestions = questions.map(q => {
+        // Ensure any question that was never touched is marked 'unanswered'
+        if (q.status === 'unanswered' && (q.attempts || 0) === 0) {
+          return { ...q, status: 'unanswered' as const };
+        }
+        return q;
+      });
+      completeTask(finalQuestions);
+      setGameState('finished');
     }
   }, [currentQuestionIndex, questions, completeTask]);
 
