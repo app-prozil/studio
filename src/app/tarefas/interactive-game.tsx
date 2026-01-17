@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 type Question = {
   text: string;
@@ -61,7 +62,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [isGameComplete, setIsGameComplete] = useState(false);
+  const [gameState, setGameState] = useState<'playing' | 'showingAnswer' | 'feedback' | 'finished'>('playing');
   
   // Animation & reward state
   const [showCorrectAnswerConfetti, setShowCorrectAnswerConfetti] = useState(false);
@@ -86,7 +87,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   useEffect(() => {
     if (taskData && taskData.questions) {
-      // If task is already completed, redirect.
       if (taskData.isCompleted) {
         toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
         router.push('/tarefas');
@@ -122,21 +122,22 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
   }, [taskDocRef, taskStartTime, toast]);
 
-  const handleAnswer = async (option: string) => {
-    if (selectedAnswer !== null) return;
-    
+  const handleAnswer = useCallback(async (option: string) => {
+    if (gameState !== 'playing') return;
+
+    setGameState('showingAnswer');
     const timeTaken = Date.now() - questionStartTime;
     setSelectedAnswer(option);
-    
+
     const currentQuestion = questions[currentQuestionIndex];
-    const correct = subject === 'math' 
+    const correct = subject === 'math'
       ? parseFloat(option) === parseFloat(currentQuestion.answer)
       : option === currentQuestion.answer;
-    
+
     setIsCorrect(correct);
-    
-    const updatedQuestions = questions.map((q, index) => 
-        index === currentQuestionIndex 
+
+    const updatedQuestions = questions.map((q, index) =>
+        index === currentQuestionIndex
         ? {
             ...q,
             studentAnswer: option,
@@ -147,31 +148,62 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         : q
     );
     setQuestions(updatedQuestions);
-    
+
     if (taskDocRef) {
         updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
             console.error("Failed to update question performance", e)
         });
     }
 
-    setTimeout(() => {
-        setSelectedAnswer(null);
-        setIsCorrect(null);
-        if (correct) {
-            setShowCorrectAnswerConfetti(true);
-            setTimeout(() => setShowCorrectAnswerConfetti(false), 4000);
-
-            if (currentQuestionIndex === questions.length - 1) {
-                setIsGameComplete(true);
-                completeTask(updatedQuestions);
-            } else {
-                setCurrentQuestionIndex((prev) => prev + 1);
-            }
-        } else {
+    if (correct) {
+        setShowCorrectAnswerConfetti(true);
+        setTimeout(() => {
+             setGameState('feedback');
+        }, 1500);
+    } else {
+        setTimeout(() => {
+            setSelectedAnswer(null);
+            setIsCorrect(null);
+            setGameState('playing');
             setCurrentAttempts(prev => prev + 1);
-        }
-    }, 2000);
-  };
+        }, 2000);
+    }
+  }, [gameState, questionStartTime, questions, currentQuestionIndex, subject, currentAttempts, taskDocRef]);
+
+  const handleNextQuestion = useCallback(() => {
+    setShowCorrectAnswerConfetti(false);
+    setSelectedAnswer(null);
+    setIsCorrect(null);
+    
+    if (currentQuestionIndex === questions.length - 1) {
+      completeTask(questions);
+      setGameState('finished');
+    } else {
+      setCurrentQuestionIndex((prev) => prev + 1);
+      setGameState('playing');
+    }
+  }, [currentQuestionIndex, questions, completeTask]);
+
+   useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (gameState !== 'playing') return;
+      const currentQuestion = questions[currentQuestionIndex];
+      if (!currentQuestion) return;
+
+      if (event.key === '1' && currentQuestion.options[0]) {
+        handleAnswer(currentQuestion.options[0]);
+      } else if (event.key === '2' && currentQuestion.options[1]) {
+        handleAnswer(currentQuestion.options[1]);
+      } else if (event.key === '3' && currentQuestion.options[2]) {
+        handleAnswer(currentQuestion.options[2]);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [gameState, handleAnswer, questions, currentQuestionIndex]);
 
   if (isTaskLoading) {
     return (
@@ -190,50 +222,57 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     return <div className="text-destructive-foreground text-center">Não foi possível carregar a atividade. Verifique se o link está correto ou tente novamente.</div>;
   }
   
-  if (isGameComplete) {
+  if (gameState === 'finished') {
     const studentName = taskData?.studentName || 'aluno(a)';
     return (
-      <div className="relative flex flex-col items-center justify-center text-center h-64 space-y-4">
-        {width > 0 && height > 0 && (
-          <Confetti width={width} height={height} recycle={true} numberOfPieces={200} />
-        )}
-        
+      <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-4">
         {!isGiftOpened ? (
           <>
-            <h2 className="text-3xl font-bold">Parabéns, {studentName}!</h2>
-            <p className="text-xl text-muted-foreground">Você concluiu a tarefa!</p>
-            <button onClick={() => setIsGiftOpened(true)} className="animate-bounce">
-              <Gift className="w-32 h-32 text-primary" />
-              <span className="mt-2 block font-semibold">Clique no seu prêmio!</span>
+            <h2 className="text-4xl font-bold">Parabéns, {studentName}!</h2>
+            <p className="text-2xl text-muted-foreground">Você concluiu a tarefa!</p>
+            <button onClick={() => setIsGiftOpened(true)} className="animate-gift-bounce focus:outline-none">
+              <Gift className="w-40 h-40 text-primary" />
+              <span className="mt-4 block text-lg font-semibold">Clique no seu prêmio!</span>
             </button>
           </>
         ) : (
-          <div className="flex flex-col items-center gap-4 p-8 bg-card/80 backdrop-blur-sm rounded-lg shadow-2xl">
-            <h2 className="text-3xl font-bold">Seu prêmio!</h2>
-            <p className="text-6xl font-bold text-accent">{finalScore}%</p>
-            <p className="text-lg font-medium">de acertos</p>
-            <Button onClick={() => router.push('/tarefas')} className="text-lg mt-4">
-                Voltar para Tarefas <ArrowRight className="ml-2" />
-            </Button>
-          </div>
+          <>
+            {width > 0 && height > 0 && <Confetti width={width} height={height} recycle={false} numberOfPieces={400} />}
+            <div className="animate-score-reveal flex flex-col items-center gap-4 p-8 bg-card/80 backdrop-blur-sm rounded-lg shadow-2xl">
+              <h2 className="text-3xl font-bold">Sua pontuação!</h2>
+              <p className="text-7xl font-bold text-accent">{finalScore}%</p>
+              <p className="text-xl font-medium">de acertos</p>
+              <Button onClick={() => router.push('/tarefas')} size="lg" className="text-lg mt-4">
+                  Voltar para Tarefas <ArrowRight className="ml-2" />
+              </Button>
+            </div>
+          </>
         )}
       </div>
     );
   }
+  
+  if (gameState === 'feedback') {
+    return (
+        <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-6">
+            {width > 0 && height > 0 && showCorrectAnswerConfetti && (
+              <Confetti width={width} height={height} recycle={false} numberOfPieces={150} />
+            )}
+            <CheckCircle className="w-24 h-24 text-success" />
+            <h2 className="text-5xl font-bold">Muito bem!</h2>
+            <Button onClick={handleNextQuestion} size="lg" className="text-2xl mt-4">
+                Próxima Pergunta <ArrowRight className="ml-2" />
+            </Button>
+        </div>
+    )
+  }
+
 
   const currentQuestion = questions[currentQuestionIndex];
   const questionText = subject === 'portuguese' ? currentQuestion.text.replace('___', '_____') : currentQuestion.text;
 
   return (
     <div className="relative">
-      {width > 0 && height > 0 && showCorrectAnswerConfetti && (
-          <Confetti
-            width={width}
-            height={height}
-            recycle={false}
-            numberOfPieces={100}
-          />
-      )}
       <div className="space-y-8">
         <div className="relative p-8 border-4 border-dashed rounded-lg border-accent">
           <p className={`font-bold ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>
@@ -254,17 +293,21 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
               key={index}
               onClick={() => handleAnswer(option)}
               variant={selectedAnswer === option ? (isCorrect ? 'success' : 'destructive') : 'default'}
-              className='h-32 text-4xl font-bold'
-              disabled={selectedAnswer !== null}
+              className={cn(
+                  'h-32 text-4xl font-bold relative',
+                  selectedAnswer === option && 'animate-option-click'
+              )}
+              disabled={gameState !== 'playing'}
             >
+              <span className="absolute top-2 left-3 text-lg font-mono bg-background/50 text-foreground rounded-full h-8 w-8 flex items-center justify-center border-2">{index + 1}</span>
               {option}
             </Button>
           ))}
         </div>
-        {isCorrect !== null && (
-          <div className={`flex items-center justify-center text-4xl font-bold ${isCorrect ? 'text-success-foreground' : 'text-destructive-foreground'}`}>
+        {gameState === 'showingAnswer' && isCorrect !== null && (
+          <div className={`flex items-center justify-center text-4xl font-bold`}>
               {isCorrect ? <CheckCircle className="w-16 h-16 text-success mr-4"/> : <XCircle className="w-16 h-16 text-destructive mr-4"/>}
-              {isCorrect ? 'Muito bem!' : 'Ops, tente de novo!'}
+              {isCorrect ? 'Correto!' : 'Tente de novo!'}
           </div>
         )}
       </div>
