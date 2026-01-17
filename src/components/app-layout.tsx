@@ -1,4 +1,3 @@
-
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation';
@@ -214,7 +213,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <SidebarInset>
         <header className="flex items-center justify-between p-4 border-b bg-card">
           <SidebarTrigger />
-          <div/>
+          <div></div>
           <UserNav />
         </header>
         <div className="flex-1 p-4 overflow-auto sm:p-6 md:p-8">
