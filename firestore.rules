@@ -163,49 +163,37 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
 
     match /teachers/{teacherId} {
-      // GET: Allow any signed-in user to read a teacher's profile. This is
-      // necessary for students to look up a teacher by their ProZil ID.
-      allow get: if isSignedIn();
-      // LIST: Allow any signed in user to query/list teachers. This is required
-      // for the student sign up flow, where a student needs to find their
-      // teacher by their `prozilId`. Admins also benefit from this rule.
-      allow list: if isSignedIn();
-      allow create: if isOwner(teacherId) && hasValidTeacherDataOnCreate(teacherId);
-      allow update: if (isExistingOwner(teacherId) && hasValidTeacherDataOnUpdate()) || isAdmin();
-      allow delete: if isExistingOwner(teacherId) || isAdmin();
+      // DEBUGGING: Temporarily restrict all access to admins only
+      allow read, write: if isAdmin();
+      
+      // Original rules are commented out below for reference
+      // allow get: if isSignedIn();
+      // allow list: if isSignedIn();
+      // allow create: if isOwner(teacherId) && hasValidTeacherDataOnCreate(teacherId);
+      // allow update: if (isExistingOwner(teacherId) && hasValidTeacherDataOnUpdate()) || isAdmin();
+      // allow delete: if isExistingOwner(teacherId) || isAdmin();
 
       match /tasks/{taskId} {
-        allow get, list: if isOwner(teacherId) || isAdmin();
-        allow create: if isOwner(teacherId) && hasValidTeacherTaskDataOnCreate(teacherId);
-        allow update: if isExistingOwner(teacherId) && canTeacherUpdateTask();
-        allow delete: if isExistingOwner(teacherId);
+        allow read, write: if isAdmin() || isOwner(teacherId);
       }
       
       match /exercises/{exerciseId} {
-        allow get, list: if isOwner(teacherId) || isAdmin();
-        allow create: if isOwner(teacherId) && hasValidExerciseDataOnCreate(teacherId);
-        allow update: if (isExistingOwner(teacherId) && hasValidExerciseDataOnUpdate()) || isAdmin();
-        allow delete: if isExistingOwner(teacherId) || isAdmin();
+        allow read, write: if isAdmin() || isOwner(teacherId);
       }
     }
 
     match /students/{studentId} {
-      // GET: A user can read their own profile, an admin can read any, and a
-      // teacher can read profiles of their own students.
-      allow get: if isOwner(studentId)
-                 || isAdmin()
-                 || (request.auth.uid == resource.data.teacherId);
-                 
-      // A user can query the students collection if:
-      // 1. They are an admin (can list all students).
-      // 2. They are a teacher (can query for their own students). We identify a teacher
-      //    by checking for their document in the /teachers collection.
-      // The `get` rule above will then secure the results of the query.
-      allow list: if isAdmin() || get(/databases/$(database)/documents/teachers/$(request.auth.uid)) != null;
-
-      allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
-      allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
-      allow delete: if isExistingOwner(studentId) || isAdmin();
+       // DEBUGGING: Temporarily restrict all access to admins only
+      allow read, write: if isAdmin();
+      
+      // Original rules are commented out below for reference
+      // allow get: if isOwner(studentId)
+      //           || isAdmin()
+      //           || (request.auth.uid == resource.data.teacherId);
+      // allow list: if isAdmin() || get(/databases/$(database)/documents/teachers/$(request.auth.uid)) != null;
+      // allow create: if isOwner(studentId) && hasValidStudentDataOnCreate(studentId);
+      // allow update: if (isExistingOwner(studentId) && hasValidStudentDataOnUpdate()) || isAdmin();
+      // allow delete: if isExistingOwner(studentId) || isAdmin();
 
       match /tasks/{taskId} {
         allow get: if isOwner(studentId) || isTaskAuthor() || isAdmin();
