@@ -107,6 +107,7 @@ type Task = {
   id: string;
   title: string;
   description: string;
+  createdAt: string;
   dueDate: string;
   teacherId: string;
   studentId: string;
@@ -434,7 +435,8 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const sortedTasks = useMemo(() => {
     if (!tasks) return [];
     // Create a copy before sorting to avoid state mutation
-    return [...tasks].sort((a, b) => {
+    const tasksCopy = [...tasks];
+    return tasksCopy.sort((a, b) => {
       if (a.isCompleted !== b.isCompleted) {
         return a.isCompleted ? 1 : -1;
       }
@@ -563,7 +565,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
         batch.update(studentTaskRef, taskData);
     } else {
         const newTaskId = doc(collection(firestore, 'teachers')).id;
-        const taskData = { ...values, id: newTaskId, teacherId, isCompleted: false, dueDate: new Date(values.dueDate).toISOString(), studentId: studentUid, studentName, teacherName };
+        const taskData = { ...values, id: newTaskId, teacherId, isCompleted: false, createdAt: new Date().toISOString(), dueDate: new Date(values.dueDate).toISOString(), studentId: studentUid, studentName, teacherName };
 
         const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', newTaskId);
         const studentTaskRef = doc(firestore, 'students', studentUid, 'tasks', newTaskId);
@@ -977,30 +979,33 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
   const [viewingReport, setViewingReport] = useState<Task | null>(null);
 
   const tasksByStudent = useMemo(() => {
-    if (!tasks) return {};
-
-    const grouped = tasks.reduce((acc, task) => {
+    if (!tasks) {
+      return {};
+    }
+  
+    // Create a deep copy to avoid state mutation
+    const tasksCopy = JSON.parse(JSON.stringify(tasks));
+  
+    const grouped = tasksCopy.reduce((acc: Record<string, Task[]>, task: Task) => {
       const studentIdentifier = task.studentName || task.studentId;
       if (!acc[studentIdentifier]) {
         acc[studentIdentifier] = [];
       }
       acc[studentIdentifier].push(task);
       return acc;
-    }, {} as Record<string, Task[]>);
-
-    const sortedTasksByStudent: Record<string, Task[]> = {};
+    }, {});
+  
+    // Sort tasks within each student group
     for (const studentIdentifier in grouped) {
-      const studentTasks = [...grouped[studentIdentifier]];
-      studentTasks.sort((a, b) => {
+      grouped[studentIdentifier].sort((a, b) => {
         if (a.isCompleted !== b.isCompleted) {
           return a.isCompleted ? 1 : -1;
         }
         return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
       });
-      sortedTasksByStudent[studentIdentifier] = studentTasks;
     }
-    
-    return sortedTasksByStudent;
+  
+    return grouped;
   }, [tasks]);
 
   if (isLoading) {

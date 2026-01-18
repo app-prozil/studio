@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, BookOpen, FileText, User } from 'lucide-react';
+import { ArrowRight, BookOpen, FileText, User, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,7 @@ type Task = {
   title: string;
   description: string;
   dueDate: string;
+  createdAt: string;
   teacherId: string;
   studentId: string;
   studentProzilId: string;
@@ -52,7 +53,9 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
   
   const sortedTasks = useMemo(() => {
     if (!tasks) return [];
-    return [...tasks].sort((a, b) => {
+    // Create a copy before sorting to avoid state mutation
+    const tasksCopy = [...tasks];
+    return tasksCopy.sort((a, b) => {
       if (a.isCompleted !== b.isCompleted) {
         return a.isCompleted ? 1 : -1; // false (pending) comes first
       }
@@ -110,6 +113,9 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
                                <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-2">
                                    {task.teacherName && (
                                      <span className="flex items-center gap-1"><User className="w-3 h-3"/> {task.teacherName}</span>
+                                   )}
+                                   {task.createdAt && (
+                                     <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> Enviada em {format(new Date(task.createdAt), "dd/MM/yyyy", { locale: ptBR })}</span>
                                    )}
                                    <span className="flex items-center gap-1">
                                     <BookOpen className="w-3 h-3"/> {task.subject === 'matematica' ? 'Matemática' : 'Português'}

@@ -180,6 +180,11 @@
             "folha_imprimivel"
           ]
         },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the task was created."
+        },
         "dueDate": {
           "type": "string",
           "format": "date-time"
@@ -253,6 +258,7 @@
         "subject",
         "description",
         "taskType",
+        "createdAt",
         "dueDate",
         "isCompleted",
         "questions"
