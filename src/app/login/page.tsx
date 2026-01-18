@@ -25,10 +25,6 @@ const signUpSchema = z.object({
   email: z.string().email('Email inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
   role: z.enum(['teacher', 'student'], { required_error: 'Por favor, selecione um perfil.' }),
-  teacherProzilId: z.string().optional(),
-}).refine(data => data.role !== 'student' || (data.role === 'student' && data.teacherProzilId && data.teacherProzilId.trim().length > 0), {
-  message: "O ID ProZil do Professor é obrigatório.",
-  path: ["teacherProzilId"],
 });
 
 const loginSchema = z.object({
@@ -50,7 +46,7 @@ export default function LoginPage() {
 
   const signUpForm = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { name: '', email: '', password: '', role: 'student', teacherProzilId: '' },
+    defaultValues: { name: '', email: '', password: '', role: 'student' },
   });
 
   const role = signUpForm.watch('role');
@@ -88,32 +84,19 @@ export default function LoginPage() {
       const randomDigits = Math.floor(100000 + Math.random() * 900000);
       const prozilId = `${firstName}-${randomDigits}`;
 
-      let teacherUid: string | undefined;
-      if (values.role === 'student') {
-        if (!values.teacherProzilId) {
-          throw new Error("O ID ProZil do Professor é obrigatório para alunos.");
-        }
-        const teachersRef = collection(firestore, 'teachers');
-        const q = query(teachersRef, where("prozilId", "==", values.teacherProzilId));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-          signUpForm.setError("teacherProzilId", { message: "Professor não encontrado com este ID ProZil." });
-          throw new Error("Professor não encontrado.");
-        }
-        teacherUid = querySnapshot.docs[0].id;
-      }
-      
       const roleCollection = values.role === 'teacher' ? 'teachers' : 'students';
       const userDocRef = doc(firestore, roleCollection, createdUser.uid);
       
-      const userData = {
+      const userData: { [key: string]: any } = {
         id: createdUser.uid,
         prozilId: prozilId,
         name: values.name,
         email: values.email,
-        ...(values.role === 'student' && { teacherId: teacherUid }),
       };
+
+      if (values.role === 'student') {
+        userData.teacherIds = [];
+      }
 
       // Step 3: Write the profile data to Firestore and wait for it to complete.
       await setDoc(userDocRef, userData);
@@ -136,10 +119,7 @@ export default function LoginPage() {
       let title = 'Erro ao criar conta';
       let description = 'Ocorreu um erro inesperado. Por favor, tente novamente.';
 
-      if (error.message === "Professor não encontrado.") {
-        // This is a validation error we threw ourselves.
-        description = "Professor não encontrado com o ID ProZil fornecido.";
-      } else if (error.code === 'auth/email-already-in-use') {
+      if (error.code === 'auth/email-already-in-use') {
         description = 'Este email já está em uso.';
       } else if (error.name === 'FirebaseError') { // Firestore error
         title = 'Erro ao salvar perfil';
@@ -153,8 +133,7 @@ export default function LoginPage() {
         description: description,
       });
       
-      // Don't log expected validation errors to the console
-      if (error.message !== "Professor não encontrado." && error.code !== 'auth/email-already-in-use') {
+      if (error.code !== 'auth/email-already-in-use') {
           console.error(error);
       }
     } finally {
@@ -291,24 +270,6 @@ export default function LoginPage() {
                       </FormItem>
                     )}
                   />
-                  {role === 'student' && (
-                    <FormField
-                      control={signUpForm.control}
-                      name="teacherProzilId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>ID ProZil do Professor</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Cole o ID do seu professor" {...field} />
-                          </FormControl>
-                          <FormDescription>
-                            Peça ao seu professor o ID ProZil dele para se conectar.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Criar Conta

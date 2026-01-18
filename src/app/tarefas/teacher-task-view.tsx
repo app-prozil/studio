@@ -510,7 +510,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
     setAreStudentsLoading(true);
     const studentsColRef = collection(firestore, 'students');
-    const q = query(studentsColRef, where('teacherId', '==', teacherId));
+    const q = query(studentsColRef, where('teacherIds', 'array-contains', teacherId));
     try {
         const querySnapshot = await getDocs(q);
         const students = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Student[];
@@ -979,7 +979,6 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
   const tasksByStudent = useMemo(() => {
     if (!tasks) return {};
 
-    // 1. Group tasks by student
     const grouped = tasks.reduce((acc, task) => {
       const studentIdentifier = task.studentName || task.studentId;
       if (!acc[studentIdentifier]) {
@@ -989,18 +988,16 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
       return acc;
     }, {} as Record<string, Task[]>);
 
-    // 2. Sort tasks for each student and create a new object
     const sortedTasksByStudent: Record<string, Task[]> = {};
     for (const studentIdentifier in grouped) {
-      const studentTasks = grouped[studentIdentifier];
-      // Create a copy of the tasks array before sorting to avoid mutation
-      sortedTasksByStudent[studentIdentifier] = [...studentTasks].sort((a, b) => {
-        // Sort logic: pending tasks first, then by due date descending
+      const studentTasks = [...grouped[studentIdentifier]];
+      studentTasks.sort((a, b) => {
         if (a.isCompleted !== b.isCompleted) {
           return a.isCompleted ? 1 : -1;
         }
         return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
       });
+      sortedTasksByStudent[studentIdentifier] = studentTasks;
     }
     
     return sortedTasksByStudent;

@@ -94,7 +94,7 @@ service cloud.firestore {
 
     match /students/{studentId} {
       // GET: A student can read their own profile. A teacher can read their own students' profiles. Admins can read all.
-      allow get: if isOwner(studentId) || (isTeacher() && resource.data.teacherId == request.auth.uid) || isAdmin();
+      allow get: if isOwner(studentId) || (isTeacher() && request.auth.uid in resource.data.teacherIds) || isAdmin();
       
       // LIST: Only teachers and admins can list/query for students.
       allow list: if isTeacher() || isAdmin();

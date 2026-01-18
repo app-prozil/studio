@@ -59,9 +59,12 @@
           "description": "The student's email address.",
           "format": "email"
         },
-        "teacherId": {
-          "type": "string",
-          "description": "The Auth UID of the teacher. (Relationship: Teacher 1:N Student)"
+        "teacherIds": {
+          "type": "array",
+          "description": "A list of Auth UIDs of the teachers linked to this student. (Relationship: Teacher N:M Student)",
+          "items": {
+            "type": "string"
+          }
         },
         "deletedAt": {
           "type": "string",
@@ -73,8 +76,7 @@
         "id",
         "prozilId",
         "name",
-        "email",
-        "teacherId"
+        "email"
       ]
     },
     "Exercise": {
@@ -288,7 +290,7 @@
           "schema": {
             "$ref": "#/backend/entities/Student"
           },
-          "description": "Stores student profiles. Includes the teacherId to link students to teachers. StudentId is the Firebase Auth UID.",
+          "description": "Stores student profiles. Includes the teacherIds to link students to teachers. StudentId is the Firebase Auth UID.",
           "params": [
             {
               "name": "studentId",
