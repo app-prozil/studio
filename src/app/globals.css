@@ -152,7 +152,6 @@
     left: 0;
     top: 0;
     border-radius: 50%;
-    opacity: 0;
     --size: 8px;
     width: var(--size);
     height: var(--size);
@@ -207,39 +206,46 @@
 
 @media print {
   body {
-    background-color: #ffffff;
+    background-color: #ffffff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  /* Hide everything on the page by default */
-  body * {
-    visibility: hidden;
+  /* Hide the main sidebar and the header within the main content area */
+  [data-sidebar="sidebar"], 
+  main > header {
+    display: none !important;
+  }
+  
+  /* Make the content wrapper take up full space and be a simple block */
+  main, main > div {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
   }
 
-  /* Make the printable area and its children visible */
-  #printable-worksheet, #printable-worksheet * {
-    visibility: visible;
-  }
-
-  /* Position the printable area to take up the whole page */
-  #printable-worksheet {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    padding: 1.5cm; /* Standard printer margin */
-    font-size: 16pt; /* Larger base font for low vision */
-    color: #000000;
-  }
-
-  /* Explicitly hide any elements within the printable area marked with .print\:hidden */
-  .print\:hidden {
+  /* Hide everything inside the main content area EXCEPT our printable area */
+  main > div > *:not(#printable-worksheet) {
     display: none !important;
   }
 
-  /* Reset styles for the worksheet content itself */
+  /* Reset the printable area to be a block element */
+  #printable-worksheet {
+    display: block !important;
+    position: static !important; /* Override any absolute positioning */
+    padding: 1.5cm;
+    font-size: 16pt;
+    color: #000000;
+  }
+  
+  /* Hide the buttons/header within the printable area */
+  #printable-worksheet .print\:hidden {
+    display: none !important;
+  }
+
+  /* Reset styles for the worksheet content itself for a clean print */
   #worksheet-preview {
     padding: 0 !important;
     border: none !important;
