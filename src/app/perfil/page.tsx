@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { useState, useEffect } from 'react';
 import { doc, collection, query, where, getDocs, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -97,6 +97,52 @@ function TeacherList({ teacherIds, studentUid }: { teacherIds: string[], student
     );
 }
 
+type LinkedStudent = {
+  id: string;
+  name: string;
+  prozilId: string;
+};
+
+function TeacherStudentList({ teacherId }: { teacherId: string }) {
+    const firestore = useFirestore();
+    
+    const studentsQuery = useMemoFirebase(
+        () => (firestore && teacherId) 
+            ? query(collection(firestore, 'students'), where('teacherIds', 'array-contains', teacherId))
+            : null,
+        [firestore, teacherId]
+    );
+
+    const { data: students, isLoading, error } = useCollection<LinkedStudent>(studentsQuery);
+
+    if (isLoading) {
+        return <Skeleton className="h-24 w-full" />;
+    }
+
+    if (error) {
+        console.error(error);
+        return <p className="text-destructive text-center">Ocorreu um erro ao carregar seus alunos.</p>;
+    }
+
+    if (!students || students.length === 0) {
+        return <p className="text-center text-sm text-muted-foreground py-4">Nenhum aluno se vinculou a você ainda. Compartilhe seu ID ProZil para que eles possam se conectar.</p>;
+    }
+
+    return (
+        <ul className="space-y-2">
+            {students.map(student => (
+                <li key={student.id} className="flex items-center justify-between p-3 border rounded-md bg-background/50">
+                    <div>
+                        <p className="font-semibold">{student.name}</p>
+                        <p className="text-xs text-muted-foreground">{student.prozilId}</p>
+                    </div>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -144,6 +190,7 @@ export default function ProfilePage() {
 
         if (querySnapshot.empty) {
             toast({ variant: 'destructive', title: 'Professor não encontrado', description: 'Verifique o ID ProZil e tente novamente.' });
+            setIsLinking(false);
             return;
         }
 
@@ -152,6 +199,7 @@ export default function ProfilePage() {
 
         if (studentProfile.teacherIds && studentProfile.teacherIds.includes(teacherId)) {
             toast({ title: 'Professor já vinculado', description: 'Você já está conectado a este professor.' });
+            setIsLinking(false);
             return;
         }
 
@@ -265,6 +313,18 @@ export default function ProfilePage() {
                         <TeacherList teacherIds={studentProfile.teacherIds || []} studentUid={user.uid} />
                     </div>
                 </div>
+            </CardContent>
+        </Card>
+      )}
+
+      {teacherProfile && user && (
+        <Card>
+            <CardHeader>
+                <CardTitle>Meus Alunos</CardTitle>
+                <CardDescription>Estes são os alunos que estão vinculados a você.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <TeacherStudentList teacherId={user.uid} />
             </CardContent>
         </Card>
       )}
