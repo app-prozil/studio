@@ -11,9 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, PlusCircle, Download, FileText, Settings, User, GraduationCap, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { useToast } from '@/hooks/use-toast';
 
 type Exercise = {
@@ -56,57 +54,87 @@ function PrintableWorksheetGenerator() {
   
   const handleGeneratePdf = () => {
     setIsGeneratingPdf(true);
-    const worksheetElement = document.getElementById('worksheet-preview');
+    
+    try {
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const MARGIN = 20;
+        const PAGE_WIDTH = pdf.internal.pageSize.getWidth();
+        const PAGE_HEIGHT = pdf.internal.pageSize.getHeight();
+        const MAX_WIDTH = PAGE_WIDTH - MARGIN * 2;
+        let cursorY = MARGIN;
 
-    if (!worksheetElement) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao gerar PDF',
-        description: 'Não foi possível encontrar a folha de atividades.',
-      });
-      setIsGeneratingPdf(false);
-      return;
-    }
+        const checkPageBreak = (neededHeight: number) => {
+            if (cursorY + neededHeight > PAGE_HEIGHT - MARGIN) {
+                pdf.addPage();
+                cursorY = MARGIN;
+            }
+        };
 
-    worksheetElement.classList.add('printing');
+        // --- Título ---
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(28);
+        pdf.text('Folha de Atividades', PAGE_WIDTH / 2, cursorY, { align: 'center' });
+        cursorY += 20;
 
-    html2canvas(worksheetElement, {
-      scale: 3,
-      useCORS: true,
-      logging: false,
-    }).then(canvas => {
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      const canvasAspectRatio = canvasWidth / canvasHeight;
-      
-      let renderWidth = pdfWidth - 20; // 10mm margin on each side
-      let renderHeight = renderWidth / canvasAspectRatio;
+        // --- Nomes ---
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(14);
+        pdf.line(MARGIN, cursorY - 5, PAGE_WIDTH - MARGIN, cursorY - 5);
+        
+        const studentText = `Aluno(a): ${studentName || '________________________________'}`;
+        pdf.text(studentText, MARGIN, cursorY);
+        
+        const teacherText = `Professor(a): ${teacherName || '___________________________'}`;
+        pdf.text(teacherText, PAGE_WIDTH - MARGIN, cursorY, { align: 'right' });
+        
+        cursorY += 10;
+        pdf.line(MARGIN, cursorY - 5, PAGE_WIDTH - MARGIN, cursorY - 5);
+        cursorY += 15;
 
-      if (renderHeight > pdfHeight - 20) { // 10mm margin top/bottom
-          renderHeight = pdfHeight - 20;
-          renderWidth = renderHeight * canvasAspectRatio;
-      }
-      
-      const xOffset = (pdfWidth - renderWidth) / 2;
-      const yOffset = 10;
+        // --- Exercícios ---
+        selectedExercises.forEach((exercise, index) => {
+            const questionText = `${index + 1}. ${exercise.text.replace(/___/g, '__________')}`;
+            
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(22);
+            
+            const questionLines = pdf.splitTextToSize(questionText, MAX_WIDTH);
+            checkPageBreak(questionLines.length * 15);
+            pdf.text(questionLines, MARGIN, cursorY);
+            cursorY += questionLines.length * 15;
 
-      pdf.addImage(imgData, 'PNG', xOffset, yOffset, renderWidth, renderHeight);
-      pdf.save('folha-de-atividades-prozil.pdf');
-    }).catch(err => {
+            checkPageBreak(15);
+            
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(22);
+
+            if (exercise.subject === 'portugues') {
+                exercise.options.forEach((option) => {
+                    checkPageBreak(18);
+                    pdf.rect(MARGIN + 5, cursorY - 9, 8, 8); // Quadrado de seleção
+                    pdf.text(option, MARGIN + 20, cursorY);
+                    cursorY += 18;
+                });
+            } else {
+                checkPageBreak(15);
+                pdf.text('R: _________________________', MARGIN + 8, cursorY);
+                cursorY += 25;
+            }
+            cursorY += 10; // Espaço extra entre as questões
+        });
+
+        pdf.save('folha-de-atividades-prozil.pdf');
+
+    } catch (err) {
         console.error("Error generating PDF:", err);
         toast({
             variant: 'destructive',
             title: 'Erro ao gerar PDF',
             description: 'Ocorreu um problema ao criar o arquivo.',
         });
-    }).finally(() => {
-        worksheetElement.classList.remove('printing');
+    } finally {
         setIsGeneratingPdf(false);
-    });
+    }
   };
 
   if (isUserLoading) {
@@ -127,7 +155,7 @@ function PrintableWorksheetGenerator() {
   if (showPreview) {
     return (
         <div id="printable-worksheet">
-             <div className="flex items-center justify-between gap-4 mb-8 print:hidden">
+             <div className="flex items-center justify-between gap-4 mb-8">
                 <h1 className="text-2xl font-bold">Pré-visualização da Folha</h1>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setShowPreview(false)} disabled={isGeneratingPdf}>
@@ -139,7 +167,7 @@ function PrintableWorksheetGenerator() {
                     </Button>
                 </div>
             </div>
-            <Card className="p-4 sm:p-8 print:border-none print:shadow-none print:p-0 bg-background" id="worksheet-preview">
+            <Card className="p-4 sm:p-8 bg-background" id="worksheet-preview">
                 <header className="mb-12 space-y-4">
                     <h1 className="text-4xl font-bold text-center font-headline">Folha de Atividades</h1>
                     <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-lg border-y py-4">
