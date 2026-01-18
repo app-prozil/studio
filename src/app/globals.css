@@ -212,40 +212,48 @@
     print-color-adjust: exact;
   }
 
-  /* Hide all non-printable elements */
-  [data-sidebar="sidebar"],
-  .print\:hidden {
-    display: none !important;
-  }
-  
-  /* Ensure the main content area is reset for printing */
-  main {
-    padding: 0 !important;
-    margin: 0 !important;
+  /* Hide everything on the page by default */
+  body * {
+    visibility: hidden;
   }
 
-  /* Make the printable worksheet area fill the page */
+  /* Make the printable area and its children visible */
+  #printable-worksheet, #printable-worksheet * {
+    visibility: visible;
+  }
+
+  /* Position the printable area to take up the whole page */
   #printable-worksheet {
-    margin: 0;
-    padding: 1.5cm; /* Standard printer margin */
+    position: absolute;
+    left: 0;
+    top: 0;
     width: 100%;
     height: 100%;
+    padding: 1.5cm; /* Standard printer margin */
     font-size: 16pt; /* Larger base font for low vision */
     color: #000000;
   }
-  
+
+  /* Explicitly hide any elements within the printable area marked with .print\:hidden */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Reset styles for the worksheet content itself */
   #worksheet-preview {
     padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
   }
 
+  /* Control page breaks */
   #worksheet-preview header, 
   #worksheet-preview section {
     page-break-after: auto;
     page-break-inside: avoid;
   }
   
+  /* Specific font sizes for accessibility */
   #worksheet-preview h1 {
      font-size: 28pt;
   }
@@ -261,6 +269,7 @@
       border-width: 4px !important;
    }
 
+  /* Remove link URLs from being printed */
   a[href]:after {
     content: none !important;
   }
