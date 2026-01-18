@@ -209,7 +209,7 @@
   padding: 1.5rem !important;
   border: none !important;
   box-shadow: none !important;
-  font-size: 16pt;
+  font-size: 21px; /* ~16pt */
 }
 
 .printing,
@@ -219,17 +219,17 @@
 }
 
 .printing header h1 {
-  font-size: 28pt !important;
+  font-size: 37px !important; /* ~28pt */
 }
 
 .printing header span,
 .printing header strong {
-  font-size: 16pt !important;
+  font-size: 21px !important; /* ~16pt */
 }
 
 .printing section p,
 .printing section span {
-  font-size: 30pt !important;
+  font-size: 40px !important; /* ~30pt */
   line-height: 1.8 !important;
 }
 
@@ -313,7 +313,7 @@
   }
   
    #worksheet-preview p, #worksheet-preview span, #worksheet-preview strong, #worksheet-preview div {
-     font-size: 18pt !important;
+     font-size: 30pt !important;
      line-height: 1.8 !important;
    }
    

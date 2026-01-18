@@ -71,7 +71,7 @@ function PrintableWorksheetGenerator() {
     worksheetElement.classList.add('printing');
 
     html2canvas(worksheetElement, {
-      scale: 2,
+      scale: 3,
       useCORS: true,
       logging: false,
     }).then(canvas => {
