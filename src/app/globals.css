@@ -204,3 +204,64 @@
     --radius: 100px;
   }
 }
+
+@media print {
+  body {
+    background-color: #ffffff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide all non-printable elements */
+  [data-sidebar="sidebar"],
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  /* Ensure the main content area is reset for printing */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Make the printable worksheet area fill the page */
+  #printable-worksheet {
+    margin: 0;
+    padding: 1.5cm; /* Standard printer margin */
+    width: 100%;
+    height: 100%;
+    font-size: 16pt; /* Larger base font for low vision */
+    color: #000000;
+  }
+  
+  #worksheet-preview {
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  #worksheet-preview header, 
+  #worksheet-preview section {
+    page-break-after: auto;
+    page-break-inside: avoid;
+  }
+  
+  #worksheet-preview h1 {
+     font-size: 28pt;
+  }
+  
+   #worksheet-preview p, #worksheet-preview span, #worksheet-preview strong, #worksheet-preview div {
+     font-size: 18pt !important;
+     line-height: 1.8 !important;
+   }
+   
+   #worksheet-preview .w-8.h-8.border-4 {
+      width: 2rem !important;
+      height: 2rem !important;
+      border-width: 4px !important;
+   }
+
+  a[href]:after {
+    content: none !important;
+  }
+}
