@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText, Calendar, Clock, Target, Check, Circle, TestTube } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText, Calendar, Clock, Target, Check, Circle, TestTube, Award } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
@@ -433,6 +433,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
   const sortedTasks = useMemo(() => {
     if (!tasks) return [];
+    // Create a copy before sorting to avoid state mutation
     return [...tasks].sort((a, b) => {
       if (a.isCompleted !== b.isCompleted) {
         return a.isCompleted ? 1 : -1;
@@ -889,6 +890,7 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
   
   const correctAnswers = questions.filter(q => q.status === 'correct').length;
   const totalQuestions = questions.length;
+  const accuracyPercentage = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -898,22 +900,26 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
           <DialogDescription>Relatório de desempenho para {task.studentName || 'aluno desconhecido'}.</DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-y">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 py-4 border-y text-center">
             <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground">Status</dt>
+                <dt className="text-sm font-medium text-muted-foreground justify-center flex items-center gap-1">Status</dt>
                 <dd><Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge></dd>
             </div>
             <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground flex items-center gap-1"><Calendar className="w-4 h-4"/> Conclusão</dt>
+                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Calendar className="w-4 h-4"/> Conclusão</dt>
                 <dd className="font-semibold">{task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yy HH:mm', {locale: ptBR}) : 'N/A'}</dd>
             </div>
             <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground flex items-center gap-1"><Clock className="w-4 h-4"/> Tempo Total</dt>
+                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Clock className="w-4 h-4"/> Tempo Total</dt>
                 <dd className="font-semibold">{formatTime(task.totalTime)}</dd>
             </div>
              <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground flex items-center gap-1"><Target className="w-4 h-4"/> Precisão</dt>
+                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Target className="w-4 h-4"/> Precisão</dt>
                 <dd className="font-semibold">{correctAnswers} de {totalQuestions}</dd>
+            </div>
+             <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Award className="w-4 h-4"/> Pontuação</dt>
+                <dd className="font-bold text-lg text-primary">{accuracyPercentage}%</dd>
             </div>
         </div>
 
