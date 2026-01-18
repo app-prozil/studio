@@ -204,6 +204,11 @@
   }
 }
 
+.printing,
+.printing * {
+  color: #000000 !important;
+}
+
 @media print {
   body {
     background-color: #ffffff !important;

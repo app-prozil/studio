@@ -9,9 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, PlusCircle, Printer, FileText, Settings, User, GraduationCap, X } from 'lucide-react';
+import { Loader2, PlusCircle, Download, FileText, Settings, User, GraduationCap, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { useToast } from '@/hooks/use-toast';
 
 type Exercise = {
   id: string;
@@ -26,6 +29,7 @@ type Exercise = {
 function PrintableWorksheetGenerator() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const isTeacher = !!user;
 
@@ -33,6 +37,7 @@ function PrintableWorksheetGenerator() {
   const [studentName, setStudentName] = useState('');
   const [teacherName, setTeacherName] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   const [isBankOpen, setIsBankOpen] = useState(false);
   const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
@@ -49,8 +54,59 @@ function PrintableWorksheetGenerator() {
     return exercises.filter(ex => ex.subject === bankSubjectFilter);
   }, [exercises, bankSubjectFilter]);
   
-  const handlePrint = () => {
-    window.print();
+  const handleGeneratePdf = () => {
+    setIsGeneratingPdf(true);
+    const worksheetElement = document.getElementById('worksheet-preview');
+
+    if (!worksheetElement) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao gerar PDF',
+        description: 'Não foi possível encontrar a folha de atividades.',
+      });
+      setIsGeneratingPdf(false);
+      return;
+    }
+
+    worksheetElement.classList.add('printing');
+
+    html2canvas(worksheetElement, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    }).then(canvas => {
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const canvasAspectRatio = canvasWidth / canvasHeight;
+      
+      let renderWidth = pdfWidth - 20; // 10mm margin on each side
+      let renderHeight = renderWidth / canvasAspectRatio;
+
+      if (renderHeight > pdfHeight - 20) { // 10mm margin top/bottom
+          renderHeight = pdfHeight - 20;
+          renderWidth = renderHeight * canvasAspectRatio;
+      }
+      
+      const xOffset = (pdfWidth - renderWidth) / 2;
+      const yOffset = 10;
+
+      pdf.addImage(imgData, 'PNG', xOffset, yOffset, renderWidth, renderHeight);
+      pdf.save('folha-de-atividades-prozil.pdf');
+    }).catch(err => {
+        console.error("Error generating PDF:", err);
+        toast({
+            variant: 'destructive',
+            title: 'Erro ao gerar PDF',
+            description: 'Ocorreu um problema ao criar o arquivo.',
+        });
+    }).finally(() => {
+        worksheetElement.classList.remove('printing');
+        setIsGeneratingPdf(false);
+    });
   };
 
   if (isUserLoading) {
@@ -74,15 +130,16 @@ function PrintableWorksheetGenerator() {
              <div className="flex items-center justify-between gap-4 mb-8 print:hidden">
                 <h1 className="text-2xl font-bold">Pré-visualização da Folha</h1>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setShowPreview(false)}>
+                    <Button variant="outline" onClick={() => setShowPreview(false)} disabled={isGeneratingPdf}>
                         <Settings className="mr-2" /> Editar
                     </Button>
-                    <Button onClick={handlePrint}>
-                        <Printer className="mr-2" /> Imprimir
+                    <Button onClick={handleGeneratePdf} disabled={isGeneratingPdf}>
+                         {isGeneratingPdf ? <Loader2 className="mr-2 animate-spin" /> : <Download className="mr-2" />}
+                         {isGeneratingPdf ? 'Gerando PDF...' : 'Baixar PDF'}
                     </Button>
                 </div>
             </div>
-            <Card className="p-4 sm:p-8 print:border-none print:shadow-none print:p-0" id="worksheet-preview">
+            <Card className="p-4 sm:p-8 print:border-none print:shadow-none print:p-0 bg-background" id="worksheet-preview">
                 <header className="mb-12 space-y-4">
                     <h1 className="text-4xl font-bold text-center font-headline">Folha de Atividades</h1>
                     <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-lg border-y py-4">
