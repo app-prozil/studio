@@ -37,29 +37,29 @@ type Task = {
 }
 
 const testDriveMathQuestions: Question[] = [
-    { text: 'QUANTO É 5 + 3?', options: ['7', '8', '9'], answer: '8' },
-    { text: 'QUAL NÚMERO VEM DEPOIS DE 9?', options: ['8', '10', '11'], answer: '10' },
-    { text: 'CONTE OS EMOJIS: 👍👍👍👍👍', options: ['4', '5', '6'], answer: '5' },
-    { text: 'QUANTO É 4 - 2?', options: ['1', '2', '3'], answer: '2' },
-    { text: 'QUAL NÚMERO VEM ANTES DE 7?', options: ['5', '6', '8'], answer: '6' },
-    { text: 'QUANTO É 10 + 0?', options: ['0', '1', '10'], answer: '10' },
-    { text: 'CONTE OS EMOJIS: 🚗🚗🚗', options: ['2', '3', '4'], answer: '3' },
-    { text: 'QUAL FORMA TEM 4 LADOS IGUAIS?', options: ['CÍRCULO', 'TRIÂNGULO', 'QUADRADO'], answer: 'QUADRADO' },
-    { text: 'QUANTO É 3 + 3?', options: ['5', '6', '7'], answer: '6' },
-    { text: 'QUAL NÚMERO É MAIOR: 8 OU 6?', options: ['8', '6', 'IGUAIS'], answer: '8' },
+    { text: 'QUANTO É 5 + 3?', options: ['7', '8', '9'], answer: '8', status: 'unanswered', attempts: 0 },
+    { text: 'QUAL NÚMERO VEM DEPOIS DE 9?', options: ['8', '10', '11'], answer: '10', status: 'unanswered', attempts: 0 },
+    { text: 'CONTE OS EMOJIS: 👍👍👍👍👍', options: ['4', '5', '6'], answer: '5', status: 'unanswered', attempts: 0 },
+    { text: 'QUANTO É 4 - 2?', options: ['1', '2', '3'], answer: '2', status: 'unanswered', attempts: 0 },
+    { text: 'QUAL NÚMERO VEM ANTES DE 7?', options: ['5', '6', '8'], answer: '6', status: 'unanswered', attempts: 0 },
+    { text: 'QUANTO É 10 + 0?', options: ['0', '1', '10'], answer: '10', status: 'unanswered', attempts: 0 },
+    { text: 'CONTE OS EMOJIS: 🚗🚗🚗', options: ['2', '3', '4'], answer: '3', status: 'unanswered', attempts: 0 },
+    { text: 'QUAL FORMA TEM 4 LADOS IGUAIS?', options: ['CÍRCULO', 'TRIÂNGULO', 'QUADRADO'], answer: 'QUADRADO', status: 'unanswered', attempts: 0 },
+    { text: 'QUANTO É 3 + 3?', options: ['5', '6', '7'], answer: '6', status: 'unanswered', attempts: 0 },
+    { text: 'QUAL NÚMERO É MAIOR: 8 OU 6?', options: ['8', '6', 'IGUAIS'], answer: '8', status: 'unanswered', attempts: 0 },
 ];
 
 const testDrivePortugueseQuestions: Question[] = [
-    { text: "QUAL O SINÔNIMO DE 'BONITO'?", options: ["FEIO", "BELO", "GRANDE"], answer: "BELO" },
-    { text: "COMPLETE COM O VERBO CORRETO: EU ___ PÃO.", options: ["COMO", "COME", "COMEMOS"], answer: "COMO" },
-    { text: "O PLURAL DE 'MENINO' É ___.", options: ["MENINA", "MENINOS", "MENINAS"], answer: "MENINOS" },
-    { text: "O CONTRÁRIO DE 'ABRIR' É ___.", options: ["FECHAR", "CORRER", "PULAR"], answer: "FECHAR" },
-    { text: "QUAL ANIMAL FAZ 'MIAU'?", options: ["CACHORRO", "GATO", "PÁSSARO"], answer: "GATO" },
-    { text: "A COR DO SOL É ___.", options: ["AZUL", "VERDE", "AMARELO"], answer: "AMARELO" },
-    { text: "O QUE USAMOS PARA ESCREVER?", options: ["LÁPIS", "GARFO", "CAMA"], answer: "LÁPIS" },
-    { text: "A PRIMEIRA LETRA DO ALFABETO É ___.", options: ["B", "C", "A"], answer: "A" },
-    { text: "O PLURAL DE 'CÃO' É ___.", options: ["CÃOS", "CÃES", "CÃS"], answer: "CÃES" },
-    { text: "QUAL O FEMININO DE 'PAI'?", options: ["TIA", "MÃE", "AVÓ"], answer: "MÃE" },
+    { text: "QUAL O SINÔNIMO DE 'BONITO'?", options: ["FEIO", "BELO", "GRANDE"], answer: "BELO", status: 'unanswered', attempts: 0 },
+    { text: "COMPLETE COM O VERBO CORRETO: EU ___ PÃO.", options: ["COMO", "COME", "COMEMOS"], answer: "COMO", status: 'unanswered', attempts: 0 },
+    { text: "O PLURAL DE 'MENINO' É ___.", options: ["MENINA", "MENINOS", "MENINAS"], answer: "MENINOS", status: 'unanswered', attempts: 0 },
+    { text: "O CONTRÁRIO DE 'ABRIR' É ___.", options: ["FECHAR", "CORRER", "PULAR"], answer: "FECHAR", status: 'unanswered', attempts: 0 },
+    { text: "QUAL ANIMAL FAZ 'MIAU'?", options: ["CACHORRO", "GATO", "PÁSSARO"], answer: "GATO", status: 'unanswered', attempts: 0 },
+    { text: "A COR DO SOL É ___.", options: ["AZUL", "VERDE", "AMARELO"], answer: "AMARELO", status: 'unanswered', attempts: 0 },
+    { text: "O QUE USAMOS PARA ESCREVER?", options: ["LÁPIS", "GARFO", "CAMA"], answer: "LÁPIS", status: 'unanswered', attempts: 0 },
+    { text: "A PRIMEIRA LETRA DO ALFABETO É ___.", options: ["B", "C", "A"], answer: "A", status: 'unanswered', attempts: 0 },
+    { text: "O PLURAL DE 'CÃO' É ___.", options: ["CÃOS", "CÃES", "CÃS"], answer: "CÃES", status: 'unanswered', attempts: 0 },
+    { text: "QUAL O FEMININO DE 'PAI'?", options: ["TIA", "MÃE", "AVÓ"], answer: "MÃE", status: 'unanswered', attempts: 0 },
 ];
 
 
@@ -96,6 +96,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const { width, height } = useWindowSize();
   const { user, isUserLoading: isAuthLoading } = useUser();
 
+  const [task, setTask] = useState<Task | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -120,51 +121,59 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const taskSource = searchParams.get('source') || 'student';
     const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
 
+    // 1. Wait for auth to be ready
     if (isAuthLoading) {
       setGameState('loading');
       return;
     }
 
+    // 2. Handle Test Drive mode separately
     if (isTestDrive) {
       setGameState('loading');
-      const questions = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
-      const mockTask: Task = { ...testDriveTaskBase, questions, subject };
-      setLoadedTask(mockTask);
+      const questionsForTest = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
+      const mockTask: Task = { ...testDriveTaskBase, questions: questionsForTest, subject };
+      setTask(mockTask);
       setQuestions(mockTask.questions.map(q => ({...q, status: 'unanswered', attempts: 0 })));
       setGameState('playing');
       return;
     }
 
+    // 3. From this point, a real user is required
     if (!user) {
-      if (!isAuthLoading) {
-        toast({ variant: "destructive", title: "Acesso Negado", description: "Você precisa estar logado."});
-        router.push('/login');
-      }
+      // This case should ideally not be hit if navigation is protected, but as a safeguard.
+      toast({ variant: "destructive", title: "Acesso Negado", description: "Você precisa estar logado."});
+      router.push('/login');
       return;
     }
 
+    // 4. Validate required URL parameters
     if (!studentId || !taskId) {
-      setGameState('loading');
       toast({ variant: "destructive", title: "Tarefa não encontrada", description: "O link da tarefa parece estar incompleto."});
-      setGameState('finished');
+      setGameState('finished'); // Go to a safe final state
       return;
     }
 
+    // 5. Fetch the task
     setGameState('loading');
     const taskDocRef = doc(firestore, collectionPath, studentId, 'tasks', taskId);
     
     getDoc(taskDocRef).then(docSnap => {
       if (docSnap.exists()) {
         const taskData = docSnap.data() as Task;
+        
+        // Prevent re-doing a completed task unless in test mode
         if (taskData.isCompleted && !isTestMode) {
           toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
-          router.push('/tarefas');
+          router.push('/tarefas'); // Navigate away
           return;
         }
-        setLoadedTask(taskData);
+
+        setTask(taskData);
+        // Initialize question state with status and attempts
         const initialQuestions = taskData.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 }));
         setQuestions(initialQuestions);
         
+        // Find where the user left off
         const lastUnansweredIndex = initialQuestions.findIndex(q => q.status !== 'correct');
         setCurrentQuestionIndex(lastUnansweredIndex >= 0 ? lastUnansweredIndex : 0);
 
@@ -181,7 +190,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   }, [isAuthLoading, user, taskId, studentId, subject, firestore, router, toast]);
 
-  const [loadedTask, setLoadedTask] = useState<Task | null>(null);
 
   useEffect(() => {
     setQuestionStartTime(Date.now());
@@ -189,7 +197,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   
   const completeTask = useCallback((finalQuestions: Question[]) => {
     const isTestDrive = taskId === 'test-drive';
-    if (isTestDrive || !firestore || !user || !loadedTask?.teacherId || !loadedTask.id || !studentId) return;
+    if (isTestDrive || !firestore || !user || !task?.teacherId || !task.id || !studentId) return;
         
       const totalTime = Math.round((Date.now() - taskStartTime) / 1000);
       const performanceData = {
@@ -199,17 +207,17 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         questions: finalQuestions,
       };
       
-      const studentTaskRef = doc(firestore, 'students', studentId, 'tasks', loadedTask.id);
+      const studentTaskRef = doc(firestore, 'students', studentId, 'tasks', task.id);
       updateDoc(studentTaskRef, performanceData).catch(e => {
         console.error("Erro ao finalizar tarefa (aluno): ", e);
       });
       
-      const teacherTaskRef = doc(firestore, 'teachers', loadedTask.teacherId, 'tasks', loadedTask.id);
+      const teacherTaskRef = doc(firestore, 'teachers', task.teacherId, 'tasks', task.id);
       updateDoc(teacherTaskRef, performanceData).catch(e => {
           console.error("Erro ao finalizar tarefa (professor): ", e);
           toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível sincronizar o resultado da tarefa com o professor.' });
       });
-  }, [firestore, user, loadedTask, taskStartTime, toast, studentId, taskId]);
+  }, [firestore, user, task, taskStartTime, toast, studentId, taskId]);
 
   const handleNextQuestion = useCallback((updatedQuestions: Question[]) => {
     const isLastQuestion = currentQuestionIndex >= updatedQuestions.length - 1;
@@ -247,14 +255,18 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     
     const updatedQuestions = questions.map((q, index) => {
         if (index === currentQuestionIndex) {
-            const isAlreadyCorrect = q.status === 'correct';
             const newAttempts = (q.attempts || 0) + 1;
             
+            // The status for scoring is only set on the first attempt.
+            const newStatus = (q.status === 'unanswered') 
+                ? (isAnswerCorrect ? 'correct' : 'incorrect')
+                : q.status;
+
             return {
                 ...q,
                 studentAnswer: option,
                 attempts: newAttempts,
-                status: isAlreadyCorrect ? 'correct' : (isAnswerCorrect ? 'correct' : 'incorrect'),
+                status: newStatus,
                 timeTaken: (q.timeTaken || 0) + timeTaken,
             };
         }
@@ -305,9 +317,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     };
   }, [gameState, handleAnswer, questions, currentQuestionIndex]);
 
-  const isLoading = gameState === 'loading' || isAuthLoading;
-
-  if (isLoading) {
+  if (gameState === 'loading' || isAuthLoading) {
     return (
         <div className="space-y-8">
             <Skeleton className="h-32 w-full" />
@@ -319,14 +329,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         </div>
     );
   }
-
-  const isTestDrive = taskId === 'test-drive';
-  if (!isTestDrive && !isLoading && !loadedTask) {
-    return <div className="text-destructive text-center p-8">Não foi possível carregar a atividade. Verifique se o link está correto ou tente novamente.</div>;
-  }
   
   if (gameState === 'finished') {
-    const studentName = loadedTask?.studentName || 'Visitante';
+    const studentName = task?.studentName || 'Visitante';
     return (
       <>
         {showEndConfetti && width > 0 && height > 0 && <Confetti width={width} height={height} recycle={false} numberOfPieces={800} gravity={0.08} />}
@@ -371,6 +376,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   if (!currentQuestion) {
      return (
         <div className="space-y-8">
+             <p className="text-center text-destructive">Não foi possível carregar a pergunta. Tente recarregar a página.</p>
             <Skeleton className="h-32 w-full" />
             <div className="grid grid-cols-3 gap-6">
                 <Skeleton className="h-32 w-full" />
@@ -395,7 +401,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           />
       )}
       
-      <Dialog open={showConfetti && isCorrect} onOpenChange={(open) => !open && setShowConfetti(false)}>
+      <Dialog open={gameState === 'showingAnswer' && isCorrect} onOpenChange={(open) => !open && setShowConfetti(false)}>
         <DialogContent className="max-w-md text-center bg-transparent border-none shadow-none" onPointerDownOutside={(e) => e.preventDefault()}>
             <DialogHeader>
                 <DialogTitle className="text-5xl font-bold font-headline mx-auto text-success">
@@ -431,7 +437,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
               className={cn(
                   'h-32 text-4xl font-bold relative',
                   selectedAnswer === option && 'animate-option-click',
-                  selectedAnswer === option && isCorrect === true && 'animate-correct-answer'
               )}
               disabled={gameState !== 'playing'}
             >
