@@ -53,62 +53,64 @@ function PrintableWorksheetGenerator() {
     return exercises.filter(ex => ex.subject === bankSubjectFilter);
   }, [exercises, bankSubjectFilter]);
   
+  const exercisesPerPage = 3;
+  const pageChunks = useMemo(() => {
+    const chunks = [];
+    for (let i = 0; i < selectedExercises.length; i += exercisesPerPage) {
+      chunks.push(selectedExercises.slice(i, i + exercisesPerPage));
+    }
+    return chunks;
+  }, [selectedExercises]);
+
   const handleGeneratePdf = async () => {
-    const worksheetElement = document.getElementById('worksheet-preview');
-    if (!worksheetElement) {
-        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível encontrar o elemento da folha de atividades.' });
-        return;
+    const container = document.getElementById('printable-worksheet-container');
+    if (!container) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível encontrar a área de impressão.' });
+      return;
     }
-
+  
     setIsGeneratingPdf(true);
-    // Apply special printing styles
-    document.body.classList.add('printing-active');
-    worksheetElement.classList.add('printing');
-
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const margin = 15;
-    const contentWidth = pdfWidth - margin * 2;
-    let y = margin;
-    let pageCount = 1;
-
-    // --- 1. Add Header ---
-    const headerElement = worksheetElement.querySelector('header') as HTMLElement;
-    if (headerElement) {
-        const canvas = await html2canvas(headerElement, { scale: 2, useCORS: true });
-        const imgData = canvas.toDataURL('image/png');
-        const imgHeight = (canvas.height * contentWidth) / canvas.width;
-        pdf.addImage(imgData, 'PNG', margin, y, contentWidth, imgHeight);
-        y += imgHeight + 10;
+  
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 3, // Higher scale for better quality
+        useCORS: true,
+        logging: false,
+      });
+  
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      
+      const ratio = canvasHeight / canvasWidth;
+      const imgHeight = pdfWidth * ratio;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+  
+      // Add the first page
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+      heightLeft -= pdfHeight;
+  
+      // Add new pages if the content is taller than one A4 page
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+  
+      pdf.save('folha-de-atividades-prozil.pdf');
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um problema ao criar o arquivo. Tente novamente.' });
+    } finally {
+      setIsGeneratingPdf(false);
     }
-    
-    // --- 2. Add Exercises one by one ---
-    const exerciseElements = worksheetElement.querySelectorAll('.exercise-item');
-
-    for (let i = 0; i < exerciseElements.length; i++) {
-        const element = exerciseElements[i] as HTMLElement;
-
-        const canvas = await html2canvas(element, { scale: 3, useCORS: true, logging: false });
-        const imgData = canvas.toDataURL('image/png');
-        const imgHeight = (canvas.height * contentWidth) / canvas.width;
-
-        if (y + imgHeight > pdfHeight - margin) {
-            pdf.addPage();
-            pageCount++;
-            y = margin;
-        }
-
-        pdf.addImage(imgData, 'PNG', margin, y, contentWidth, imgHeight);
-        y += imgHeight + 8; // Space between exercises
-    }
-
-    pdf.save('folha-de-atividades-prozil.pdf');
-
-    // Clean up styles
-    worksheetElement.classList.remove('printing');
-    document.body.classList.remove('printing-active');
-    setIsGeneratingPdf(false);
   };
 
 
@@ -127,8 +129,6 @@ function PrintableWorksheetGenerator() {
       );
   }
 
-  // Hide the main preview UI during PDF generation to avoid seeing the styled content flicker.
-  // The 'printing-active' class on the body can be used for this.
   return (
     <>
       <div className={isGeneratingPdf ? 'invisible' : ''}>
@@ -190,7 +190,7 @@ function PrintableWorksheetGenerator() {
               </Card>
             </div>
         ) : (
-          <div id="printable-worksheet-container">
+          <div>
               <div className="flex items-center justify-between gap-4 mb-8">
                   <h1 className="text-2xl font-bold">Pré-visualização da Folha</h1>
                   <div className="flex gap-2">
@@ -203,46 +203,52 @@ function PrintableWorksheetGenerator() {
                       </Button>
                   </div>
               </div>
-              {/* This is the element that will be converted to PDF */}
-              <Card className="p-4 sm:p-8 bg-background" id="worksheet-preview">
-                  <header className="mb-12 space-y-4">
-                      <h1 className="text-4xl font-bold text-center font-headline">Folha de Atividades</h1>
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-lg py-4">
-                          <div className="flex items-center gap-2">
-                              <GraduationCap className="w-6 h-6 text-muted-foreground" />
-                              <strong className="mr-2">Aluno(a):</strong>
-                              <span>{studentName || '________________________________'}</span>
+              <div id="printable-worksheet-container" className="bg-gray-200 p-4 rounded-md">
+                {pageChunks.map((chunk, pageIndex) => (
+                  <div key={`page-${pageIndex}`} className="printable-page flex flex-col">
+                      <header className="mb-12 space-y-4 page-header">
+                          <h1 className="text-4xl font-bold text-center font-headline">Folha de Atividades</h1>
+                          <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-lg py-4">
+                              <div className="flex items-center gap-2 header-info-item">
+                                  <GraduationCap className="w-6 h-6 text-muted-foreground" />
+                                  <strong className="mr-2">Aluno(a):</strong>
+                                  <span>{studentName || '________________________________'}</span>
+                              </div>
+                              <div className="flex items-center gap-2 header-info-item">
+                                  <User className="w-6 h-6 text-muted-foreground" />
+                                  <strong className="mr-2">Professor(a):</strong>
+                                  <span>{teacherName || '___________________________'}</span>
+                              </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                              <User className="w-6 h-6 text-muted-foreground" />
-                              <strong className="mr-2">Professor(a):</strong>
-                              <span>{teacherName || '___________________________'}</span>
-                          </div>
-                      </div>
-                  </header>
+                      </header>
 
-                  <section className="space-y-10">
-                      {selectedExercises.map((exercise, index) => (
-                          <div key={exercise.id} className="space-y-4 exercise-item">
-                              <p className="text-2xl font-bold">
-                                  {index + 1}. {exercise.text.replace(/___/g, '__________')}
-                              </p>
-                              {exercise.options?.length > 0 ? (
-                                  <div className="pl-8 space-y-4 options-list">
-                                      {exercise.options.map((option, optIndex) => (
-                                          <div key={optIndex} className="flex items-center gap-4 text-2xl option-item">
-                                              <div className="option-checkbox"></div>
-                                              <span className="option-text">{option}</span>
-                                          </div>
-                                      ))}
-                                  </div>
-                              ) : (
-                                  <p className="text-2xl pl-8">R: _________________________</p>
-                              )}
-                          </div>
-                      ))}
-                  </section>
-              </Card>
+                      <section className="space-y-10 flex-grow">
+                          {chunk.map((exercise, exerciseIndex) => (
+                              <div key={exercise.id} className="space-y-4 exercise-item">
+                                  <p className="text-2xl font-bold">
+                                      {(pageIndex * exercisesPerPage) + exerciseIndex + 1}. {exercise.text.replace(/___/g, '__________')}
+                                  </p>
+                                  {exercise.options?.length > 0 ? (
+                                      <div className="pl-8 space-y-4 options-list">
+                                          {exercise.options.map((option, optIndex) => (
+                                              <div key={optIndex} className="flex items-center gap-4 text-2xl option-item">
+                                                  <div className="option-checkbox"></div>
+                                                  <span className="option-text">{option}</span>
+                                              </div>
+                                          ))}
+                                      </div>
+                                  ) : (
+                                      <p className="text-2xl pl-8 mt-8">R: ___________________________________</p>
+                                  )}
+                              </div>
+                          ))}
+                      </section>
+                      <footer className="page-footer">
+                        Página {pageIndex + 1} de {pageChunks.length}
+                      </footer>
+                  </div>
+                ))}
+              </div>
           </div>
         )}
       </div>
