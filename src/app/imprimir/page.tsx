@@ -71,15 +71,14 @@ function PrintableWorksheetGenerator() {
         };
 
         // --- Título ---
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont('PT Sans', 'bold');
         pdf.setFontSize(28);
         pdf.text('Folha de Atividades', PAGE_WIDTH / 2, cursorY, { align: 'center' });
         cursorY += 20;
 
         // --- Nomes ---
-        pdf.setFont('helvetica', 'normal');
+        pdf.setFont('PT Sans', 'normal');
         pdf.setFontSize(14);
-        pdf.line(MARGIN, cursorY - 5, PAGE_WIDTH - MARGIN, cursorY - 5);
         
         const studentText = `Aluno(a): ${studentName || '________________________________'}`;
         pdf.text(studentText, MARGIN, cursorY);
@@ -88,14 +87,13 @@ function PrintableWorksheetGenerator() {
         pdf.text(teacherText, PAGE_WIDTH - MARGIN, cursorY, { align: 'right' });
         
         cursorY += 10;
-        pdf.line(MARGIN, cursorY - 5, PAGE_WIDTH - MARGIN, cursorY - 5);
         cursorY += 15;
 
         // --- Exercícios ---
         selectedExercises.forEach((exercise, index) => {
             const questionText = `${index + 1}. ${exercise.text.replace(/___/g, '__________')}`;
             
-            pdf.setFont('helvetica', 'bold');
+            pdf.setFont('PT Sans', 'bold');
             pdf.setFontSize(22);
             
             const questionLines = pdf.splitTextToSize(questionText, MAX_WIDTH);
@@ -105,7 +103,7 @@ function PrintableWorksheetGenerator() {
 
             checkPageBreak(15);
             
-            pdf.setFont('helvetica', 'normal');
+            pdf.setFont('PT Sans', 'normal');
             pdf.setFontSize(22);
 
             if (exercise.subject === 'portugues') {
