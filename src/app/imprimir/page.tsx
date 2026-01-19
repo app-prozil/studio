@@ -63,45 +63,34 @@ function PrintableWorksheetGenerator() {
   }, [selectedExercises]);
 
   const handleGeneratePdf = async () => {
-    const container = document.getElementById('printable-worksheet-container');
-    if (!container) {
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível encontrar a área de impressão.' });
+    const pages = document.querySelectorAll<HTMLElement>('.printable-page');
+    if (pages.length === 0) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Nenhuma página para imprimir foi encontrada.' });
       return;
     }
   
     setIsGeneratingPdf(true);
   
     try {
-      const canvas = await html2canvas(container, {
-        scale: 3, // Higher scale for better quality
-        useCORS: true,
-        logging: false,
-      });
-  
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      
-      const ratio = canvasHeight / canvasWidth;
-      const imgHeight = pdfWidth * ratio;
-      
-      let heightLeft = imgHeight;
-      let position = 0;
   
-      // Add the first page
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-      heightLeft -= pdfHeight;
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        const canvas = await html2canvas(page, {
+          scale: 2, // High quality
+          useCORS: true,
+          logging: false,
+        });
   
-      // Add new pages if the content is taller than one A4 page
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-        heightLeft -= pdfHeight;
+        const imgData = canvas.toDataURL('image/png');
+  
+        if (i > 0) {
+          pdf.addPage();
+        }
+  
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
   
       pdf.save('folha-de-atividades-prozil.pdf');
@@ -131,9 +120,9 @@ function PrintableWorksheetGenerator() {
 
   return (
     <>
-      <div className={isGeneratingPdf ? 'invisible' : ''}>
+      <div className={showPreview ? '' : 'max-w-2xl mx-auto'}>
         {!showPreview ? (
-           <div className="max-w-2xl mx-auto">
+           <div>
               <Card>
                   <CardHeader>
                       <CardTitle className="text-3xl font-headline">Gerador de Folhas de Atividades</CardTitle>
@@ -229,14 +218,14 @@ function PrintableWorksheetGenerator() {
                                       {(pageIndex * exercisesPerPage) + exerciseIndex + 1}. {exercise.text.replace(/___/g, '__________')}
                                   </p>
                                   {exercise.options?.length > 0 ? (
-                                      <div className="pl-8 space-y-4 options-list">
+                                      <ul className="options-list">
                                           {exercise.options.map((option, optIndex) => (
-                                              <div key={optIndex} className="flex items-center gap-4 text-2xl option-item">
+                                              <li key={optIndex} className="option-item">
                                                   <div className="option-checkbox"></div>
                                                   <span className="option-text">{option}</span>
-                                              </div>
+                                              </li>
                                           ))}
-                                      </div>
+                                      </ul>
                                   ) : (
                                       <p className="text-2xl pl-8 mt-8">R: ___________________________________</p>
                                   )}
