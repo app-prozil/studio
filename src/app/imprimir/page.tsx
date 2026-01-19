@@ -61,23 +61,54 @@ function PrintableWorksheetGenerator() {
     }
 
     setIsGeneratingPdf(true);
+    // Apply special printing styles
+    document.body.classList.add('printing-active');
     worksheetElement.classList.add('printing');
 
     const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+    const contentWidth = pdfWidth - margin * 2;
+    let y = margin;
+    let pageCount = 1;
+
+    // --- 1. Add Header ---
+    const headerElement = worksheetElement.querySelector('header') as HTMLElement;
+    if (headerElement) {
+        const canvas = await html2canvas(headerElement, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+        const imgHeight = (canvas.height * contentWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', margin, y, contentWidth, imgHeight);
+        y += imgHeight + 10;
+    }
     
-    pdf.html(worksheetElement, {
-        callback: function (pdf) {
-            pdf.save('folha-de-atividades-prozil.pdf');
-            worksheetElement.classList.remove('printing');
-            setIsGeneratingPdf(false);
-        },
-        x: 0,
-        y: 0,
-        width: 210, 
-        windowWidth: worksheetElement.scrollWidth,
-        autoPaging: 'text',
-        margin: [15, 10, 15, 10]
-    });
+    // --- 2. Add Exercises one by one ---
+    const exerciseElements = worksheetElement.querySelectorAll('.exercise-item');
+
+    for (let i = 0; i < exerciseElements.length; i++) {
+        const element = exerciseElements[i] as HTMLElement;
+
+        const canvas = await html2canvas(element, { scale: 3, useCORS: true, logging: false });
+        const imgData = canvas.toDataURL('image/png');
+        const imgHeight = (canvas.height * contentWidth) / canvas.width;
+
+        if (y + imgHeight > pdfHeight - margin) {
+            pdf.addPage();
+            pageCount++;
+            y = margin;
+        }
+
+        pdf.addImage(imgData, 'PNG', margin, y, contentWidth, imgHeight);
+        y += imgHeight + 8; // Space between exercises
+    }
+
+    pdf.save('folha-de-atividades-prozil.pdf');
+
+    // Clean up styles
+    worksheetElement.classList.remove('printing');
+    document.body.classList.remove('printing-active');
+    setIsGeneratingPdf(false);
   };
 
 
@@ -96,171 +127,181 @@ function PrintableWorksheetGenerator() {
       );
   }
 
-  if (showPreview) {
-    return (
-        <div id="printable-worksheet-container">
-             <div className="flex items-center justify-between gap-4 mb-8">
-                <h1 className="text-2xl font-bold">Pré-visualização da Folha</h1>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setShowPreview(false)} disabled={isGeneratingPdf}>
-                        <Settings className="mr-2" /> Editar
-                    </Button>
-                    <Button onClick={handleGeneratePdf} disabled={isGeneratingPdf}>
-                         {isGeneratingPdf ? <Loader2 className="mr-2 animate-spin" /> : <Download className="mr-2" />}
-                         {isGeneratingPdf ? 'Gerando PDF...' : 'Baixar PDF'}
-                    </Button>
-                </div>
-            </div>
-            {/* This is the element that will be converted to PDF */}
-            <Card className="p-4 sm:p-8 bg-background" id="worksheet-preview">
-                <header className="mb-12 space-y-4">
-                    <h1 className="text-4xl font-bold text-center font-headline">Folha de Atividades</h1>
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-lg py-4">
-                        <div className="flex items-center gap-2">
-                            <GraduationCap className="w-6 h-6 text-muted-foreground" />
-                            <strong className="mr-2">Aluno(a):</strong>
-                            <span>{studentName || '________________________________'}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                             <User className="w-6 h-6 text-muted-foreground" />
-                            <strong className="mr-2">Professor(a):</strong>
-                            <span>{teacherName || '___________________________'}</span>
-                        </div>
-                    </div>
-                </header>
-
-                <section className="space-y-10">
-                    {selectedExercises.map((exercise, index) => (
-                        <div key={exercise.id} className="space-y-4 exercise-item">
-                            <p className="text-2xl font-bold">
-                                {index + 1}. {exercise.text.replace(/___/g, '__________')}
-                            </p>
-                            {exercise.options?.length > 0 ? (
-                                <div className="pl-8 space-y-4 options-list">
-                                    {exercise.options.map((option, optIndex) => (
-                                        <div key={optIndex} className="flex items-center gap-4 text-2xl option-item">
-                                            <div className="option-checkbox"></div>
-                                            <span className="option-text">{option}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-2xl pl-8">R: _________________________</p>
-                            )}
-                        </div>
-                    ))}
-                </section>
-            </Card>
-        </div>
-    );
-  }
-
+  // Hide the main preview UI during PDF generation to avoid seeing the styled content flicker.
+  // The 'printing-active' class on the body can be used for this.
   return (
     <>
-        <div className="max-w-2xl mx-auto">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-3xl font-headline">Gerador de Folhas de Atividades</CardTitle>
-                    <CardDescription>Crie atividades personalizadas para impressão a partir do seu banco de exercícios.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-lg">Exercícios</Label>
-                        <Card className="p-4">
-                             {selectedExercises.length > 0 && (
-                                <ul className="space-y-2 mb-4">
+      <div className={isGeneratingPdf ? 'invisible' : ''}>
+        {!showPreview ? (
+           <div className="max-w-2xl mx-auto">
+              <Card>
+                  <CardHeader>
+                      <CardTitle className="text-3xl font-headline">Gerador de Folhas de Atividades</CardTitle>
+                      <CardDescription>Crie atividades personalizadas para impressão a partir do seu banco de exercícios.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                      <div className="space-y-2">
+                          <Label className="text-lg">Exercícios</Label>
+                          <Card className="p-4">
+                              {selectedExercises.length > 0 && (
+                                  <ul className="space-y-2 mb-4">
                                   {selectedExercises.map((ex) => (
-                                    <li key={ex.id} className="flex items-center justify-between p-2 text-sm bg-muted rounded-md">
+                                      <li key={ex.id} className="flex items-center justify-between p-2 text-sm bg-muted rounded-md">
                                       <span className="truncate pr-2">{ex.text}</span>
                                       <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 shrink-0"
-                                        onClick={() => setSelectedExercises(prev => prev.filter(p => p.id !== ex.id))}
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 shrink-0"
+                                          onClick={() => setSelectedExercises(prev => prev.filter(p => p.id !== ex.id))}
                                       >
-                                        <X className="w-4 h-4 text-destructive" />
+                                          <X className="w-4 h-4 text-destructive" />
                                       </Button>
-                                    </li>
+                                      </li>
                                   ))}
-                                </ul>
+                                  </ul>
                               )}
-                            <Button variant="outline" className="w-full" onClick={() => setIsBankOpen(true)}>
-                                <PlusCircle className="mr-2" /> Selecionar Exercícios ({selectedExercises.length})
-                            </Button>
-                        </Card>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="student-name" className="text-lg">Nome do Aluno (Opcional)</Label>
-                        <Input id="student-name" value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Ex: João da Silva"/>
-                    </div>
-                    
-                    <div className="space-y-2">
-                        <Label htmlFor="teacher-name" className="text-lg">Nome do Professor (Opcional)</Label>
-                        <Input id="teacher-name" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} placeholder="Ex: Prof. Maria"/>
-                    </div>
-
-                </CardContent>
-                <CardFooter>
-                    <Button 
-                        size="lg" 
-                        onClick={() => setShowPreview(true)}
-                        disabled={selectedExercises.length === 0}
-                    >
-                        <FileText className="mr-2"/> Gerar Pré-visualização
-                    </Button>
-                </CardFooter>
-            </Card>
-        </div>
-
-        <Dialog open={isBankOpen} onOpenChange={setIsBankOpen}>
-          <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
-              <DialogHeader><DialogTitle>Adicionar Exercícios do Banco</DialogTitle><DialogDescription>Selecione os exercícios que você quer incluir na folha de atividades.</DialogDescription></DialogHeader>
-               <div className="flex flex-wrap items-center gap-2 pt-2 border-y pb-4">
-                  <span className="text-sm font-medium pr-4">Filtrar por:</span>
-                  <Button variant={bankSubjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('all')}>Todos</Button>
-                  <Button variant={bankSubjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('matematica')}>Matemática</Button>
-                  <Button variant={bankSubjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('portugues')}>Português</Button>
-              </div>
-              <div className="flex-1 overflow-y-auto pr-4">
-                  {isLoadingExercises ? (
-                    <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                  ) : filteredBankExercises.length > 0 ? (
-                    filteredBankExercises.map(ex => (
-                      <div key={ex.id} className="flex items-center gap-4 p-2 border-b">
-                          <Checkbox 
-                              id={`bank-${ex.id}`} 
-                              checked={selectedExercises.some(s => s.id === ex.id)}
-                              onCheckedChange={(checked) => {
-                                  if (checked) {
-                                      setSelectedExercises(prev => [...prev, ex]);
-                                  } else {
-                                      setSelectedExercises(prev => prev.filter(p => p.id !== ex.id));
-                                  }
-                              }}
-                          />
-                          <label htmlFor={`bank-${ex.id}`} className="flex-1 cursor-pointer">
-                              <p className="font-semibold">{ex.text}</p>
-                              <div className="flex gap-2 mt-1">
-                                  <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
-                                  <Badge variant="outline">{ex.difficulty}</Badge>
-                              </div>
-                          </label>
+                              <Button variant="outline" className="w-full" onClick={() => setIsBankOpen(true)}>
+                                  <PlusCircle className="mr-2" /> Selecionar Exercícios ({selectedExercises.length})
+                              </Button>
+                          </Card>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center text-muted-foreground py-8">
-                      Nenhum exercício encontrado. Crie alguns no Banco de Exercícios primeiro.
-                    </div>
-                  )}
+
+                      <div className="space-y-2">
+                          <Label htmlFor="student-name" className="text-lg">Nome do Aluno (Opcional)</Label>
+                          <Input id="student-name" value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Ex: João da Silva"/>
+                      </div>
+                      
+                      <div className="space-y-2">
+                          <Label htmlFor="teacher-name" className="text-lg">Nome do Professor (Opcional)</Label>
+                          <Input id="teacher-name" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} placeholder="Ex: Prof. Maria"/>
+                      </div>
+
+                  </CardContent>
+                  <CardFooter>
+                      <Button 
+                          size="lg" 
+                          onClick={() => setShowPreview(true)}
+                          disabled={selectedExercises.length === 0}
+                      >
+                          <FileText className="mr-2"/> Gerar Pré-visualização
+                      </Button>
+                  </CardFooter>
+              </Card>
+            </div>
+        ) : (
+          <div id="printable-worksheet-container">
+              <div className="flex items-center justify-between gap-4 mb-8">
+                  <h1 className="text-2xl font-bold">Pré-visualização da Folha</h1>
+                  <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setShowPreview(false)} disabled={isGeneratingPdf}>
+                          <Settings className="mr-2" /> Editar
+                      </Button>
+                      <Button onClick={handleGeneratePdf} disabled={isGeneratingPdf}>
+                          {isGeneratingPdf ? <Loader2 className="mr-2 animate-spin" /> : <Download className="mr-2" />}
+                          {isGeneratingPdf ? 'Gerando PDF...' : 'Baixar PDF'}
+                      </Button>
+                  </div>
               </div>
-              <DialogFooter>
-                  <Button onClick={() => setIsBankOpen(false)}>
-                    Confirmar Seleção ({selectedExercises.length})
-                  </Button>
-              </DialogFooter>
-          </DialogContent>
+              {/* This is the element that will be converted to PDF */}
+              <Card className="p-4 sm:p-8 bg-background" id="worksheet-preview">
+                  <header className="mb-12 space-y-4">
+                      <h1 className="text-4xl font-bold text-center font-headline">Folha de Atividades</h1>
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-lg py-4">
+                          <div className="flex items-center gap-2">
+                              <GraduationCap className="w-6 h-6 text-muted-foreground" />
+                              <strong className="mr-2">Aluno(a):</strong>
+                              <span>{studentName || '________________________________'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                              <User className="w-6 h-6 text-muted-foreground" />
+                              <strong className="mr-2">Professor(a):</strong>
+                              <span>{teacherName || '___________________________'}</span>
+                          </div>
+                      </div>
+                  </header>
+
+                  <section className="space-y-10">
+                      {selectedExercises.map((exercise, index) => (
+                          <div key={exercise.id} className="space-y-4 exercise-item">
+                              <p className="text-2xl font-bold">
+                                  {index + 1}. {exercise.text.replace(/___/g, '__________')}
+                              </p>
+                              {exercise.options?.length > 0 ? (
+                                  <div className="pl-8 space-y-4 options-list">
+                                      {exercise.options.map((option, optIndex) => (
+                                          <div key={optIndex} className="flex items-center gap-4 text-2xl option-item">
+                                              <div className="option-checkbox"></div>
+                                              <span className="option-text">{option}</span>
+                                          </div>
+                                      ))}
+                                  </div>
+                              ) : (
+                                  <p className="text-2xl pl-8">R: _________________________</p>
+                              )}
+                          </div>
+                      ))}
+                  </section>
+              </Card>
+          </div>
+        )}
+      </div>
+
+      {isGeneratingPdf && (
+        <div className="fixed inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
+          <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
+          <p className="text-lg font-medium text-foreground">Gerando seu PDF, por favor aguarde...</p>
+          <p className="text-sm text-muted-foreground">Isso pode levar alguns segundos.</p>
+        </div>
+      )}
+
+      <Dialog open={isBankOpen} onOpenChange={setIsBankOpen}>
+        <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
+            <DialogHeader><DialogTitle>Adicionar Exercícios do Banco</DialogTitle><DialogDescription>Selecione os exercícios que você quer incluir na folha de atividades.</DialogDescription></DialogHeader>
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-y pb-4">
+                <span className="text-sm font-medium pr-4">Filtrar por:</span>
+                <Button variant={bankSubjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('all')}>Todos</Button>
+                <Button variant={bankSubjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('matematica')}>Matemática</Button>
+                <Button variant={bankSubjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('portugues')}>Português</Button>
+            </div>
+            <div className="flex-1 overflow-y-auto pr-4">
+                {isLoadingExercises ? (
+                  <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                ) : filteredBankExercises.length > 0 ? (
+                  filteredBankExercises.map(ex => (
+                    <div key={ex.id} className="flex items-center gap-4 p-2 border-b">
+                        <Checkbox 
+                            id={`bank-${ex.id}`} 
+                            checked={selectedExercises.some(s => s.id === ex.id)}
+                            onCheckedChange={(checked) => {
+                                if (checked) {
+                                    setSelectedExercises(prev => [...prev, ex]);
+                                } else {
+                                    setSelectedExercises(prev => prev.filter(p => p.id !== ex.id));
+                                }
+                            }}
+                        />
+                        <label htmlFor={`bank-${ex.id}`} className="flex-1 cursor-pointer">
+                            <p className="font-semibold">{ex.text}</p>
+                            <div className="flex gap-2 mt-1">
+                                <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
+                                <Badge variant="outline">{ex.difficulty}</Badge>
+                            </div>
+                        </label>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    Nenhum exercício encontrado. Crie alguns no Banco de Exercícios primeiro.
+                  </div>
+                )}
+            </div>
+            <DialogFooter>
+                <Button onClick={() => setIsBankOpen(false)}>
+                  Confirmar Seleção ({selectedExercises.length})
+                </Button>
+            </DialogFooter>
+        </DialogContent>
       </Dialog>
     </>
   );
