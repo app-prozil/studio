@@ -224,7 +224,7 @@
 .printing header .grid {
   font-size: 16pt !important;
 }
-.printing section p, .printing section span {
+.printing section p, .printing section span, .printing .option-text {
   font-size: 30pt !important;
   line-height: 1.8 !important;
   letter-spacing: 2px !important;
@@ -259,4 +259,3 @@
   letter-spacing: 2px !important;
   word-spacing: 8px !important;
 }
-

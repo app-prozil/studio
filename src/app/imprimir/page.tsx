@@ -65,17 +65,15 @@ function PrintableWorksheetGenerator() {
 
     const pdf = new jsPDF('p', 'mm', 'a4');
     
-    // Use the html method from jsPDF, which handles pagination
     pdf.html(worksheetElement, {
         callback: function (pdf) {
             pdf.save('folha-de-atividades-prozil.pdf');
-            // Clean up styles and state
             worksheetElement.classList.remove('printing');
             setIsGeneratingPdf(false);
         },
         x: 0,
         y: 0,
-        width: 210, // A4 width in mm
+        width: 210, 
         windowWidth: worksheetElement.scrollWidth,
         autoPaging: 'text',
         margin: [15, 10, 15, 10]
@@ -137,7 +135,7 @@ function PrintableWorksheetGenerator() {
                             <p className="text-2xl font-bold">
                                 {index + 1}. {exercise.text.replace(/___/g, '__________')}
                             </p>
-                            {exercise.subject === 'portugues' && exercise.options?.length > 0 ? (
+                            {exercise.options?.length > 0 ? (
                                 <div className="pl-8 space-y-4 options-list">
                                     {exercise.options.map((option, optIndex) => (
                                         <div key={optIndex} className="flex items-center gap-4 text-2xl option-item">
