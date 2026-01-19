@@ -202,3 +202,35 @@
     --radius: 100px;
   }
 }
+
+/* Styles applied only for generating the PDF canvas */
+.printing {
+  @apply bg-white text-black;
+}
+.printing #worksheet-preview {
+  @apply shadow-none border-none;
+}
+.printing h1, .printing h2, .printing h3, .printing p, .printing span, .printing strong, .printing div {
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+.printing .text-muted-foreground {
+  color: #000000 !important;
+}
+.printing header h1 {
+  font-size: 36px !important;
+}
+.printing header .grid {
+  font-size: 20px !important;
+}
+.printing section p {
+  font-size: 40px !important;
+  line-height: 1.5 !important;
+}
+.printing section .flex {
+  font-size: 40px !important;
+}
+.printing .w-8.h-8 {
+  width: 40px !important;
+  height: 40px !important;
+}

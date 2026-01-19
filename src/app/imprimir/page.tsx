@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, PlusCircle, Download, FileText, Settings, User, GraduationCap, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { useToast } from '@/hooks/use-toast';
 
 type Exercise = {
@@ -52,79 +53,54 @@ function PrintableWorksheetGenerator() {
     return exercises.filter(ex => ex.subject === bankSubjectFilter);
   }, [exercises, bankSubjectFilter]);
   
-  const handleGeneratePdf = () => {
+  const handleGeneratePdf = async () => {
+    const worksheetElement = document.getElementById('worksheet-preview');
+    if (!worksheetElement) {
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível encontrar o elemento da folha de atividades.' });
+        return;
+    }
+
     setIsGeneratingPdf(true);
-    
+
+    // Apply printing styles
+    worksheetElement.classList.add('printing');
+
     try {
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const MARGIN = 20;
-        const PAGE_WIDTH = pdf.internal.pageSize.getWidth();
-        const PAGE_HEIGHT = pdf.internal.pageSize.getHeight();
-        const MAX_WIDTH = PAGE_WIDTH - MARGIN * 2;
-        let cursorY = MARGIN;
-
-        const checkPageBreak = (neededHeight: number) => {
-            if (cursorY + neededHeight > PAGE_HEIGHT - MARGIN) {
-                pdf.addPage();
-                cursorY = MARGIN;
-            }
-        };
-
-        // --- Título ---
-        pdf.setFont('PT Sans', 'bold');
-        pdf.setFontSize(28);
-        pdf.text('Folha de Atividades', PAGE_WIDTH / 2, cursorY, { align: 'center' });
-        cursorY += 20;
-
-        // --- Nomes ---
-        pdf.setFont('PT Sans', 'normal');
-        pdf.setFontSize(14);
-        
-        const studentText = `Aluno(a): ${studentName || '________________________________'}`;
-        pdf.text(studentText, MARGIN, cursorY);
-        
-        const teacherText = `Professor(a): ${teacherName || '___________________________'}`;
-        pdf.text(teacherText, PAGE_WIDTH - MARGIN, cursorY, { align: 'right' });
-        
-        cursorY += 10;
-        cursorY += 15;
-
-        // --- Exercícios ---
-        selectedExercises.forEach((exercise, index) => {
-            const questionText = `${index + 1}. ${exercise.text.replace(/___/g, '__________')}`;
-            
-            pdf.setFont('PT Sans', 'bold');
-            pdf.setFontSize(22);
-            
-            const questionLines = pdf.splitTextToSize(questionText, MAX_WIDTH);
-            checkPageBreak(questionLines.length * 15);
-            pdf.text(questionLines, MARGIN, cursorY);
-            cursorY += questionLines.length * 15;
-
-            checkPageBreak(15);
-            
-            pdf.setFont('PT Sans', 'normal');
-            pdf.setFontSize(22);
-
-            if (exercise.subject === 'portugues') {
-                exercise.options.forEach((option) => {
-                    checkPageBreak(18);
-                    pdf.rect(MARGIN + 5, cursorY - 9, 8, 8); // Quadrado de seleção
-                    pdf.text(option, MARGIN + 20, cursorY);
-                    cursorY += 18;
-                });
-            } else {
-                checkPageBreak(15);
-                pdf.text('R: _________________________', MARGIN + 8, cursorY);
-                cursorY += 25;
-            }
-            cursorY += 10; // Espaço extra entre as questões
+        const canvas = await html2canvas(worksheetElement, {
+            scale: 3, // Increase resolution
+            useCORS: true,
+            backgroundColor: '#ffffff',
         });
 
+        // Remove printing styles after capture
+        worksheetElement.classList.remove('printing');
+
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const canvasRatio = canvasHeight / canvasWidth;
+        
+        let finalWidth = pdfWidth;
+        let finalHeight = pdfWidth * canvasRatio;
+
+        if (finalHeight > pdfHeight) {
+            finalHeight = pdfHeight;
+            finalWidth = pdfHeight / canvasRatio;
+        }
+
+        const xPos = (pdfWidth - finalWidth) / 2;
+        const yPos = (pdfHeight - finalHeight) / 2;
+
+        pdf.addImage(imgData, 'JPEG', xPos, yPos, finalWidth, finalHeight);
         pdf.save('folha-de-atividades-prozil.pdf');
 
     } catch (err) {
         console.error("Error generating PDF:", err);
+        worksheetElement.classList.remove('printing'); // Ensure cleanup on error
         toast({
             variant: 'destructive',
             title: 'Erro ao gerar PDF',
@@ -134,6 +110,7 @@ function PrintableWorksheetGenerator() {
         setIsGeneratingPdf(false);
     }
   };
+
 
   if (isUserLoading) {
     return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin" /></div>;
@@ -168,7 +145,7 @@ function PrintableWorksheetGenerator() {
             <Card className="p-4 sm:p-8 bg-background" id="worksheet-preview">
                 <header className="mb-12 space-y-4">
                     <h1 className="text-4xl font-bold text-center font-headline">Folha de Atividades</h1>
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-lg border-y py-4">
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-lg py-4">
                         <div className="flex items-center gap-2">
                             <GraduationCap className="w-6 h-6 text-muted-foreground" />
                             <strong className="mr-2">Aluno(a):</strong>
