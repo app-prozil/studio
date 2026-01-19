@@ -230,8 +230,6 @@ body.printing-active > *:not(#printable-worksheet-container) {
 .printing section .exercise-item > p, .printing .option-text {
   font-size: 40px !important;
   line-height: 1.6 !important;
-  letter-spacing: 2px !important;
-  word-spacing: 8px !important;
 }
 .printing .exercise-item {
 
