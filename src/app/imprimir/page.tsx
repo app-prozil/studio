@@ -61,54 +61,25 @@ function PrintableWorksheetGenerator() {
     }
 
     setIsGeneratingPdf(true);
-
-    // Apply printing styles
     worksheetElement.classList.add('printing');
 
-    try {
-        const canvas = await html2canvas(worksheetElement, {
-            scale: 3, // Increase resolution
-            useCORS: true,
-            backgroundColor: '#ffffff',
-        });
-
-        // Remove printing styles after capture
-        worksheetElement.classList.remove('printing');
-
-        const imgData = canvas.toDataURL('image/jpeg', 1.0);
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-        const canvasRatio = canvasHeight / canvasWidth;
-        
-        let finalWidth = pdfWidth;
-        let finalHeight = pdfWidth * canvasRatio;
-
-        if (finalHeight > pdfHeight) {
-            finalHeight = pdfHeight;
-            finalWidth = pdfHeight / canvasRatio;
-        }
-
-        const xPos = (pdfWidth - finalWidth) / 2;
-        const yPos = (pdfHeight - finalHeight) / 2;
-
-        pdf.addImage(imgData, 'JPEG', xPos, yPos, finalWidth, finalHeight);
-        pdf.save('folha-de-atividades-prozil.pdf');
-
-    } catch (err) {
-        console.error("Error generating PDF:", err);
-        worksheetElement.classList.remove('printing'); // Ensure cleanup on error
-        toast({
-            variant: 'destructive',
-            title: 'Erro ao gerar PDF',
-            description: 'Ocorreu um problema ao criar o arquivo.',
-        });
-    } finally {
-        setIsGeneratingPdf(false);
-    }
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    
+    // Use the html method from jsPDF, which handles pagination
+    pdf.html(worksheetElement, {
+        callback: function (pdf) {
+            pdf.save('folha-de-atividades-prozil.pdf');
+            // Clean up styles and state
+            worksheetElement.classList.remove('printing');
+            setIsGeneratingPdf(false);
+        },
+        x: 0,
+        y: 0,
+        width: 210, // A4 width in mm
+        windowWidth: worksheetElement.scrollWidth,
+        autoPaging: 'text',
+        margin: [15, 10, 15, 10]
+    });
   };
 
 
@@ -129,7 +100,7 @@ function PrintableWorksheetGenerator() {
 
   if (showPreview) {
     return (
-        <div id="printable-worksheet">
+        <div id="printable-worksheet-container">
              <div className="flex items-center justify-between gap-4 mb-8">
                 <h1 className="text-2xl font-bold">Pré-visualização da Folha</h1>
                 <div className="flex gap-2">
@@ -142,6 +113,7 @@ function PrintableWorksheetGenerator() {
                     </Button>
                 </div>
             </div>
+            {/* This is the element that will be converted to PDF */}
             <Card className="p-4 sm:p-8 bg-background" id="worksheet-preview">
                 <header className="mb-12 space-y-4">
                     <h1 className="text-4xl font-bold text-center font-headline">Folha de Atividades</h1>
@@ -161,16 +133,16 @@ function PrintableWorksheetGenerator() {
 
                 <section className="space-y-10">
                     {selectedExercises.map((exercise, index) => (
-                        <div key={exercise.id} className="space-y-4">
+                        <div key={exercise.id} className="space-y-4 exercise-item">
                             <p className="text-2xl font-bold">
                                 {index + 1}. {exercise.text.replace(/___/g, '__________')}
                             </p>
-                            {exercise.subject === 'portugues' ? (
-                                <div className="space-y-4 pl-8">
+                            {exercise.subject === 'portugues' && exercise.options?.length > 0 ? (
+                                <div className="pl-8 space-y-4 options-list">
                                     {exercise.options.map((option, optIndex) => (
-                                        <div key={optIndex} className="flex items-center gap-4 text-2xl">
-                                            <div className="w-8 h-8 border-4 border-foreground rounded-md"></div>
-                                            <span>{option}</span>
+                                        <div key={optIndex} className="flex items-center gap-4 text-2xl option-item">
+                                            <div className="option-checkbox"></div>
+                                            <span className="option-text">{option}</span>
                                         </div>
                                     ))}
                                 </div>
