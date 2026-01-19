@@ -234,8 +234,7 @@ body.printing-active > *:not(#printable-worksheet-container) {
   word-spacing: 8px !important;
 }
 .printing .exercise-item {
-  page-break-inside: avoid;
-  break-inside: avoid;
+
 }
 .printing .options-list {
   padding-left: 20px;
