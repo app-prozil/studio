@@ -226,9 +226,13 @@
 .printing section p {
   font-size: 40px !important;
   line-height: 1.5 !important;
+  letter-spacing: 2px !important;
+  word-spacing: 8px !important;
 }
 .printing section .flex {
   font-size: 40px !important;
+  letter-spacing: 2px !important;
+  word-spacing: 8px !important;
 }
 .printing .w-8.h-8 {
   width: 40px !important;
