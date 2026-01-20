@@ -6,15 +6,22 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Frown, LogIn, Book, Loader2 } from 'lucide-react';
-import { useUser } from '@/firebase';
+import { Frown, LogIn, Book, Loader2, ClipboardCheck } from 'lucide-react';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+
 
 function PortugueseGamePageContent() {
   const searchParams = useSearchParams();
   const taskId = searchParams.get('taskId');
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  
+  const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
+  const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
+  const isTeacher = !!teacherProfile || user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
-  if (isUserLoading) {
+  if (isUserLoading || (user && isTeacherLoading)) {
     return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -54,6 +61,34 @@ function PortugueseGamePageContent() {
   }
 
   if (!taskId) {
+    if (isTeacher) {
+        return (
+            <Card className="w-full max-w-lg mx-auto text-center">
+                <CardHeader>
+                    <div className="mx-auto bg-primary/10 rounded-full p-4 w-fit mb-4">
+                        <Book className="w-12 h-12 text-primary" />
+                    </div>
+                    <CardTitle className="text-3xl font-bold font-headline">Área de Português</CardTitle>
+                    <CardDescription className="text-lg">
+                        Crie e gerencie exercícios de leitura e gramática, teste atividades e acompanhe o desenvolvimento dos seus alunos.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">
+                        Use o gerenciador de tarefas para criar novas atividades de português.
+                    </p>
+                </CardContent>
+                <CardFooter className="flex justify-center">
+                    <Button asChild size="lg">
+                        <Link href="/tarefas">
+                            <ClipboardCheck className="mr-2 h-4 w-4" />
+                            Ir para Tarefas
+                        </Link>
+                    </Button>
+                </CardFooter>
+            </Card>
+        );
+    }
     return (
       <Card className="w-full max-w-3xl text-center">
         <CardHeader>

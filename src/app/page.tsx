@@ -67,7 +67,7 @@ export default function Home() {
           Bem-vindo ao ProZil
         </h1>
         <p className="mt-4 text-lg text-muted-foreground">
-          Sua plataforma de aprendizado acessível e divertida.
+          {isTeacherOrAdmin ? "Sua plataforma de ensino acessível e divertida." : "Sua plataforma de aprendizado acessível e divertida."}
         </p>
       </div>
 
@@ -99,8 +99,8 @@ export default function Home() {
           <CardFooter>
             {user ? (
                <Button asChild className="w-full" disabled={isStudent && !hasMathTask}>
-                  <Link href={isStudent ? '/tarefas' : '/matematica'}>
-                    {isStudent ? 'Ver Tarefas' : 'Começar a Jogar'} <ArrowRight className="ml-2" />
+                  <Link href={isTeacherOrAdmin ? '/tarefas' : (isStudent ? '/tarefas' : '/matematica')}>
+                    {isTeacherOrAdmin ? "Criar Jogo Interativo" : (isStudent ? 'Ver Tarefas' : 'Começar a Jogar')} <ArrowRight className="ml-2" />
                   </Link>
                 </Button>
             ) : (
@@ -140,8 +140,8 @@ export default function Home() {
           <CardFooter>
              {user ? (
                 <Button asChild className="w-full" disabled={isStudent && !hasPortugueseTask}>
-                  <Link href={isStudent ? '/tarefas' : '/portugues'}>
-                    {isStudent ? 'Ver Tarefas' : 'Começar a Praticar'} <ArrowRight className="ml-2" />
+                  <Link href={isTeacherOrAdmin ? '/tarefas' : (isStudent ? '/tarefas' : '/portugues')}>
+                    {isTeacherOrAdmin ? "Criar Jogo Interativo" : (isStudent ? 'Ver Tarefas' : 'Começar a Praticar')} <ArrowRight className="ml-2" />
                   </Link>
                 </Button>
              ) : (
