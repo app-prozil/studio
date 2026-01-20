@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from 'recharts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -11,6 +11,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { ShieldAlert, LogIn } from 'lucide-react';
 
 type PerformanceQuestion = {
   status?: 'correct' | 'incorrect' | 'unanswered';
@@ -297,9 +300,29 @@ export default function ProgressPage() {
 
   if (!user) {
     return (
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">Acesso Negado</h1>
-        <p className="text-muted-foreground">Você precisa estar logado para ver seu progresso.</p>
+      <div className="flex items-center justify-center h-full">
+          <Card className="w-full max-w-md mx-auto text-center">
+              <CardHeader>
+                  <div className="mx-auto bg-destructive/10 rounded-full p-4 w-fit mb-2">
+                      <ShieldAlert className="w-12 h-12 text-destructive" />
+                  </div>
+                  <CardTitle className="text-2xl font-bold">Acesso Restrito</CardTitle>
+                  <CardDescription>Esta página é protegida.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <p className="text-muted-foreground">
+                      Para visualizar seu progresso, você precisa estar logado na sua conta.
+                  </p>
+              </CardContent>
+              <CardFooter className="flex justify-center">
+                  <Button asChild size="lg">
+                      <Link href="/login">
+                          <LogIn className="mr-2 h-4 w-4" />
+                          Fazer Login
+                      </Link>
+                  </Button>
+              </CardFooter>
+          </Card>
       </div>
     );
   }

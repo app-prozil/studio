@@ -9,11 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, PlusCircle, Download, FileText, Settings, User, GraduationCap, X } from 'lucide-react';
+import { Loader2, PlusCircle, Download, FileText, Settings, User, GraduationCap, X, ShieldAlert, LogIn } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 type Exercise = {
   id: string;
@@ -79,12 +80,14 @@ function PrintableWorksheetGenerator() {
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
         const canvas = await html2canvas(page, {
-          scale: 2, // High quality
+          scale: 2,
           useCORS: true,
           logging: false,
+          backgroundColor: null,
         });
   
         const imgData = canvas.toDataURL('image/png');
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
   
         if (i > 0) {
           pdf.addPage();
@@ -108,13 +111,31 @@ function PrintableWorksheetGenerator() {
   }
   
   if (!isTeacher) {
-      return (
-        <Card className="max-w-xl mx-auto">
-            <CardHeader>
-                <CardTitle>Acesso Restrito</CardTitle>
-                <CardDescription>Apenas professores podem criar folhas de atividades a partir do banco de exercícios.</CardDescription>
-            </CardHeader>
-        </Card>
+    return (
+        <div className="flex items-center justify-center h-full">
+            <Card className="w-full max-w-md mx-auto text-center">
+                <CardHeader>
+                    <div className="mx-auto bg-destructive/10 rounded-full p-4 w-fit mb-2">
+                        <ShieldAlert className="w-12 h-12 text-destructive" />
+                    </div>
+                    <CardTitle className="text-2xl font-bold">Acesso Restrito</CardTitle>
+                    <CardDescription>Esta funcionalidade é exclusiva para professores.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">
+                        Faça login como professor para criar e imprimir folhas de atividades.
+                    </p>
+                </CardContent>
+                <CardFooter className="flex justify-center">
+                    <Button asChild size="lg">
+                        <Link href="/login">
+                            <LogIn className="mr-2 h-4 w-4" />
+                            Fazer Login
+                        </Link>
+                    </Button>
+                </CardFooter>
+            </Card>
+        </div>
       );
   }
 
@@ -192,7 +213,7 @@ function PrintableWorksheetGenerator() {
                       </Button>
                   </div>
               </div>
-              <div id="printable-worksheet-container" className="bg-gray-200 p-4 rounded-md">
+              <div id="printable-worksheet-container" className="bg-gray-200 dark:bg-gray-800 p-4 rounded-md">
                 {pageChunks.map((chunk, pageIndex) => (
                   <div key={`page-${pageIndex}`} className="printable-page flex flex-col">
                       <header className="mb-12 space-y-4 page-header">
@@ -201,12 +222,12 @@ function PrintableWorksheetGenerator() {
                               <div className="flex items-center gap-2 header-info-item">
                                   <GraduationCap className="w-6 h-6 text-muted-foreground" />
                                   <strong className="mr-2">Aluno(a):</strong>
-                                  <span>{studentName || '________________________________'}</span>
+                                  <span>{studentName || ''}</span>
                               </div>
                               <div className="flex items-center gap-2 header-info-item">
                                   <User className="w-6 h-6 text-muted-foreground" />
                                   <strong className="mr-2">Professor(a):</strong>
-                                  <span>{teacherName || '___________________________'}</span>
+                                  <span>{teacherName || ''}</span>
                               </div>
                           </div>
                       </header>

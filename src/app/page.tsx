@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Book, Calculator, Printer } from 'lucide-react';
+import { ArrowRight, Book, Calculator, Printer, LogIn } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -18,6 +18,7 @@ export default function Home() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
+  // This data is only needed if the user is logged in
   const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
   
@@ -38,7 +39,8 @@ export default function Home() {
   const hasMathTask = tasks?.some(t => t.subject === 'matematica');
   const hasPortugueseTask = tasks?.some(t => t.subject === 'portugues');
 
-  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || isLoadingTasks;
+  // Unified loading state
+  const isLoading = isUserLoading || (user && (isTeacherLoading || isStudentLoading || isLoadingTasks));
 
   if (isLoading) {
       return (
@@ -50,11 +52,13 @@ export default function Home() {
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   <Skeleton className="h-96 w-full" />
                   <Skeleton className="h-96 w-full" />
-                  <Skeleton className="h-96 w-full md:col-span-2 lg:col-span-1" />
+                  <Skeleton className="h-96 w-full" />
               </div>
           </div>
       );
   }
+
+  const showPrintCard = !user || isTeacherOrAdmin;
 
   return (
     <div className="space-y-8">
@@ -93,11 +97,19 @@ export default function Home() {
             </p>
           </CardContent>
           <CardFooter>
-            <Button asChild className="w-full" disabled={isStudent && !hasMathTask}>
-              <Link href={isStudent ? '/tarefas' : '/matematica'}>
-                {isStudent ? 'Ver Tarefas' : 'Começar a Jogar'} <ArrowRight className="ml-2" />
-              </Link>
-            </Button>
+            {user ? (
+               <Button asChild className="w-full" disabled={isStudent && !hasMathTask}>
+                  <Link href={isStudent ? '/tarefas' : '/matematica'}>
+                    {isStudent ? 'Ver Tarefas' : 'Começar a Jogar'} <ArrowRight className="ml-2" />
+                  </Link>
+                </Button>
+            ) : (
+                <Button asChild className="w-full">
+                  <Link href="/login">
+                    Logar para Visualizar <LogIn className="ml-2" />
+                  </Link>
+                </Button>
+            )}
           </CardFooter>
         </Card>
 
@@ -126,15 +138,23 @@ export default function Home() {
             </p>
           </CardContent>
           <CardFooter>
-            <Button asChild className="w-full" disabled={isStudent && !hasPortugueseTask}>
-              <Link href={isStudent ? '/tarefas' : '/portugues'}>
-                {isStudent ? 'Ver Tarefas' : 'Começar a Praticar'} <ArrowRight className="ml-2" />
-              </Link>
-            </Button>
+             {user ? (
+                <Button asChild className="w-full" disabled={isStudent && !hasPortugueseTask}>
+                  <Link href={isStudent ? '/tarefas' : '/portugues'}>
+                    {isStudent ? 'Ver Tarefas' : 'Começar a Praticar'} <ArrowRight className="ml-2" />
+                  </Link>
+                </Button>
+             ) : (
+                <Button asChild className="w-full">
+                  <Link href="/login">
+                    Logar para Visualizar <LogIn className="ml-2" />
+                  </Link>
+                </Button>
+             )}
           </CardFooter>
         </Card>
 
-        {isTeacherOrAdmin && (
+        {showPrintCard && (
           <Card className="flex flex-col md:col-span-2 lg:col-span-1">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -160,11 +180,19 @@ export default function Home() {
               </p>
             </CardContent>
             <CardFooter>
-              <Button asChild className="w-full">
-                <Link href="/imprimir">
-                  Gerar Atividade <ArrowRight className="ml-2" />
-                </Link>
-              </Button>
+               {user ? (
+                    <Button asChild className="w-full">
+                      <Link href="/imprimir">
+                        Gerar Atividade <ArrowRight className="ml-2" />
+                      </Link>
+                    </Button>
+               ) : (
+                    <Button asChild className="w-full">
+                      <Link href="/login">
+                        Logar para Visualizar <LogIn className="ml-2" />
+                      </Link>
+                    </Button>
+               )}
             </CardFooter>
           </Card>
         )}
