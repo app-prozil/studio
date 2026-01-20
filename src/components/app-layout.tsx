@@ -6,7 +6,7 @@ import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import {
   SidebarProvider,
@@ -52,6 +52,8 @@ function UserNav() {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
+  
+  const lastUpdateTimestampRef = useRef(0);
 
   const teacherDocRef = useMemoFirebase(
     () => (user ? doc(firestore, 'teachers', user.uid) : null),
@@ -68,34 +70,27 @@ function UserNav() {
   useEffect(() => {
     if (user && firestore) {
       let userRef;
-      let profile;
-
       if (teacherProfile) {
         userRef = teacherDocRef;
-        profile = teacherProfile;
       } else if (studentProfile) {
         userRef = studentDocRef;
-        profile = studentProfile;
       }
 
-      if (userRef && profile) {
-        const now = new Date();
-        // Check if lastSeen exists and is a valid date string before creating a Date from it.
-        const lastSeen = profile.lastSeen && typeof profile.lastSeen === 'string' 
-          ? new Date(profile.lastSeen) 
-          : new Date(0);
-        
+      if (userRef) {
+        const now = Date.now();
         // Only update if last seen was more than 1 minute ago to prevent write loops.
-        const diffInMinutes = (now.getTime() - lastSeen.getTime()) / (1000 * 60);
-        
-        if (diffInMinutes > 1) {
+        if (now - lastUpdateTimestampRef.current > 60000) { // 1 minute in milliseconds
+          lastUpdateTimestampRef.current = now; // Update ref immediately
+          
           // Non-blocking update. We don't await it.
           updateDoc(userRef, {
-            lastSeen: now.toISOString(),
+            lastSeen: new Date(now).toISOString(),
           }).catch(e => console.error("Failed to update lastSeen timestamp", e));
         }
       }
     }
+    // The dependency array still includes the profiles to trigger on navigation
+    // after initial load, but the ref prevents the write loop.
   }, [pathname, user, firestore, teacherProfile, studentProfile, teacherDocRef, studentDocRef]);
 
 
