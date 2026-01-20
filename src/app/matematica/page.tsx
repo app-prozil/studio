@@ -3,9 +3,35 @@
 import { Suspense } from 'react';
 import InteractiveGame from '@/app/tarefas/interactive-game';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Frown } from 'lucide-react';
 
-// This component is wrapped in Suspense because InteractiveGame uses useSearchParams()
-function MathGamePage() {
+function MathGamePageContent() {
+  const searchParams = useSearchParams();
+  const taskId = searchParams.get('taskId');
+
+  if (!taskId) {
+    return (
+      <Card className="w-full max-w-3xl text-center">
+        <CardHeader>
+          <CardTitle className="text-4xl font-headline flex items-center justify-center gap-4">
+            <Frown className="w-10 h-10 text-muted-foreground" /> Nenhuma Tarefa Selecionada
+          </CardTitle>
+          <CardDescription className="text-lg">
+            Para jogar, você precisa iniciar uma atividade a partir da sua lista de tarefas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild size="lg">
+            <Link href="/tarefas">Ir para Minhas Tarefas</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full max-w-3xl text-center">
       <CardHeader>
@@ -21,12 +47,11 @@ function MathGamePage() {
   );
 }
 
-// The outer component that renders the Suspense fallback
 export default function MathPage() {
   return (
     <div className="flex flex-col items-center justify-center h-full">
-      <Suspense fallback={<div className="text-2xl">Carregando jogo...</div>}>
-        <MathGamePage />
+      <Suspense fallback={<div className="text-2xl">Carregando...</div>}>
+        <MathGamePageContent />
       </Suspense>
     </div>
   );

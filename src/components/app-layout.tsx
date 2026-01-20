@@ -19,6 +19,7 @@ import {
   SidebarTrigger,
   SidebarInset,
   useSidebar,
+  SidebarMenuSkeleton
 } from '@/components/ui/sidebar';
 import {
   DropdownMenu,
@@ -136,8 +137,19 @@ function UserNav() {
 function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
-  const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+  const firestore = useFirestore();
   const { setOpen } = useSidebar();
+  
+  const teacherDocRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'teachers', user.uid) : null),
+    [firestore, user]
+  );
+  const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
+  
+  const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+  const isAdmin = user?.uid === ADMIN_UID;
+  
+  const canShowImprimir = !isTeacherLoading && (!!teacherProfile || isAdmin);
 
   const handleMenuItemClick = () => {
     setOpen(false);
@@ -153,22 +165,30 @@ function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {menuItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))}
-                tooltip={item.label}
-                onClick={handleMenuItemClick}
-              >
-                <Link href={item.href}>
-                  <item.icon />
-                  <span>{item.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-          {user?.uid === ADMIN_UID && (
+          {menuItems.map((item) => {
+            if (item.href === '/imprimir' && !canShowImprimir) {
+              if (isTeacherLoading) {
+                return <SidebarMenuSkeleton key={item.href} showIcon />;
+              }
+              return null; // Don't show if not teacher/admin
+            }
+            return (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))}
+                  tooltip={item.label}
+                  onClick={handleMenuItemClick}
+                >
+                  <Link href={item.href}>
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+          {isAdmin && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
