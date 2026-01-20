@@ -36,8 +36,8 @@ function PortugueseGamePageContent() {
     <Card className="w-full max-w-3xl text-center">
       <CardHeader>
         <CardTitle className="text-4xl font-headline">Exercício de Português</CardTitle>
-        <CardDescription className="text-lg">
-          Complete as frases para completar a tarefa.
+        <CardDescription className="text-lg max-w-xl mx-auto">
+          Mergulhe nos exercícios, complete as frases e mostre que você domina o idioma.
         </CardDescription>
       </CardHeader>
       <CardContent>

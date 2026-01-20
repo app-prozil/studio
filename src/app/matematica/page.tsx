@@ -36,8 +36,8 @@ function MathGamePageContent() {
     <Card className="w-full max-w-3xl text-center">
       <CardHeader>
         <CardTitle className="text-4xl font-headline">Jogo de Matemática</CardTitle>
-        <CardDescription className="text-lg">
-          Resolva os desafios para completar a tarefa.
+        <CardDescription className="text-lg max-w-xl mx-auto">
+          Encare os desafios, um por um, e teste seus conhecimentos para completar esta tarefa interativa.
         </CardDescription>
       </CardHeader>
       <CardContent>

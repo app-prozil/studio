@@ -191,6 +191,7 @@ function StudentProgressView({ studentId, studentName }: { studentId: string, st
   return (
     <div>
       <h1 className="text-4xl font-bold font-headline">Seu Progresso</h1>
+      <p className="mt-2 text-muted-foreground">Acompanhe sua evolução, veja suas pontuações e descubra onde você mais se destaca.</p>
       <div className="mt-8">
         <ProgressDashboard tasks={tasks} name={studentName} />
       </div>
@@ -232,7 +233,10 @@ function TeacherProgressView({ teacherId }: { teacherId: string }) {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-4xl font-bold font-headline">Progresso dos Alunos</h1>
+       <div>
+        <h1 className="text-4xl font-bold font-headline">Progresso dos Alunos</h1>
+        <p className="mt-2 text-muted-foreground">Monitore o desempenho dos seus alunos, filtre por estudante e identifique pontos que precisam de atenção.</p>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Filtrar por Aluno</CardTitle>
