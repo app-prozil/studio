@@ -68,17 +68,32 @@ function UserNav() {
   useEffect(() => {
     if (user && firestore) {
       let userRef;
+      let profile;
+
       if (teacherProfile) {
         userRef = teacherDocRef;
+        profile = teacherProfile;
       } else if (studentProfile) {
         userRef = studentDocRef;
+        profile = studentProfile;
       }
 
-      if (userRef) {
-        // Non-blocking update. We don't await it.
-        updateDoc(userRef, {
-          lastSeen: new Date().toISOString(),
-        }).catch(e => console.error("Failed to update lastSeen timestamp", e));
+      if (userRef && profile) {
+        const now = new Date();
+        // Check if lastSeen exists and is a valid date string before creating a Date from it.
+        const lastSeen = profile.lastSeen && typeof profile.lastSeen === 'string' 
+          ? new Date(profile.lastSeen) 
+          : new Date(0);
+        
+        // Only update if last seen was more than 1 minute ago to prevent write loops.
+        const diffInMinutes = (now.getTime() - lastSeen.getTime()) / (1000 * 60);
+        
+        if (diffInMinutes > 1) {
+          // Non-blocking update. We don't await it.
+          updateDoc(userRef, {
+            lastSeen: now.toISOString(),
+          }).catch(e => console.error("Failed to update lastSeen timestamp", e));
+        }
       }
     }
   }, [pathname, user, firestore, teacherProfile, studentProfile, teacherDocRef, studentDocRef]);
@@ -264,5 +279,3 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    
