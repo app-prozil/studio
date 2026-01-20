@@ -4,8 +4,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User as UserIcon, LogIn, ClipboardCheck, Shield } from 'lucide-react';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
 
 import {
   SidebarProvider,
@@ -49,6 +50,7 @@ function UserNav() {
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
 
   const teacherDocRef = useMemoFirebase(
@@ -62,6 +64,25 @@ function UserNav() {
     [firestore, user]
   );
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
+  
+  useEffect(() => {
+    if (user && firestore) {
+      let userRef;
+      if (teacherProfile) {
+        userRef = teacherDocRef;
+      } else if (studentProfile) {
+        userRef = studentDocRef;
+      }
+
+      if (userRef) {
+        // Non-blocking update. We don't await it.
+        updateDoc(userRef, {
+          lastSeen: new Date().toISOString(),
+        }).catch(e => console.error("Failed to update lastSeen timestamp", e));
+      }
+    }
+  }, [pathname, user, firestore, teacherProfile, studentProfile, teacherDocRef, studentDocRef]);
+
 
   const isLoading = isUserLoading || isTeacherLoading || isStudentLoading;
 
@@ -243,3 +264,5 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+    

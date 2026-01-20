@@ -6,6 +6,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -32,6 +34,7 @@ type UserProfile = {
   name: string;
   email: string;
   prozilId: string;
+  lastSeen?: string;
   deletedAt?: string;
 };
 
@@ -135,6 +138,7 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showAr
               <TableHead>Nome</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>ProZil ID</TableHead>
+              <TableHead>Visto por Último</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -144,6 +148,9 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showAr
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell><code>{user.prozilId}</code></TableCell>
+                <TableCell>
+                  {user.lastSeen ? formatDistanceToNow(new Date(user.lastSeen), { addSuffix: true, locale: ptBR }) : 'Nunca'}
+                </TableCell>
                 <TableCell className="text-right">
                    {showArchived ? (
                     <Button variant="outline" size="sm" onClick={() => handleRestore(user)}>
@@ -375,3 +382,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
