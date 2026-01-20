@@ -224,8 +224,14 @@ function TeacherProgressView({ teacherId }: { teacherId: string }) {
   }, [teacherId, firestore]);
 
   const tasksQuery = useMemoFirebase(() => 
-    selectedStudentId ? query(collection(firestore, 'students', selectedStudentId, 'tasks'), where('isCompleted', '==', true)) : null,
-    [firestore, selectedStudentId]
+    selectedStudentId 
+        ? query(
+            collection(firestore, 'teachers', teacherId, 'tasks'), 
+            where('studentId', '==', selectedStudentId), 
+            where('isCompleted', '==', true)
+          ) 
+        : null,
+    [firestore, teacherId, selectedStudentId]
   );
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 
