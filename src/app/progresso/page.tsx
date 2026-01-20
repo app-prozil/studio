@@ -24,6 +24,7 @@ type Task = {
   subject: 'matematica' | 'portugues';
   isCompleted: boolean;
   completedAt?: string;
+  studentId: string;
   questions: PerformanceQuestion[];
 };
 
@@ -222,19 +223,21 @@ function TeacherProgressView({ teacherId }: { teacherId: string }) {
     };
     fetchStudents();
   }, [teacherId, firestore]);
-
+  
   const tasksQuery = useMemoFirebase(() => 
-    selectedStudentId 
-        ? query(
-            collection(firestore, 'teachers', teacherId, 'tasks'), 
-            where('studentId', '==', selectedStudentId), 
-            where('isCompleted', '==', true)
-          ) 
-        : null,
-    [firestore, teacherId, selectedStudentId]
+    query(
+      collection(firestore, 'teachers', teacherId, 'tasks'),
+      where('isCompleted', '==', true)
+    ),
+    [firestore, teacherId]
   );
-  const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+  const { data: allCompletedTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 
+  const selectedStudentTasks = useMemo(() => {
+    if (!selectedStudentId || !allCompletedTasks) return null;
+    return allCompletedTasks.filter(task => task.studentId === selectedStudentId);
+  }, [selectedStudentId, allCompletedTasks]);
+  
   const selectedStudent = students.find(s => s.id === selectedStudentId);
 
   return (
@@ -276,7 +279,7 @@ function TeacherProgressView({ teacherId }: { teacherId: string }) {
         :
         <div>
           <h2 className="text-3xl font-bold mb-6 font-headline">Relatório de {selectedStudent?.name}</h2>
-          <ProgressDashboard tasks={tasks} name={selectedStudent?.name || null}/>
+          <ProgressDashboard tasks={selectedStudentTasks} name={selectedStudent?.name || null}/>
         </div>
       )}
     </div>
