@@ -79,7 +79,9 @@ export default function Home() {
               <span className="text-2xl font-headline">Matemática Divertida</span>
             </CardTitle>
             <CardDescription>
-              Aprenda matemática com jogos interativos e desafios.
+              {isTeacherOrAdmin
+                ? "Crie jogos interativos e desafios para engajar seus alunos."
+                : "Aprenda matemática com jogos interativos e desafios."}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex-grow">
@@ -120,7 +122,9 @@ export default function Home() {
               <span className="text-2xl font-headline">Português Adaptativo</span>
             </CardTitle>
             <CardDescription>
-              Exercícios que se adaptam ao seu ritmo de aprendizado.
+              {isTeacherOrAdmin
+                ? "Elabore exercícios que se adaptam ao ritmo de cada aluno."
+                : "Exercícios que se adaptam ao seu ritmo de aprendizado."}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex-grow">
@@ -162,7 +166,9 @@ export default function Home() {
                 <span className="text-2xl font-headline">Atividades para Imprimir</span>
               </CardTitle>
               <CardDescription>
-                Gere folhas de atividades personalizadas para aprender offline.
+                {isTeacherOrAdmin
+                  ? "Gere folhas de atividades para usar em sala de aula ou como reforço."
+                  : "Gere folhas de atividades personalizadas para aprender offline."}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
