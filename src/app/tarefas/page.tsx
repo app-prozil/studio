@@ -8,7 +8,7 @@ import StudentTaskView from './student-task-view';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ShieldAlert, LogIn } from 'lucide-react';
+import { ShieldAlert, LogIn, ClipboardCheck } from 'lucide-react';
 
 export default function TarefasPage() {
   const { user, isUserLoading } = useUser();
@@ -42,28 +42,30 @@ export default function TarefasPage() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-full">
-          <Card className="w-full max-w-md mx-auto text-center">
-              <CardHeader>
-                  <div className="mx-auto bg-destructive/10 rounded-full p-4 w-fit mb-2">
-                      <ShieldAlert className="w-12 h-12 text-destructive" />
-                  </div>
-                  <CardTitle className="text-2xl font-bold">Acesso Restrito</CardTitle>
-                  <CardDescription>Esta página é protegida.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                  <p className="text-muted-foreground">
-                      Para visualizar suas tarefas, você precisa estar logado na sua conta.
-                  </p>
-              </CardContent>
-              <CardFooter className="flex justify-center">
-                  <Button asChild size="lg">
-                      <Link href="/login">
-                          <LogIn className="mr-2 h-4 w-4" />
-                          Fazer Login
-                      </Link>
-                  </Button>
-              </CardFooter>
-          </Card>
+        <Card className="w-full max-w-lg mx-auto text-center">
+          <CardHeader>
+            <div className="mx-auto bg-primary/10 rounded-full p-4 w-fit mb-4">
+              <ClipboardCheck className="w-12 h-12 text-primary" />
+            </div>
+            <CardTitle className="text-3xl font-bold font-headline">Suas Tarefas Esperam por Você</CardTitle>
+            <CardDescription className="text-lg">
+              Este é o seu centro de atividades. Aqui você encontrará todas as tarefas enviadas por seus professores, organizadas e prontas para começar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              Faça login para ver suas atividades pendentes e seu histórico de tarefas concluídas.
+            </p>
+          </CardContent>
+          <CardFooter className="flex justify-center">
+            <Button asChild size="lg">
+              <Link href="/login">
+                <LogIn className="mr-2 h-4 w-4" />
+                Fazer Login para Ver Tarefas
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
