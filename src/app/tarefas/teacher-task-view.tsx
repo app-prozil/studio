@@ -16,11 +16,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText, Calendar, Clock, Target, Check, Circle, TestTube, Award } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText, Calendar, Clock, Target, Check, Circle, TestTube, Award, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
 import seedData from '@/lib/seed-exercises.json';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import {
   Dialog,
   DialogContent,
@@ -874,7 +876,48 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 }
 
 function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const { toast } = useToast();
+
   if (!task) return null;
+
+  const handleGeneratePdf = async () => {
+    const reportElement = document.getElementById(`task-report-content-${task.id}`);
+    if (!reportElement) {
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível encontrar o conteúdo do relatório para gerar o PDF.' });
+        return;
+    }
+  
+    setIsGeneratingPdf(true);
+  
+    try {
+        const canvas = await html2canvas(reportElement, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+        let heightLeft = imgHeight;
+        let position = 0;
+  
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+  
+        while (heightLeft > 0) {
+          position -= pdfHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+          heightLeft -= pdfHeight;
+        }
+
+        pdf.save(`relatorio_${task.studentName?.replace(/\s/g, '_')}_${task.title.replace(/\s/g, '_')}.pdf`);
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({ variant: 'destructive', title: 'Erro ao Gerar PDF' });
+    } finally {
+        setIsGeneratingPdf(false);
+    }
+  };
 
   const questions = task.questions || [];
 
@@ -896,36 +939,36 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">{task.title}</DialogTitle>
-          <DialogDescription>Relatório de desempenho para {task.studentName || 'aluno desconhecido'}.</DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+        <div id={`task-report-content-${task.id}`} className="flex-grow overflow-y-auto">
+          <div className="p-6">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">{task.title}</DialogTitle>
+              <DialogDescription>Relatório de desempenho para {task.studentName || 'aluno desconhecido'}.</DialogDescription>
+            </DialogHeader>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 py-4 border-y text-center">
-            <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground justify-center flex items-center gap-1">Status</dt>
-                <dd><Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge></dd>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 py-4 my-4 border-y text-center">
+                <div className="flex flex-col items-center gap-1">
+                    <dt className="text-sm font-medium text-muted-foreground justify-center flex items-center gap-1">Status</dt>
+                    <dd><Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge></dd>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                    <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Calendar className="w-4 h-4"/> Conclusão</dt>
+                    <dd className="font-semibold">{task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yy HH:mm', {locale: ptBR}) : 'N/A'}</dd>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                    <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Clock className="w-4 h-4"/> Tempo Total</dt>
+                    <dd className="font-semibold">{formatTime(task.totalTime)}</dd>
+                </div>
+                 <div className="flex flex-col items-center gap-1">
+                    <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Target className="w-4 h-4"/> Precisão</dt>
+                    <dd className="font-semibold">{correctAnswers} de {totalQuestions}</dd>
+                </div>
+                 <div className="flex flex-col items-center gap-1">
+                    <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Award className="w-4 h-4"/> Pontuação</dt>
+                    <dd className="font-bold text-lg text-primary">{accuracyPercentage}%</dd>
+                </div>
             </div>
-            <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Calendar className="w-4 h-4"/> Conclusão</dt>
-                <dd className="font-semibold">{task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yy HH:mm', {locale: ptBR}) : 'N/A'}</dd>
-            </div>
-            <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Clock className="w-4 h-4"/> Tempo Total</dt>
-                <dd className="font-semibold">{formatTime(task.totalTime)}</dd>
-            </div>
-             <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Target className="w-4 h-4"/> Precisão</dt>
-                <dd className="font-semibold">{correctAnswers} de {totalQuestions}</dd>
-            </div>
-             <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Award className="w-4 h-4"/> Pontuação</dt>
-                <dd className="font-bold text-lg text-primary">{accuracyPercentage}%</dd>
-            </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -956,12 +999,144 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
                     ))}
                 </TableBody>
             </Table>
+          </div>
         </div>
-
-        <DialogFooter>
+        <DialogFooter className="p-4 border-t bg-background shrink-0">
           <DialogClose asChild>
             <Button variant="outline">Fechar</Button>
           </DialogClose>
+          <Button onClick={handleGeneratePdf} disabled={isGeneratingPdf}>
+              {isGeneratingPdf ? <Loader2 className="mr-2 animate-spin" /> : <Download className="mr-2" />}
+              Baixar PDF
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenChange, teacherName }: { studentName: string; tasks: Task[]; isOpen: boolean; onOpenChange: (open: boolean) => void; teacherName?: string }) {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const { toast } = useToast();
+
+  const handleGeneratePdf = async () => {
+    const reportElement = document.getElementById(`student-general-report-${studentName.replace(/\s/g, '')}`);
+    if (!reportElement) {
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível encontrar o conteúdo do relatório.' });
+        return;
+    }
+    setIsGeneratingPdf(true);
+    try {
+        const canvas = await html2canvas(reportElement, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+
+        while (heightLeft > 0) {
+            position -= pdfHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+            heightLeft -= pdfHeight;
+        }
+
+        pdf.save(`relatorio_geral_${studentName.replace(/\s/g, '_')}.pdf`);
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({ variant: 'destructive', title: 'Erro ao Gerar PDF' });
+    } finally {
+        setIsGeneratingPdf(false);
+    }
+  };
+
+  const stats = useMemo(() => {
+    if (!tasks || tasks.length === 0) {
+      return { averageScore: 0, completedTasks: 0, totalTasks: 0 };
+    }
+    const completed = tasks.filter(t => t.isCompleted);
+    const scores = completed.map(t => {
+      const correct = t.questions.filter(q => q.status === 'correct').length;
+      return t.questions.length > 0 ? (correct / t.questions.length) * 100 : 0;
+    });
+    const averageScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
+    return {
+      averageScore,
+      completedTasks: completed.length,
+      totalTasks: tasks.length,
+    };
+  }, [tasks]);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+        <div id={`student-general-report-${studentName.replace(/\s/g, '')}`} className="flex-grow overflow-y-auto">
+          <div className="p-6">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Relatório Geral de Desempenho</DialogTitle>
+              <DialogDescription>
+                Resumo de todas as atividades de <span className="font-semibold">{studentName}</span>.
+                {teacherName && ` (Professor: ${teacherName})`}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-3 gap-4 py-4 my-4 border-y text-center">
+              <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground">Tarefas Concluídas</dt>
+                <dd className="text-2xl font-bold">{stats.completedTasks} / {stats.totalTasks}</dd>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground">Pontuação Média</dt>
+                <dd className="text-2xl font-bold text-primary">{stats.averageScore}%</dd>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground">Data do Relatório</dt>
+                <dd className="text-2xl font-bold">{format(new Date(), 'dd/MM/yyyy')}</dd>
+              </div>
+            </div>
+
+            <h3 className="text-lg font-semibold mb-4">Detalhes das Tarefas</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tarefa</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Data de Conclusão</TableHead>
+                  <TableHead>Pontuação</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tasks.map(task => {
+                  const correct = task.isCompleted ? task.questions.filter(q => q.status === 'correct').length : 0;
+                  const total = task.questions.length;
+                  const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+                  return (
+                    <TableRow key={task.id}>
+                      <TableCell className="font-medium">{task.title}</TableCell>
+                      <TableCell><Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge></TableCell>
+                      <TableCell>{task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                      <TableCell className="font-semibold">{task.isCompleted ? `${score}%` : 'N/A'}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+        <DialogFooter className="p-4 border-t bg-background shrink-0">
+          <DialogClose asChild>
+            <Button variant="outline">Fechar</Button>
+          </DialogClose>
+          <Button onClick={handleGeneratePdf} disabled={isGeneratingPdf}>
+            {isGeneratingPdf ? <Loader2 className="mr-2 animate-spin" /> : <Download className="mr-2" />}
+            Baixar PDF
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -977,13 +1152,13 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
   );
   const { data: tasks, isLoading } = useCollection<Task>(tasksQuery);
   const [viewingReport, setViewingReport] = useState<Task | null>(null);
+  const [viewingGeneralReportFor, setViewingGeneralReportFor] = useState<{name: string, tasks: Task[], teacherName?: string} | null>(null);
 
   const tasksByStudent = useMemo(() => {
     if (!tasks) {
       return {};
     }
   
-    // Create a deep copy to avoid state mutation
     const tasksCopy = JSON.parse(JSON.stringify(tasks));
   
     const grouped = tasksCopy.reduce((acc: Record<string, Task[]>, task: Task) => {
@@ -995,7 +1170,6 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
       return acc;
     }, {});
   
-    // Sort tasks within each student group
     for (const studentIdentifier in grouped) {
       grouped[studentIdentifier].sort((a, b) => {
         if (a.isCompleted !== b.isCompleted) {
@@ -1040,7 +1214,20 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <ul className="space-y-3 pt-2 pl-4">
+                  <div className="flex justify-end pb-2 -mt-2">
+                      <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          onClick={() => setViewingGeneralReportFor({ 
+                              name: studentName, 
+                              tasks: studentTasks,
+                              teacherName: studentTasks[0]?.teacherName
+                          })}>
+                          <Download className="mr-2 h-4 w-4"/>
+                          Gerar Relatório Geral
+                      </Button>
+                  </div>
+                  <ul className="space-y-3 pt-2">
                     {studentTasks.map(task => (
                        <li key={task.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg bg-background/50 gap-4">
                            <div className="grid gap-1.5 flex-1">
@@ -1073,6 +1260,15 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
       </CardContent>
     </Card>
     <TaskReportDialog task={viewingReport} isOpen={!!viewingReport} onOpenChange={() => setViewingReport(null)} />
+    {viewingGeneralReportFor && (
+        <StudentGeneralReportDialog 
+            studentName={viewingGeneralReportFor.name}
+            tasks={viewingGeneralReportFor.tasks}
+            teacherName={viewingGeneralReportFor.teacherName}
+            isOpen={!!viewingGeneralReportFor} 
+            onOpenChange={() => setViewingGeneralReportFor(null)} 
+        />
+    )}
     </>
   );
 }
