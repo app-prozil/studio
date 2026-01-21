@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePWAInstall } from '@/hooks/use-pwa-install';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,14 @@ export function PWAInstallPrompt() {
   const { toast, dismiss } = useToast();
   const isMobile = useIsMobile();
   const toastId = 'pwa-install-toast';
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (isMobile && canInstall && !isStandalone) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && isMobile && canInstall && !isStandalone) {
       toast({
         id: toastId,
         title: "Instale o ProZil em seu dispositivo",
@@ -31,7 +36,7 @@ export function PWAInstallPrompt() {
         ),
       });
     }
-  }, [canInstall, isStandalone, isMobile, triggerInstall, toast, dismiss]);
+  }, [mounted, canInstall, isStandalone, isMobile, triggerInstall, toast, dismiss]);
 
   // This component renders nothing itself, it just triggers a toast.
   return null;
