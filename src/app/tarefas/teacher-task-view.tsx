@@ -22,7 +22,7 @@ import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
 import seedData from '@/lib/seed-exercises.json';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import 'jspdf-autotable';
 import {
   Dialog,
   DialogContent,
@@ -879,48 +879,6 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const { toast } = useToast();
 
-  if (!task) return null;
-
-  const handleGeneratePdf = async () => {
-    const reportElement = document.getElementById(`task-report-content-${task.id}`);
-    if (!reportElement) {
-        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível encontrar o conteúdo do relatório para gerar o PDF.' });
-        return;
-    }
-  
-    setIsGeneratingPdf(true);
-  
-    try {
-        const canvas = await html2canvas(reportElement, { scale: 2, useCORS: true });
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-        let heightLeft = imgHeight;
-        let position = 0;
-  
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-        heightLeft -= pdfHeight;
-  
-        while (heightLeft > 0) {
-          position -= pdfHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-          heightLeft -= pdfHeight;
-        }
-
-        pdf.save(`relatorio_${task.studentName?.replace(/\s/g, '_')}_${task.title.replace(/\s/g, '_')}.pdf`);
-    } catch (error) {
-        console.error("Error generating PDF:", error);
-        toast({ variant: 'destructive', title: 'Erro ao Gerar PDF' });
-    } finally {
-        setIsGeneratingPdf(false);
-    }
-  };
-
-  const questions = task.questions || [];
-
   const formatTime = (seconds: number | undefined) => {
     if (seconds === undefined) return 'N/A';
     const mins = Math.floor(seconds / 60);
@@ -933,75 +891,168 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
     return `${(ms / 1000).toFixed(1)}s`;
   }
   
+  const questions = task?.questions || [];
   const correctAnswers = questions.filter(q => q.status === 'correct').length;
   const totalQuestions = questions.length;
   const accuracyPercentage = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
 
+  const handleGeneratePdf = async () => {
+      if (!task) return;
+      setIsGeneratingPdf(true);
+
+      try {
+          const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+          const pageHeight = pdf.internal.pageSize.getHeight();
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const margin = 15;
+          let y = margin;
+          
+          const addPageNumbers = () => {
+            const pageCount = pdf.internal.pages.length - 1;
+            for(let i = 1; i <= pageCount; i++) {
+                pdf.setPage(i);
+                pdf.setFontSize(9);
+                pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+            }
+          };
+
+          // Header
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(18);
+          pdf.text(task.title, pageWidth / 2, y, { align: 'center' });
+          y += 8;
+
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(12);
+          pdf.text(`Relatório de Desempenho`, pageWidth / 2, y, { align: 'center' });
+          y += 12;
+
+          // Summary Table
+          (pdf as any).autoTable({
+              startY: y,
+              theme: 'grid',
+              head: [['Aluno', 'Professor', 'Status', 'Data', 'Tempo', 'Pontuação']],
+              body: [[
+                  task.studentName || 'N/A',
+                  task.teacherName || 'N/A',
+                  task.isCompleted ? 'Concluída' : 'Pendente',
+                  task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yy HH:mm', { locale: ptBR }) : 'N/A',
+                  formatTime(task.totalTime),
+                  `${accuracyPercentage}% (${correctAnswers}/${totalQuestions})`
+              ]],
+              styles: { fontSize: 10 },
+              headStyles: { fillColor: [240, 240, 240], textColor: [50, 50, 50] }
+          });
+          y = (pdf as any).lastAutoTable.finalY + 15;
+
+          // Questions Table
+          pdf.setFontSize(14);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Detalhes das Questões', margin, y);
+          y += 8;
+
+          (pdf as any).autoTable({
+              startY: y,
+              theme: 'striped',
+              head: [['#', 'Pergunta', 'Aluno Respondeu', 'Resposta Correta', 'Status', 'Tentativas', 'Tempo']],
+              body: questions.map((q, index) => [
+                  index + 1,
+                  q.text,
+                  q.studentAnswer || '-',
+                  q.answer,
+                  q.status || 'unanswered',
+                  q.attempts || '-',
+                  formatMs(q.timeTaken)
+              ]),
+              styles: { fontSize: 9, cellPadding: 2 },
+              headStyles: { fillColor: [60, 60, 60] },
+              columnStyles: {
+                  0: { cellWidth: 8 },
+                  1: { cellWidth: 55 },
+                  4: { halign: 'center' },
+                  5: { halign: 'center' },
+                  6: { halign: 'right' },
+              }
+          });
+          
+          addPageNumbers();
+          pdf.save(`relatorio_${task.studentName?.replace(/\s/g, '_')}_${task.title.replace(/\s/g, '_')}.pdf`);
+
+      } catch (error) {
+          console.error("Error generating PDF:", error);
+          toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um problema ao criar o arquivo.' });
+      } finally {
+          setIsGeneratingPdf(false);
+      }
+  };
+
+
+  if (!task) return null;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
-        <div id={`task-report-content-${task.id}`} className="flex-grow overflow-y-auto">
-          <div className="p-6">
-            <DialogHeader>
-              <DialogTitle className="text-2xl">{task.title}</DialogTitle>
-              <DialogDescription>Relatório de desempenho para {task.studentName || 'aluno desconhecido'}.</DialogDescription>
-            </DialogHeader>
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-6">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">{task.title}</DialogTitle>
+          <DialogDescription>Relatório de desempenho para {task.studentName || 'aluno desconhecido'}.</DialogDescription>
+        </DialogHeader>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 py-4 my-4 border-y text-center">
-                <div className="flex flex-col items-center gap-1">
-                    <dt className="text-sm font-medium text-muted-foreground justify-center flex items-center gap-1">Status</dt>
-                    <dd><Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge></dd>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                    <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Calendar className="w-4 h-4"/> Conclusão</dt>
-                    <dd className="font-semibold">{task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yy HH:mm', {locale: ptBR}) : 'N/A'}</dd>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                    <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Clock className="w-4 h-4"/> Tempo Total</dt>
-                    <dd className="font-semibold">{formatTime(task.totalTime)}</dd>
-                </div>
-                 <div className="flex flex-col items-center gap-1">
-                    <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Target className="w-4 h-4"/> Precisão</dt>
-                    <dd className="font-semibold">{correctAnswers} de {totalQuestions}</dd>
-                </div>
-                 <div className="flex flex-col items-center gap-1">
-                    <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Award className="w-4 h-4"/> Pontuação</dt>
-                    <dd className="font-bold text-lg text-primary">{accuracyPercentage}%</dd>
-                </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 py-4 my-4 border-y text-center">
+            <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground justify-center flex items-center gap-1">Status</dt>
+                <dd><Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge></dd>
             </div>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-[40px]">#</TableHead>
-                        <TableHead>Pergunta</TableHead>
-                        <TableHead>Resposta do Aluno</TableHead>
-                        <TableHead>Resposta Correta</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Tentativas</TableHead>
-                        <TableHead>Tempo</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {questions.map((q, index) => (
-                        <TableRow key={index} className={q.status === 'incorrect' ? 'bg-destructive/10' : ''}>
-                            <TableCell>{index + 1}</TableCell>
-                            <TableCell className="font-medium max-w-xs truncate">{q.text}</TableCell>
-                            <TableCell>{q.studentAnswer || '-'}</TableCell>
-                            <TableCell>{q.answer}</TableCell>
-                            <TableCell>
-                                {q.status === 'correct' && <Check className="w-5 h-5 text-success" />}
-                                {q.status === 'incorrect' && <X className="w-5 h-5 text-destructive" />}
-                                {(q.status === 'unanswered' || !q.status) && <Circle className="w-5 h-5 text-muted-foreground"/>}
-                            </TableCell>
-                            <TableCell>{q.attempts || '-'}</TableCell>
-                            <TableCell>{formatMs(q.timeTaken)}</TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-          </div>
+            <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Calendar className="w-4 h-4"/> Conclusão</dt>
+                <dd className="font-semibold">{task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yy HH:mm', {locale: ptBR}) : 'N/A'}</dd>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Clock className="w-4 h-4"/> Tempo Total</dt>
+                <dd className="font-semibold">{formatTime(task.totalTime)}</dd>
+            </div>
+             <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Target className="w-4 h-4"/> Precisão</dt>
+                <dd className="font-semibold">{correctAnswers} de {totalQuestions}</dd>
+            </div>
+             <div className="flex flex-col items-center gap-1">
+                <dt className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-1"><Award className="w-4 h-4"/> Pontuação</dt>
+                <dd className="font-bold text-lg text-primary">{accuracyPercentage}%</dd>
+            </div>
         </div>
-        <DialogFooter className="p-4 border-t bg-background shrink-0">
+
+        <div className="flex-grow overflow-y-auto">
+          <Table>
+              <TableHeader>
+                  <TableRow>
+                      <TableHead className="w-[40px]">#</TableHead>
+                      <TableHead>Pergunta</TableHead>
+                      <TableHead>Resposta do Aluno</TableHead>
+                      <TableHead>Resposta Correta</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Tentativas</TableHead>
+                      <TableHead>Tempo</TableHead>
+                  </TableRow>
+              </TableHeader>
+              <TableBody>
+                  {questions.map((q, index) => (
+                      <TableRow key={index} className={q.status === 'incorrect' ? 'bg-destructive/10' : ''}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell className="font-medium max-w-xs truncate">{q.text}</TableCell>
+                          <TableCell>{q.studentAnswer || '-'}</TableCell>
+                          <TableCell>{q.answer}</TableCell>
+                          <TableCell>
+                              {q.status === 'correct' && <Check className="w-5 h-5 text-success" />}
+                              {q.status === 'incorrect' && <X className="w-5 h-5 text-destructive" />}
+                              {(q.status === 'unanswered' || !q.status) && <Circle className="w-5 h-5 text-muted-foreground"/>}
+                          </TableCell>
+                          <TableCell>{q.attempts || '-'}</TableCell>
+                          <TableCell>{formatMs(q.timeTaken)}</TableCell>
+                      </TableRow>
+                  ))}
+              </TableBody>
+          </Table>
+        </div>
+        <DialogFooter className="pt-4 border-t">
           <DialogClose asChild>
             <Button variant="outline">Fechar</Button>
           </DialogClose>
@@ -1019,33 +1070,104 @@ function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenChange, 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const { toast } = useToast();
 
-  const handleGeneratePdf = async () => {
-    const reportElement = document.getElementById(`student-general-report-${studentName.replace(/\s/g, '')}`);
-    if (!reportElement) {
-        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível encontrar o conteúdo do relatório.' });
-        return;
+  const stats = useMemo(() => {
+    if (!tasks || tasks.length === 0) {
+      return { averageScore: 0, completedTasks: 0, totalTasks: 0, totalTime: 0 };
     }
+    const completed = tasks.filter(t => t.isCompleted);
+    const scores = completed.map(t => {
+      const correct = t.questions.filter(q => q.status === 'correct').length;
+      return t.questions.length > 0 ? (correct / t.questions.length) * 100 : 0;
+    });
+    const averageScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    const totalTime = completed.reduce((sum, task) => sum + (task.totalTime || 0), 0);
+
+    return {
+      averageScore,
+      completedTasks: completed.length,
+      totalTasks: tasks.length,
+      totalTime: totalTime,
+    };
+  }, [tasks]);
+  
+  const formatTime = (seconds: number | undefined) => {
+    if (seconds === undefined) return 'N/A';
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return [hours > 0 ? `${hours}h` : '', mins > 0 ? `${mins}m` : '', `${secs}s`].filter(Boolean).join(' ');
+  };
+
+  const handleGeneratePdf = async () => {
     setIsGeneratingPdf(true);
     try {
-        const canvas = await html2canvas(reportElement, { scale: 2, useCORS: true });
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-        let heightLeft = imgHeight;
-        let position = 0;
+        const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const margin = 15;
+        let y = margin;
+        
+        const addPageNumbers = () => {
+            const pageCount = pdf.internal.pages.length - 1;
+            for(let i = 1; i <= pageCount; i++) {
+                pdf.setPage(i);
+                pdf.setFontSize(9);
+                pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+            }
+        };
 
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-        heightLeft -= pdfHeight;
+        // Header
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(18);
+        pdf.text('Relatório Geral de Desempenho', pageWidth / 2, y, { align: 'center' });
+        y += 8;
+        
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(12);
+        pdf.text(studentName, pageWidth / 2, y, { align: 'center' });
+        y += 12;
 
-        while (heightLeft > 0) {
-            position -= pdfHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-            heightLeft -= pdfHeight;
-        }
+        // Summary
+        (pdf as any).autoTable({
+            startY: y,
+            theme: 'grid',
+            body: [
+                [{content: 'Resumo Geral', colSpan: 4, styles: { halign: 'center', fontStyle: 'bold', fillColor: [240,240,240] }}],
+                ['Professor', teacherName || 'N/A', 'Data do Relatório', format(new Date(), 'dd/MM/yyyy')],
+                ['Tarefas Concluídas', `${stats.completedTasks} de ${stats.totalTasks}`, 'Tempo Total de Estudo', formatTime(stats.totalTime)],
+                [{content: `Pontuação Média (em tarefas concluídas): ${stats.averageScore}%`, colSpan: 4, styles: { halign: 'center', fontStyle: 'bold' }}]
+            ],
+            styles: { fontSize: 10 },
+        });
+        y = (pdf as any).lastAutoTable.finalY + 15;
 
+
+        // Tasks Table
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Resumo das Tarefas', margin, y);
+        y += 8;
+
+        (pdf as any).autoTable({
+            startY: y,
+            theme: 'striped',
+            head: [['Tarefa', 'Status', 'Data de Conclusão', 'Pontuação']],
+            body: tasks.map(task => {
+                const correct = task.isCompleted ? task.questions.filter(q => q.status === 'correct').length : 0;
+                const total = task.questions.length;
+                const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+                return [
+                    task.title,
+                    task.isCompleted ? 'Concluída' : 'Pendente',
+                    task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yyyy') : 'N/A',
+                    task.isCompleted ? `${score}%` : 'N/A'
+                ];
+            }),
+            styles: { fontSize: 9, cellPadding: 2 },
+            headStyles: { fillColor: [60, 60, 60] }
+        });
+
+        addPageNumbers();
         pdf.save(`relatorio_geral_${studentName.replace(/\s/g, '_')}.pdf`);
     } catch (error) {
         console.error("Error generating PDF:", error);
@@ -1055,52 +1177,33 @@ function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenChange, 
     }
   };
 
-  const stats = useMemo(() => {
-    if (!tasks || tasks.length === 0) {
-      return { averageScore: 0, completedTasks: 0, totalTasks: 0 };
-    }
-    const completed = tasks.filter(t => t.isCompleted);
-    const scores = completed.map(t => {
-      const correct = t.questions.filter(q => q.status === 'correct').length;
-      return t.questions.length > 0 ? (correct / t.questions.length) * 100 : 0;
-    });
-    const averageScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-
-    return {
-      averageScore,
-      completedTasks: completed.length,
-      totalTasks: tasks.length,
-    };
-  }, [tasks]);
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
-        <div id={`student-general-report-${studentName.replace(/\s/g, '')}`} className="flex-grow overflow-y-auto">
-          <div className="p-6">
-            <DialogHeader>
-              <DialogTitle className="text-2xl">Relatório Geral de Desempenho</DialogTitle>
-              <DialogDescription>
-                Resumo de todas as atividades de <span className="font-semibold">{studentName}</span>.
-                {teacherName && ` (Professor: ${teacherName})`}
-              </DialogDescription>
-            </DialogHeader>
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-6">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">Relatório Geral de Desempenho</DialogTitle>
+          <DialogDescription>
+            Resumo de todas as atividades de <span className="font-semibold">{studentName}</span>.
+            {teacherName && ` (Professor: ${teacherName})`}
+          </DialogDescription>
+        </DialogHeader>
 
-            <div className="grid grid-cols-3 gap-4 py-4 my-4 border-y text-center">
-              <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground">Tarefas Concluídas</dt>
-                <dd className="text-2xl font-bold">{stats.completedTasks} / {stats.totalTasks}</dd>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground">Pontuação Média</dt>
-                <dd className="text-2xl font-bold text-primary">{stats.averageScore}%</dd>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <dt className="text-sm font-medium text-muted-foreground">Data do Relatório</dt>
-                <dd className="text-2xl font-bold">{format(new Date(), 'dd/MM/yyyy')}</dd>
-              </div>
-            </div>
-
+        <div className="grid grid-cols-3 gap-4 py-4 my-4 border-y text-center">
+          <div className="flex flex-col items-center gap-1">
+            <dt className="text-sm font-medium text-muted-foreground">Tarefas Concluídas</dt>
+            <dd className="text-2xl font-bold">{stats.completedTasks} / {stats.totalTasks}</dd>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <dt className="text-sm font-medium text-muted-foreground">Pontuação Média</dt>
+            <dd className="text-2xl font-bold text-primary">{stats.averageScore}%</dd>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <dt className="text-sm font-medium text-muted-foreground">Data do Relatório</dt>
+            <dd className="text-xl font-bold">{format(new Date(), 'dd/MM/yyyy')}</dd>
+          </div>
+        </div>
+        
+        <div className="flex-grow overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Detalhes das Tarefas</h3>
             <Table>
               <TableHeader>
@@ -1127,9 +1230,9 @@ function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenChange, 
                 })}
               </TableBody>
             </Table>
-          </div>
         </div>
-        <DialogFooter className="p-4 border-t bg-background shrink-0">
+
+        <DialogFooter className="pt-4 border-t">
           <DialogClose asChild>
             <Button variant="outline">Fechar</Button>
           </DialogClose>
