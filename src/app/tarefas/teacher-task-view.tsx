@@ -23,6 +23,7 @@ import Link from 'next/link';
 import seedData from '@/lib/seed-exercises.json';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 import {
   Dialog,
   DialogContent,
@@ -897,95 +898,93 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
   const accuracyPercentage = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
 
   const handleGeneratePdf = async () => {
-      if (!task) return;
-      setIsGeneratingPdf(true);
+    if (!task) return;
+    setIsGeneratingPdf(true);
+    try {
+      const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      let y = margin;
+      
+      const addPageNumbers = () => {
+        const pageCount = pdf.internal.pages.length - 1;
+        for(let i = 1; i <= pageCount; i++) {
+            pdf.setPage(i);
+            pdf.setFontSize(9);
+            pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+        }
+      };
 
-      try {
-          const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-          const pageHeight = pdf.internal.pageSize.getHeight();
-          const pageWidth = pdf.internal.pageSize.getWidth();
-          const margin = 15;
-          let y = margin;
-          
-          const addPageNumbers = () => {
-            const pageCount = pdf.internal.pages.length - 1;
-            for(let i = 1; i <= pageCount; i++) {
-                pdf.setPage(i);
-                pdf.setFontSize(9);
-                pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-            }
-          };
+      // Header Programmatic
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(18);
+      pdf.text(task.title, pageWidth / 2, y, { align: 'center' });
+      y += 8;
 
-          // Header
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(18);
-          pdf.text(task.title, pageWidth / 2, y, { align: 'center' });
-          y += 8;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(12);
+      pdf.text(`Relatório de Desempenho`, pageWidth / 2, y, { align: 'center' });
+      y += 12;
 
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(12);
-          pdf.text(`Relatório de Desempenho`, pageWidth / 2, y, { align: 'center' });
-          y += 12;
-
-          // Summary Table
-          (pdf as any).autoTable({
-              startY: y,
-              theme: 'grid',
-              head: [['Aluno', 'Professor', 'Status', 'Data', 'Tempo', 'Pontuação']],
-              body: [[
-                  task.studentName || 'N/A',
-                  task.teacherName || 'N/A',
-                  task.isCompleted ? 'Concluída' : 'Pendente',
-                  task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yy HH:mm', { locale: ptBR }) : 'N/A',
-                  formatTime(task.totalTime),
-                  `${accuracyPercentage}% (${correctAnswers}/${totalQuestions})`
-              ]],
-              styles: { fontSize: 10 },
-              headStyles: { fillColor: [240, 240, 240], textColor: [50, 50, 50] }
-          });
-          y = (pdf as any).lastAutoTable.finalY + 15;
-
-          // Questions Table
-          pdf.setFontSize(14);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text('Detalhes das Questões', margin, y);
-          y += 8;
-
-          (pdf as any).autoTable({
-              startY: y,
-              theme: 'striped',
-              head: [['#', 'Pergunta', 'Aluno Respondeu', 'Resposta Correta', 'Status', 'Tentativas', 'Tempo']],
-              body: questions.map((q, index) => [
-                  index + 1,
-                  q.text,
-                  q.studentAnswer || '-',
-                  q.answer,
-                  q.status || 'unanswered',
-                  q.attempts || '-',
-                  formatMs(q.timeTaken)
-              ]),
-              styles: { fontSize: 9, cellPadding: 2 },
-              headStyles: { fillColor: [60, 60, 60] },
-              columnStyles: {
-                  0: { cellWidth: 8 },
-                  1: { cellWidth: 55 },
-                  4: { halign: 'center' },
-                  5: { halign: 'center' },
-                  6: { halign: 'right' },
-              }
-          });
-          
-          addPageNumbers();
-          pdf.save(`relatorio_${task.studentName?.replace(/\s/g, '_')}_${task.title.replace(/\s/g, '_')}.pdf`);
-
-      } catch (error) {
-          console.error("Error generating PDF:", error);
-          toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um problema ao criar o arquivo.' });
-      } finally {
-          setIsGeneratingPdf(false);
+      // Summary Table Programmatic
+      (pdf as any).autoTable({
+          startY: y,
+          theme: 'grid',
+          head: [['Aluno', 'Professor', 'Status', 'Data', 'Tempo', 'Pontuação']],
+          body: [[
+              task.studentName || 'N/A',
+              task.teacherName || 'N/A',
+              task.isCompleted ? 'Concluída' : 'Pendente',
+              task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yy HH:mm', { locale: ptBR }) : 'N/A',
+              formatTime(task.totalTime),
+              `${accuracyPercentage}% (${correctAnswers}/${totalQuestions})`
+          ]],
+          styles: { fontSize: 10 },
+          headStyles: { fillColor: [240, 240, 240], textColor: [50, 50, 50] }
+      });
+      y = (pdf as any).lastAutoTable.finalY + 15;
+      
+      // Image-based table for questions
+      const tableElement = document.getElementById('task-report-table');
+      if (!tableElement) {
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível encontrar a tabela de detalhes.' });
+        setIsGeneratingPdf(false);
+        return;
       }
-  };
+      
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Detalhes das Questões', margin, y);
+      y += 8;
 
+      const canvas = await html2canvas(tableElement, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = pageWidth - margin * 2;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      if (y + imgHeight > pageHeight - margin) {
+          pdf.addPage();
+          y = margin;
+      }
+
+      pdf.addImage(imgData, 'PNG', margin, y, imgWidth, imgHeight);
+
+      addPageNumbers();
+      pdf.save(`relatorio_${task.studentName?.replace(/\s/g, '_')}_${task.title.replace(/\s/g, '_')}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um problema ao criar o arquivo.' });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   if (!task) return null;
 
@@ -1021,7 +1020,7 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
         </div>
 
         <div className="flex-grow overflow-y-auto">
-          <Table>
+          <Table id="task-report-table">
               <TableHeader>
                   <TableRow>
                       <TableHead className="w-[40px]">#</TableHead>
@@ -1065,6 +1064,7 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
     </Dialog>
   );
 }
+
 
 function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenChange, teacherName }: { studentName: string; tasks: Task[]; isOpen: boolean; onOpenChange: (open: boolean) => void; teacherName?: string }) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
