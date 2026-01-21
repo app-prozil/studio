@@ -4,6 +4,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AppLayout } from '@/components/app-layout';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { PWAInstallProvider } from '@/hooks/use-pwa-install';
+import { PWAInstallPrompt } from '@/components/pwa-install-prompt';
 
 export const metadata: Metadata = {
   title: 'ProZil',
@@ -33,12 +35,15 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <PWAInstallProvider>
             <FirebaseClientProvider>
               <AppLayout>
                 {children}
               </AppLayout>
               <Toaster />
+              <PWAInstallPrompt />
             </FirebaseClientProvider>
+          </PWAInstallProvider>
         </ThemeProvider>
       </body>
     </html>
