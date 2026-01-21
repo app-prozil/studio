@@ -267,4 +267,24 @@
     margin-top: auto;
     padding-top: 2rem;
   }
+  
+  /* PDF Export Specific Styles */
+  .pdf-export-styles, .pdf-export-styles * {
+    color: black !important;
+  }
+  .pdf-export-styles {
+    background-color: white !important;
+  }
+  .pdf-export-styles .text-muted-foreground {
+    color: #555 !important;
+  }
+  .pdf-export-styles .text-success {
+    color: #16a34a !important; /* A nice green for success */
+  }
+  .pdf-export-styles .text-destructive {
+    color: #dc2626 !important; /* A clear red for errors */
+  }
+  .pdf-export-styles .bg-destructive\/10 {
+    background-color: #fee2e2 !important; /* A light red for background */
+  }
 }

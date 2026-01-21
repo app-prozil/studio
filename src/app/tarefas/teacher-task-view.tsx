@@ -958,6 +958,9 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
       pdf.text('Detalhes das Questões', margin, y);
       y += 8;
 
+      // Temporarily apply print styles for canvas rendering
+      tableElement.classList.add('pdf-export-styles');
+
       const canvas = await html2canvas(tableElement, {
           scale: 2,
           useCORS: true,
@@ -965,6 +968,9 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
           backgroundColor: '#ffffff'
       });
       
+      // Remove styles after capture
+      tableElement.classList.remove('pdf-export-styles');
+
       const imgData = canvas.toDataURL('image/png');
       const imgWidth = pageWidth - margin * 2;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
