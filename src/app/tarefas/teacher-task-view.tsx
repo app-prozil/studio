@@ -190,20 +190,23 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const questionType = watch('questionType');
   const watchedOptions = watch('options');
 
+  const watchedOptionsString = JSON.stringify(watchedOptions);
+
   useEffect(() => {
-    if (questionType === 'fill_in_the_blank' && watchedOptions.length > 0) {
-        const correctAnswer = watchedOptions[0];
+    const currentOptions = JSON.parse(watchedOptionsString);
+    if (questionType === 'fill_in_the_blank' && currentOptions.length > 0) {
+        const correctAnswer = currentOptions[0];
         if (getValues('answer') !== correctAnswer) {
             setValue('answer', correctAnswer, { shouldValidate: true });
         }
     }
-    if (questionType === 'organize_syllables' && watchedOptions.length > 0) {
-        const correctAnswer = watchedOptions.join('');
+    if (questionType === 'organize_syllables' && currentOptions.length > 0) {
+        const correctAnswer = currentOptions.join('');
         if (getValues('answer') !== correctAnswer) {
             setValue('answer', correctAnswer, { shouldValidate: true });
         }
     }
-  }, [watchedOptions, questionType, getValues, setValue]);
+  }, [watchedOptionsString, questionType, getValues, setValue]);
 
 
   const filteredExercises = useMemo(() => {
