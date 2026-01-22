@@ -426,7 +426,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
     if (questionType === 'fill_in_the_blank') {
       const dropZoneColor = isCorrect === true ? 'bg-success/20 text-success' : isCorrect === false ? 'bg-destructive/20 text-destructive' : 'bg-muted text-muted-foreground';
-      const dropZone = (
+      
+      const DropZone = () => (
         <span className={cn(
             'inline-block rounded-md min-w-32 text-center mx-2 px-4 py-2 border-2 border-dashed transition-colors',
             dropZoneColor,
@@ -436,15 +437,15 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         </span>
       );
 
-      const renderTextWithBlank = (text: string) => {
-        if (!text.includes('___')) {
+      const renderTextWithBlank = (text: string | undefined) => {
+        if (!text || !text.includes('___')) {
           return <span>{text}</span>;
         }
         const parts = text.split('___');
         return (
           <>
             <span>{parts[0]}</span>
-            {dropZone}
+            <DropZone />
             <span>{parts.slice(1).join('___')}</span>
           </>
         );
@@ -468,9 +469,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
     // Default to multiple choice
     return (
-      <div className="font-bold text-center">
+      <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
         {currentQuestion.text && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{currentQuestion.text}</p>}
-        {currentQuestion.text2 && <p className={`mt-4 ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{currentQuestion.text2}</p>}
+        {currentQuestion.text2 && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{currentQuestion.text2}</p>}
       </div>
     )
   }
@@ -504,7 +505,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         <div className="relative p-8 border-4 border-dashed rounded-lg border-accent min-h-48 flex items-center justify-center">
             {renderQuestion()}
             <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={() => {
-                const fullText = `${currentQuestion.text} ${currentQuestion.text2 || ''}`;
+                const fullText = `${currentQuestion.text || ''} ${currentQuestion.text2 || ''}`;
                 const utterance = new SpeechSynthesisUtterance(fullText.replace('___', 'espaço'));
                 utterance.lang = 'pt-BR';
                 window.speechSynthesis.speak(utterance);
