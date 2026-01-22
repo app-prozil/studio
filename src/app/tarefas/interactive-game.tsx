@@ -196,7 +196,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       setGameState('finished');
     });
 
-  }, [isAuthLoading, user, taskId, studentId, subject, firestore, router, toast]);
+  }, [isAuthLoading, user, taskId, studentId, subject, firestore, router, toast, searchParams]);
 
 
   useEffect(() => {
@@ -407,14 +407,23 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         </div>
     );
   }
-  
-  const questionText = currentQuestion.text;
-  const questionType = currentQuestion.questionType || 'multiple_choice';
 
   const renderQuestion = () => {
+    const questionType = currentQuestion.questionType || 'multiple_choice';
+
     if (questionType === 'fill_in_the_blank') {
-      const parts = questionText.split('___');
+      const fullText = `${currentQuestion.text} ${currentQuestion.text2 || ''}`.trim();
+      const parts = fullText.split('___');
       const dropZoneColor = isCorrect === true ? 'bg-success/20 text-success' : isCorrect === false ? 'bg-destructive/20 text-destructive' : 'bg-muted text-muted-foreground';
+      
+      if (parts.length < 2) {
+        return (
+            <div className="font-bold text-center">
+                <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{fullText}</p>
+            </div>
+        )
+      }
+
       return (
         <div className="font-bold text-center">
             <div className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
@@ -426,9 +435,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                 )}>
                   {selectedAnswer || '...'}
                 </span>
-                <span>{parts[1]}</span>
+                <span>{parts.slice(1).join('___')}</span>
             </div>
-            {currentQuestion.text2 && <p className={`mt-4 ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{currentQuestion.text2}</p>}
         </div>
       )
     }
@@ -436,7 +444,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     // Default to multiple choice
     return (
       <div className="font-bold text-center">
-        {questionText && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{questionText}</p>}
+        {currentQuestion.text && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{currentQuestion.text}</p>}
         {currentQuestion.text2 && <p className={`mt-4 ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{currentQuestion.text2}</p>}
       </div>
     )

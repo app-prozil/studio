@@ -315,7 +315,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 )}/>
 
               <FormField control={form.control} name="text" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta - Parte 1</FormLabel><FormControl><Textarea {...field} placeholder={questionType === 'fill_in_the_blank' ? 'Ex: A COR DO SOL É ___. (Use ___ para a lacuna)' : 'Ex: QUAL É A COR DO SOL?'} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Pergunta - Parte 1</FormLabel><FormControl><Textarea {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use exatamente 3 underlines para a lacuna)" : 'Ex: QUAL É A COR DO SOL?'} /></FormControl><FormMessage /></FormItem>
               )}/>
 
               <FormField control={form.control} name="text2" render={({ field }) => (
