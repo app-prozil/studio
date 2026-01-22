@@ -212,7 +212,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     const uppercasedValues: Exercise = {
         ...values,
         text: values.text.toUpperCase(),
-        text2: values.text2 ? values.text2.toUpperCase() : undefined,
+        text2: values.text2 ? values.text2.toUpperCase() : '',
         options: values.options.map(o => o.toUpperCase()),
         answer: values.answer.toUpperCase(),
     };
@@ -566,8 +566,14 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
     const batch = writeBatch(firestore);
     
+    // Ensure the text2 field is present, even if empty, to maintain data consistency.
+    const questionsForDb = values.questions.map(q => ({
+        ...q,
+        text2: q.text2 || '',
+    }));
+
     if (editingTask?.id) {
-        const taskData = { ...values, teacherId, dueDate: new Date(values.dueDate).toISOString(), studentName, teacherName, studentId: editingTask.studentId };
+        const taskData = { ...values, questions: questionsForDb, teacherId, dueDate: new Date(values.dueDate).toISOString(), studentName, teacherName, studentId: editingTask.studentId };
         const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', editingTask.id);
         const studentTaskRef = doc(firestore, 'students', editingTask.studentId, 'tasks', editingTask.id);
         
@@ -575,7 +581,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
         batch.update(studentTaskRef, taskData);
     } else {
         const newTaskId = doc(collection(firestore, 'teachers')).id;
-        const taskData = { ...values, id: newTaskId, teacherId, isCompleted: false, createdAt: new Date().toISOString(), dueDate: new Date(values.dueDate).toISOString(), studentId: studentUid, studentName, teacherName };
+        const taskData = { ...values, questions: questionsForDb, id: newTaskId, teacherId, isCompleted: false, createdAt: new Date().toISOString(), dueDate: new Date(values.dueDate).toISOString(), studentId: studentUid, studentName, teacherName };
 
         const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', newTaskId);
         const studentTaskRef = doc(firestore, 'students', studentUid, 'tasks', newTaskId);
