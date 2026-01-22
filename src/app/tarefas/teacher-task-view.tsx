@@ -325,16 +325,16 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 )}/>
               </div>
               <FormField control={form.control} name="options.0" render={({ field }) => (
-                <FormItem><FormLabel>Opção 1</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Opção 1</FormLabel><FormControl><Input {...field} placeholder="Ex: AZUL" /></FormControl><FormMessage /></FormItem>
               )}/>
               <FormField control={form.control} name="options.1" render={({ field }) => (
-                <FormItem><FormLabel>Opção 2</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Opção 2</FormLabel><FormControl><Input {...field} placeholder="Ex: AMARELO" /></FormControl><FormMessage /></FormItem>
               )}/>
               <FormField control={form.control} name="options.2" render={({ field }) => (
-                <FormItem><FormLabel>Opção 3</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Opção 3</FormLabel><FormControl><Input {...field} placeholder="Ex: VERDE" /></FormControl><FormMessage /></FormItem>
               )}/>
               <FormField control={form.control} name="answer" render={({ field }) => (
-                <FormItem><FormLabel>Resposta Correta</FormLabel><FormControl><Input {...field} /></FormControl><FormDescription>O texto da resposta deve corresponder exatamente a uma das opções.</FormDescription><FormMessage /></FormItem>
+                <FormItem><FormLabel>Resposta Correta</FormLabel><FormControl><Input {...field} placeholder="Ex: AMARELO" /></FormControl><FormDescription>O texto da resposta deve corresponder exatamente a uma das opções.</FormDescription><FormMessage /></FormItem>
               )}/>
               <div className="flex gap-2">
                 <Button type="submit" disabled={isSubmitting}>
