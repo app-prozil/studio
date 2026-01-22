@@ -104,6 +104,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   const [task, setTask] = useState<Task | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -203,6 +204,18 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setQuestionStartTime(Date.now());
   }, [currentQuestionIndex]);
   
+  useEffect(() => {
+    if (gameState === 'playing' && questions[currentQuestionIndex]) {
+      const options = [...questions[currentQuestionIndex].options];
+      // Fisher-Yates shuffle
+      for (let i = options.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [options[i], options[j]] = [options[j], options[i]];
+      }
+      setShuffledOptions(options);
+    }
+  }, [currentQuestionIndex, questions, gameState]);
+
   const completeTask = useCallback((finalQuestions: Question[]) => {
     const isTestDrive = taskId === 'test-drive';
     const isTestMode = isTestDrive || searchParams.get('mode') === 'test';
@@ -258,7 +271,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const handleAnswer = useCallback((option: string) => {
     if (gameState !== 'playing') return;
 
-    const isTestMode = taskId === 'test-drive' || searchParams.get('mode') === 'test';
+    const isTestDrive = taskId === 'test-drive';
+    const isTestMode = isTestDrive || searchParams.get('mode') === 'test';
     const taskSource = searchParams.get('source') || 'student';
     const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
     const timeTaken = Date.now() - questionStartTime;
@@ -300,14 +314,15 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
     if (isAnswerCorrect) {
       setShowConfetti(true);
+      const delay = currentQuestion.questionType === 'fill_in_the_blank' ? 800 : 100;
       setTimeout(() => {
           setShowCorrectAnswerModal(true);
-      }, 800);
+      }, delay);
       setTimeout(() => {
         setShowCorrectAnswerModal(false);
         setShowConfetti(false);
         handleNextQuestion(updatedQuestions);
-      }, 2500);
+      }, delay + 1700);
     } else {
       setTimeout(() => {
         setGameState('playing');
@@ -319,16 +334,14 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (gameState !== 'playing') return;
-      const currentQuestion = questions[currentQuestionIndex];
-      if (!currentQuestion) return;
+      if (gameState !== 'playing' || shuffledOptions.length === 0) return;
 
-      if (event.key === '1' && currentQuestion.options[0]) {
-        handleAnswer(currentQuestion.options[0]);
-      } else if (event.key === '2' && currentQuestion.options[1]) {
-        handleAnswer(currentQuestion.options[1]);
-      } else if (event.key === '3' && currentQuestion.options[2]) {
-        handleAnswer(currentQuestion.options[2]);
+      if (event.key === '1' && shuffledOptions[0]) {
+        handleAnswer(shuffledOptions[0]);
+      } else if (event.key === '2' && shuffledOptions[1]) {
+        handleAnswer(shuffledOptions[1]);
+      } else if (event.key === '3' && shuffledOptions[2]) {
+        handleAnswer(shuffledOptions[2]);
       }
     };
 
@@ -336,7 +349,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [gameState, handleAnswer, questions, currentQuestionIndex]);
+  }, [gameState, handleAnswer, shuffledOptions]);
 
   if (gameState === 'loading' || isAuthLoading) {
     return (
@@ -412,33 +425,45 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const questionType = currentQuestion.questionType || 'multiple_choice';
 
     if (questionType === 'fill_in_the_blank') {
-      const fullText = `${currentQuestion.text} ${currentQuestion.text2 || ''}`.trim();
-      const parts = fullText.split('___');
       const dropZoneColor = isCorrect === true ? 'bg-success/20 text-success' : isCorrect === false ? 'bg-destructive/20 text-destructive' : 'bg-muted text-muted-foreground';
-      
-      if (parts.length < 2) {
+      const dropZone = (
+        <span className={cn(
+            'inline-block rounded-md min-w-32 text-center mx-2 px-4 py-2 border-2 border-dashed transition-colors',
+            dropZoneColor,
+            selectedAnswer && 'border-solid'
+        )}>
+          {selectedAnswer || '...'}
+        </span>
+      );
+
+      const renderTextWithBlank = (text: string) => {
+        if (!text.includes('___')) {
+          return <span>{text}</span>;
+        }
+        const parts = text.split('___');
         return (
-            <div className="font-bold text-center">
-                <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{fullText}</p>
-            </div>
-        )
-      }
+          <>
+            <span>{parts[0]}</span>
+            {dropZone}
+            <span>{parts.slice(1).join('___')}</span>
+          </>
+        );
+      };
 
       return (
-        <div className="font-bold text-center">
-            <div className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
-                <span>{parts[0]}</span>
-                <span className={cn(
-                    'inline-block rounded-md min-w-32 text-center mx-2 px-4 py-2 border-2 border-dashed transition-colors',
-                    dropZoneColor,
-                    selectedAnswer && 'border-solid'
-                )}>
-                  {selectedAnswer || '...'}
-                </span>
-                <span>{parts.slice(1).join('___')}</span>
-            </div>
+        <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
+          {currentQuestion.text && (
+            <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
+              {renderTextWithBlank(currentQuestion.text)}
+            </p>
+          )}
+          {currentQuestion.text2 && (
+            <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
+              {renderTextWithBlank(currentQuestion.text2)}
+            </p>
+          )}
         </div>
-      )
+      );
     }
 
     // Default to multiple choice
@@ -489,7 +514,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             </Button>
         </div>
         <div className="grid grid-cols-3 gap-6">
-          {currentQuestion.options.map((option, index) => (
+          {shuffledOptions.map((option, index) => (
             <Button
               key={index}
               onClick={() => handleAnswer(option)}
