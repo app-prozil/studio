@@ -17,8 +17,9 @@
     {
       "subject": "matematica",
       "difficulty": "easy",
-      "text": "QUANTOS LADOS TEM UM TRIÂNGULO?",
-      "options": ["3", "4", "5"],
+      "text": "CONTE OS CARROS:",
+      "text2": "🚗🚗🚗",
+      "options": ["2", "3", "4"],
       "answer": "3"
     },
     {
@@ -116,16 +117,18 @@
     {
       "subject": "portugues",
       "difficulty": "easy",
-      "text": "COMPLETE A FRASE: O CACHORRO ___.",
-      "options": ["VOA", "LATE", "MIA"],
-      "answer": "LATE"
+      "text": "COMPLETE A FRASE: O ___ LATE.",
+      "text2": "🐈 🐕 🐦",
+      "options": ["🐈", "🐕", "🐦"],
+      "answer": "🐕"
     },
     {
       "subject": "portugues",
       "difficulty": "easy",
-      "text": "QUAL DESTAS PALAVRAS É UM ANIMAL? 'CASA', 'BOLA', 'PATO'",
-      "options": ["CASA", "BOLA", "PATO"],
-      "answer": "PATO"
+      "text": "QUAL DESTAS FIGURAS É UM PATO?",
+      "text2": "🏠 ⚽ 🦆",
+      "options": ["🏠", "⚽", "🦆"],
+      "answer": "🦆"
     },
     {
       "subject": "portugues",
