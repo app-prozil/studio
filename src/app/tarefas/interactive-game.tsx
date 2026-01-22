@@ -417,9 +417,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       
       <div className="space-y-8">
         <div className="relative p-8 border-4 border-dashed rounded-lg border-accent">
-            <div className={`font-bold text-center ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>
-                {questionText && <p>{questionText}</p>}
-                {currentQuestion.text2 && <p className="mt-4">{currentQuestion.text2}</p>}
+            <div className="font-bold text-center">
+              {questionText && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{questionText}</p>}
+              {currentQuestion.text2 && <p className={`mt-4 ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{currentQuestion.text2}</p>}
             </div>
             <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={() => {
                 const fullText = `${currentQuestion.text} ${currentQuestion.text2 || ''}`;
