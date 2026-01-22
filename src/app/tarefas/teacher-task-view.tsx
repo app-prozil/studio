@@ -197,7 +197,8 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     }
     return exercises.filter(ex => {
         const subjectMatch = subjectFilter === 'all' || ex.subject === subjectFilter;
-        const typeMatch = questionTypeFilter === 'all' || ex.questionType === questionTypeFilter;
+        const effectiveQuestionType = ex.questionType || 'multiple_choice';
+        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === questionTypeFilter;
         return subjectMatch && typeMatch;
     });
   }, [exercises, subjectFilter, questionTypeFilter, isLoading]);
@@ -434,7 +435,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <div className="flex gap-2 mt-1">
                     <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
                     <Badge variant="outline">{ex.difficulty}</Badge>
-                    <Badge variant={ex.questionType === 'fill_in_the_blank' ? 'default' : 'secondary'}>{ex.questionType === 'fill_in_the_blank' ? 'Completar' : 'Múltipla Escolha'}</Badge>
+                    <Badge variant={(ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'default' : 'secondary'}>{(ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'Completar' : 'Múltipla Escolha'}</Badge>
                   </div>
                 </div>
                 <div className="flex gap-1">
@@ -444,7 +445,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
               </li>
             )) : (
               <div className="text-center text-muted-foreground py-8">
-                 {subjectFilter === 'all' ? (
+                 {subjectFilter === 'all' && questionTypeFilter === 'all' ? (
                   <>
                     <p className="font-semibold">Seu banco de exercícios está vazio.</p>
                     <p className="text-sm mt-2">Use o botão "Popular com Exemplos" para adicionar 30 exercícios e começar.</p>
@@ -509,7 +510,8 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     if (!exercises) return [];
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
-      const typeMatch = bankQuestionTypeFilter === 'all' || ex.questionType === bankQuestionTypeFilter;
+      const effectiveQuestionType = ex.questionType || 'multiple_choice';
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
@@ -918,7 +920,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                               <div className="flex gap-2 mt-1">
                                   <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
                                   <Badge variant="outline">{ex.difficulty}</Badge>
-                                  <Badge variant={ex.questionType === 'fill_in_the_blank' ? 'default' : 'secondary'}>{ex.questionType === 'fill_in_the_blank' ? 'Completar' : 'Múltipla Escolha'}</Badge>
+                                  <Badge variant={(ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'default' : 'secondary'}>{(ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'Completar' : 'Múltipla Escolha'}</Badge>
                               </div>
                           </label>
                       </div>
