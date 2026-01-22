@@ -74,7 +74,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 const exerciseSchema = z.object({
   id: z.string().optional(),
   teacherId: z.string(),
-  text: z.string().min(5, 'A pergunta deve ter pelo menos 5 caracteres.'),
+  questionType: z.enum(['multiple_choice', 'fill_in_the_blank']),
+  text: z.string().min(3, 'A pergunta deve ter pelo menos 3 caracteres.'),
   text2: z.string().optional(),
   options: z.array(z.string().min(1, "A opção não pode estar vazia.")).length(3, 'Deve haver exatamente 3 opções.'),
   answer: z.string().min(1, 'A resposta correta é obrigatória.'),
@@ -91,7 +92,7 @@ const taskSchema = z.object({
   description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
   dueDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Data inválida.' }),
   isCompleted: z.boolean().optional(),
-  questions: z.array(exerciseSchema.pick({ text: true, text2: true, options: true, answer: true })).min(1, 'A tarefa deve ter pelo menos uma questão.'),
+  questions: z.array(exerciseSchema.pick({ text: true, text2: true, options: true, answer: true, questionType: true })).min(1, 'A tarefa deve ter pelo menos uma questão.'),
 });
 
 
@@ -102,6 +103,7 @@ type PerformanceQuestion = {
   text2?: string;
   options: string[];
   answer: string;
+  questionType?: 'multiple_choice' | 'fill_in_the_blank';
   studentAnswer?: string;
   attempts?: number;
   status?: 'correct' | 'incorrect' | 'unanswered';
@@ -160,8 +162,21 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   
   const form = useForm<Exercise>({
     resolver: zodResolver(exerciseSchema),
-    defaultValues: { text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId },
+    defaultValues: { text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, questionType: 'multiple_choice' },
   });
+  
+  const questionType = form.watch('questionType');
+  const watchedOptions = form.watch('options');
+
+  useEffect(() => {
+    if (questionType === 'fill_in_the_blank') {
+        const correctAnswer = watchedOptions[0];
+        if (form.getValues('answer') !== correctAnswer) {
+            form.setValue('answer', correctAnswer, { shouldValidate: true });
+        }
+    }
+  }, [watchedOptions, questionType, form]);
+
 
   const filteredExercises = useMemo(() => {
     if (isLoading || !exercises) {
@@ -202,7 +217,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     if (editingExercise) {
       form.reset(editingExercise);
     } else {
-      form.reset({ text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '' });
+      form.reset({ text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice' });
     }
   }, [editingExercise, form, teacherId]);
 
@@ -280,8 +295,12 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField control={form.control} name="questionType" render={({ field }) => (
+                  <FormItem><FormLabel>Tipo de Atividade</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="multiple_choice">Múltipla Escolha</SelectItem><SelectItem value="fill_in_the_blank">Complete a Lacuna</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                )}/>
+
               <FormField control={form.control} name="text" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta - Parte 1</FormLabel><FormControl><Textarea {...field} placeholder="Ex: QUAL É A COR DO SOL?" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Pergunta - Parte 1</FormLabel><FormControl><Textarea {...field} placeholder={questionType === 'fill_in_the_blank' ? 'Ex: A COR DO SOL É ___. (Use ___ para a lacuna)' : 'Ex: QUAL É A COR DO SOL?'} /></FormControl><FormMessage /></FormItem>
               )}/>
 
               <FormField control={form.control} name="text2" render={({ field }) => (
@@ -324,18 +343,23 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormItem><FormLabel>Dificuldade</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="easy">Fácil</SelectItem><SelectItem value="medium">Médio</SelectItem><SelectItem value="hard">Difícil</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                 )}/>
               </div>
+
               <FormField control={form.control} name="options.0" render={({ field }) => (
-                <FormItem><FormLabel>Opção 1</FormLabel><FormControl><Input {...field} placeholder="Ex: AZUL" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>{questionType === 'fill_in_the_blank' ? 'Opção Correta' : 'Opção 1'}</FormLabel><FormControl><Input {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: AMARELO" : "Ex: AZUL"} /></FormControl><FormMessage /></FormItem>
               )}/>
               <FormField control={form.control} name="options.1" render={({ field }) => (
-                <FormItem><FormLabel>Opção 2</FormLabel><FormControl><Input {...field} placeholder="Ex: AMARELO" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>{questionType === 'fill_in_the_blank' ? 'Distrator 1' : 'Opção 2'}</FormLabel><FormControl><Input {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: VERDE" : "Ex: AMARELO"} /></FormControl><FormMessage /></FormItem>
               )}/>
               <FormField control={form.control} name="options.2" render={({ field }) => (
-                <FormItem><FormLabel>Opção 3</FormLabel><FormControl><Input {...field} placeholder="Ex: VERDE" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>{questionType === 'fill_in_the_blank' ? 'Distrator 2' : 'Opção 3'}</FormLabel><FormControl><Input {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: AZUL" : "Ex: VERDE"} /></FormControl><FormMessage /></FormItem>
               )}/>
-              <FormField control={form.control} name="answer" render={({ field }) => (
-                <FormItem><FormLabel>Resposta Correta</FormLabel><FormControl><Input {...field} placeholder="Ex: AMARELO" /></FormControl><FormDescription>O texto da resposta deve corresponder exatamente a uma das opções.</FormDescription><FormMessage /></FormItem>
-              )}/>
+              
+              {questionType === 'multiple_choice' && (
+                  <FormField control={form.control} name="answer" render={({ field }) => (
+                    <FormItem><FormLabel>Resposta Correta</FormLabel><FormControl><Input {...field} placeholder="Ex: AMARELO" /></FormControl><FormDescription>O texto da resposta deve corresponder exatamente a uma das opções.</FormDescription><FormMessage /></FormItem>
+                  )}/>
+              )}
+
               <div className="flex gap-2">
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? <Loader2 className="animate-spin" /> : <Save />}
@@ -385,6 +409,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <div className="flex gap-2 mt-1">
                     <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
                     <Badge variant="outline">{ex.difficulty}</Badge>
+                    <Badge variant={ex.questionType === 'fill_in_the_blank' ? 'default' : 'secondary'}>{ex.questionType === 'fill_in_the_blank' ? 'Completar' : 'Múltipla Escolha'}</Badge>
                   </div>
                 </div>
                 <div className="flex gap-1">
@@ -489,7 +514,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
 
   useEffect(() => {
-    form.setValue('questions', selectedExercises.map(e => ({text: e.text, text2: e.text2, options: e.options, answer: e.answer})));
+    form.setValue('questions', selectedExercises.map(e => ({text: e.text, text2: e.text2, options: e.options, answer: e.answer, questionType: e.questionType})));
   }, [selectedExercises, form]);
 
   const handleReuse = (taskToReuse: Task) => {

@@ -101,6 +101,14 @@
         "teacherId": {
           "type": "string"
         },
+        "questionType": {
+          "type": "string",
+          "description": "The type of interaction for the question.",
+          "enum": [
+            "multiple_choice",
+            "fill_in_the_blank"
+          ]
+        },
         "subject": {
           "type": "string",
           "enum": [
@@ -118,7 +126,7 @@
         },
         "text": {
           "type": "string",
-          "description": "The main text of the question."
+          "description": "The main text of the question. For fill_in_the_blank, use '___' for the blank space."
         },
         "text2": {
           "type": "string",
@@ -126,6 +134,7 @@
         },
         "options": {
           "type": "array",
+          "description": "For multiple_choice, these are the options. For fill_in_the_blank, these are the choices to drag, with the first being the correct one.",
           "items": {
             "type": "string"
           },
@@ -139,6 +148,7 @@
       "required": [
         "id",
         "teacherId",
+        "questionType",
         "subject",
         "difficulty",
         "text",
@@ -221,6 +231,13 @@
           "items": {
             "type": "object",
             "properties": {
+              "questionType": {
+                "type": "string",
+                "enum": [
+                  "multiple_choice",
+                  "fill_in_the_blank"
+                ]
+              },
               "text": {
                 "type": "string"
               },
@@ -261,7 +278,8 @@
             "required": [
               "text",
               "options",
-              "answer"
+              "answer",
+              "questionType"
             ]
           }
         }
