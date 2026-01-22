@@ -81,6 +81,14 @@ const exerciseSchema = z.object({
   answer: z.string().min(1, 'A resposta correta é obrigatória.'),
   subject: z.enum(['matematica', 'portugues']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
+}).refine(data => {
+    if (data.questionType === 'multiple_choice') {
+        return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
+    }
+    return true;
+}, {
+    message: "A resposta correta deve corresponder exatamente a uma das opções.",
+    path: ['answer'],
 });
 
 const taskSchema = z.object({
@@ -165,17 +173,18 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     defaultValues: { text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, questionType: 'multiple_choice' },
   });
   
-  const questionType = form.watch('questionType');
-  const watchedOptions = form.watch('options');
+  const { watch, getValues, setValue } = form;
+  const questionType = watch('questionType');
+  const watchedOptions = watch('options');
 
   useEffect(() => {
     if (questionType === 'fill_in_the_blank') {
         const correctAnswer = watchedOptions[0];
-        if (form.getValues('answer') !== correctAnswer) {
-            form.setValue('answer', correctAnswer, { shouldValidate: true });
+        if (getValues('answer') !== correctAnswer) {
+            setValue('answer', correctAnswer, { shouldValidate: true });
         }
     }
-  }, [watchedOptions, questionType, form]);
+  }, [watchedOptions, questionType, getValues, setValue]);
 
 
   const filteredExercises = useMemo(() => {

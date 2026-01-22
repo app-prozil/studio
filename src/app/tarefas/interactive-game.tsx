@@ -113,6 +113,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [finalScore, setFinalScore] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showEndConfetti, setShowEndConfetti] = useState(false);
+  const [showCorrectAnswerModal, setShowCorrectAnswerModal] = useState(false);
+
 
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const taskStartTime = useMemo(() => Date.now(), []);
@@ -299,9 +301,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     if (isAnswerCorrect) {
       setShowConfetti(true);
       setTimeout(() => {
+          setShowCorrectAnswerModal(true);
+      }, 800);
+      setTimeout(() => {
+        setShowCorrectAnswerModal(false);
         setShowConfetti(false);
         handleNextQuestion(updatedQuestions);
-      }, 2000);
+      }, 2500);
     } else {
       setTimeout(() => {
         setGameState('playing');
@@ -448,7 +454,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           />
       )}
       
-      <Dialog open={gameState === 'showingAnswer' && isCorrect === true} onOpenChange={(open) => !open && setShowConfetti(false)}>
+      <Dialog open={showCorrectAnswerModal} onOpenChange={setShowCorrectAnswerModal}>
         <DialogContent className="max-w-md text-center bg-transparent border-none shadow-none" onPointerDownOutside={(e) => e.preventDefault()}>
             <DialogHeader>
                 <DialogTitle className="text-5xl font-bold font-headline mx-auto text-success">
