@@ -281,11 +281,11 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField control={form.control} name="text" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta - Parte 1</FormLabel><FormControl><Textarea {...field} placeholder="Ex: QUANTO É 2 + 2?" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Pergunta - Parte 1</FormLabel><FormControl><Textarea {...field} placeholder="Ex: QUAL É A COR DO SOL?" /></FormControl><FormMessage /></FormItem>
               )}/>
 
               <FormField control={form.control} name="text2" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta - Parte 2 (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Ex: CONTE AS ESTRELAS ★ ★ ★ ★" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Pergunta - Parte 2 (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Ex: ☀️" /></FormControl><FormMessage /></FormItem>
               )}/>
 
               <div className="space-y-3 rounded-lg border p-4">
@@ -566,7 +566,6 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
     const batch = writeBatch(firestore);
     
-    // Ensure the text2 field is present, even if empty, to maintain data consistency.
     const questionsForDb = values.questions.map(q => ({
         ...q,
         text2: q.text2 || '',
