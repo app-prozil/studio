@@ -28,6 +28,7 @@ type Question = {
 type Task = {
     id: string;
     teacherId: string;
+    studentId: string;
     questions: Question[];
     subject: 'math' | 'portuguese';
     studentName?: string;
@@ -67,6 +68,7 @@ const testDrivePortugueseQuestions: Question[] = [
 const testDriveTaskBase = {
   id: 'test-drive',
   teacherId: 'test-teacher',
+  studentId: 'test-user',
   studentName: 'Visitante',
   isCompleted: false,
 };
@@ -198,7 +200,15 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   
   const completeTask = useCallback((finalQuestions: Question[]) => {
     const isTestDrive = taskId === 'test-drive';
-    if (isTestDrive || !firestore || !user || !task?.teacherId || !task.id || !studentId) return;
+    const isTestMode = isTestDrive || searchParams.get('mode') === 'test';
+    
+    // If it's a test drive or test mode by a teacher, don't save performance data.
+    if (isTestMode) return;
+
+    if (!firestore || !user || !task?.teacherId || !task.id || !task.studentId) {
+        console.error("Aborting task completion: missing critical data.", { task, user: !!user });
+        return;
+    }
         
       const totalTime = Math.round((Date.now() - taskStartTime) / 1000);
       const performanceData = {
@@ -208,7 +218,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         questions: finalQuestions,
       };
       
-      const studentTaskRef = doc(firestore, 'students', studentId, 'tasks', task.id);
+      // Always use the studentId from the task data itself for reliability
+      const studentTaskRef = doc(firestore, 'students', task.studentId, 'tasks', task.id);
       updateDoc(studentTaskRef, performanceData).catch(e => {
         console.error("Erro ao finalizar tarefa (aluno): ", e);
       });
@@ -218,7 +229,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           console.error("Erro ao finalizar tarefa (professor): ", e);
           toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível sincronizar o resultado da tarefa com o professor.' });
       });
-  }, [firestore, user, task, taskStartTime, toast, studentId, taskId]);
+  }, [firestore, user, task, taskStartTime, toast, taskId, searchParams]);
 
   const handleNextQuestion = useCallback((updatedQuestions: Question[]) => {
     const isLastQuestion = currentQuestionIndex >= updatedQuestions.length - 1;
