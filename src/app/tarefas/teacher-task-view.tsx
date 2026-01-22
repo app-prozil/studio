@@ -75,6 +75,7 @@ const exerciseSchema = z.object({
   id: z.string().optional(),
   teacherId: z.string(),
   text: z.string().min(5, 'A pergunta deve ter pelo menos 5 caracteres.'),
+  text2: z.string().optional(),
   options: z.array(z.string().min(1, "A opção não pode estar vazia.")).length(3, 'Deve haver exatamente 3 opções.'),
   answer: z.string().min(1, 'A resposta correta é obrigatória.'),
   subject: z.enum(['matematica', 'portugues']),
@@ -90,7 +91,7 @@ const taskSchema = z.object({
   description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
   dueDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Data inválida.' }),
   isCompleted: z.boolean().optional(),
-  questions: z.array(exerciseSchema.pick({ text: true, options: true, answer: true })).min(1, 'A tarefa deve ter pelo menos uma questão.'),
+  questions: z.array(exerciseSchema.pick({ text: true, text2: true, options: true, answer: true })).min(1, 'A tarefa deve ter pelo menos uma questão.'),
 });
 
 
@@ -98,6 +99,7 @@ type Exercise = z.infer<typeof exerciseSchema>;
 
 type PerformanceQuestion = {
   text: string;
+  text2?: string;
   options: string[];
   answer: string;
   studentAnswer?: string;
@@ -158,7 +160,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   
   const form = useForm<Exercise>({
     resolver: zodResolver(exerciseSchema),
-    defaultValues: { text: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId },
+    defaultValues: { text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId },
   });
 
   const filteredExercises = useMemo(() => {
@@ -200,7 +202,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     if (editingExercise) {
       form.reset(editingExercise);
     } else {
-      form.reset({ text: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '' });
+      form.reset({ text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '' });
     }
   }, [editingExercise, form, teacherId]);
 
@@ -210,6 +212,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     const uppercasedValues: Exercise = {
         ...values,
         text: values.text.toUpperCase(),
+        text2: values.text2 ? values.text2.toUpperCase() : undefined,
         options: values.options.map(o => o.toUpperCase()),
         answer: values.answer.toUpperCase(),
     };
@@ -278,7 +281,11 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField control={form.control} name="text" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta</FormLabel><FormControl><Textarea {...field} placeholder="Ex: QUANTO É 2 + 2?" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Pergunta - Parte 1</FormLabel><FormControl><Textarea {...field} placeholder="Ex: QUANTO É 2 + 2?" /></FormControl><FormMessage /></FormItem>
+              )}/>
+
+              <FormField control={form.control} name="text2" render={({ field }) => (
+                <FormItem><FormLabel>Pergunta - Parte 2 (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Ex: CONTE AS ESTRELAS ★ ★ ★ ★" /></FormControl><FormMessage /></FormItem>
               )}/>
 
               <div className="space-y-3 rounded-lg border p-4">
@@ -296,8 +303,8 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                             key={char}
                             className="h-9 w-9 text-lg"
                             onClick={() => {
-                              const currentText = form.getValues('text') || '';
-                              form.setValue('text', currentText + char, { shouldValidate: true });
+                              const currentText = form.getValues('text2') || '';
+                              form.setValue('text2', currentText + char, { shouldValidate: true });
                             }}
                           >
                             {char}
@@ -373,7 +380,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
             {filteredExercises.length > 0 ? filteredExercises.map(ex => (
               <li key={ex.id} className="p-3 border rounded-lg flex justify-between items-start gap-2">
                 <div className="flex-1">
-                  <p className="font-semibold">{ex.text}</p>
+                  <p className="font-semibold">{ex.text}{ex.text2 && ` ${ex.text2}`}</p>
                   <p className="text-sm text-muted-foreground">Resposta: {ex.answer}</p>
                   <div className="flex gap-2 mt-1">
                     <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
@@ -482,7 +489,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
 
   useEffect(() => {
-    form.setValue('questions', selectedExercises.map(e => ({text: e.text, options: e.options, answer: e.answer})));
+    form.setValue('questions', selectedExercises.map(e => ({text: e.text, text2: e.text2, options: e.options, answer: e.answer})));
   }, [selectedExercises, form]);
 
   const handleReuse = (taskToReuse: Task) => {
@@ -694,7 +701,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                         <ul className="space-y-2 max-h-48 overflow-y-auto">
                             {selectedExercises.map((ex, index) => (
                             <li key={ex.id || index} className="flex items-center justify-between p-2 border rounded-md">
-                                <span className="truncate">{ex.text}</span>
+                                <span className="truncate">{ex.text}{ex.text2 && ` ${ex.text2}`}</span>
                                 <Button type="button" variant="ghost" size="icon" onClick={() => setSelectedExercises(prev => prev.filter(p => p.id !== ex.id))}><Trash2 className="w-4 h-4 text-destructive"/></Button>
                             </li> 
                             ))}
@@ -840,7 +847,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                               }}
                           />
                           <label htmlFor={`bank-${ex.id}`} className="flex-1 cursor-pointer">
-                              <p className="font-semibold">{ex.text}</p>
+                              <p className="font-semibold">{ex.text}{ex.text2 && ` ${ex.text2}`}</p>
                               <div className="flex gap-2 mt-1">
                                   <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
                                   <Badge variant="outline">{ex.difficulty}</Badge>
@@ -1042,7 +1049,7 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
                   {questions.map((q, index) => (
                       <TableRow key={index} className={q.status === 'incorrect' ? 'bg-destructive/10' : ''}>
                           <TableCell>{index + 1}</TableCell>
-                          <TableCell className="font-medium max-w-xs truncate">{q.text}</TableCell>
+                          <TableCell className="font-medium max-w-xs truncate">{q.text}{q.text2 ? ` ${q.text2}` : ''}</TableCell>
                           <TableCell>{q.studentAnswer || '-'}</TableCell>
                           <TableCell>{q.answer}</TableCell>
                           <TableCell>

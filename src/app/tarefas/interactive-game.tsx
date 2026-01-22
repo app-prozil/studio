@@ -15,6 +15,7 @@ import Confetti from 'react-confetti';
 
 type Question = {
   text: string;
+  text2?: string;
   options: string[];
   answer: string;
   // Performance fields
@@ -39,11 +40,11 @@ type Task = {
 const testDriveMathQuestions: Question[] = [
     { text: 'QUANTO É 5 + 3?', options: ['7', '8', '9'], answer: '8', status: 'unanswered', attempts: 0 },
     { text: 'QUAL NÚMERO VEM DEPOIS DE 9?', options: ['8', '10', '11'], answer: '10', status: 'unanswered', attempts: 0 },
-    { text: 'CONTE OS EMOJIS: 👍👍👍👍👍', options: ['4', '5', '6'], answer: '5', status: 'unanswered', attempts: 0 },
+    { text: 'CONTE OS EMOJIS:', text2: '👍👍👍👍👍', options: ['4', '5', '6'], answer: '5', status: 'unanswered', attempts: 0 },
     { text: 'QUANTO É 4 - 2?', options: ['1', '2', '3'], answer: '2', status: 'unanswered', attempts: 0 },
     { text: 'QUAL NÚMERO VEM ANTES DE 7?', options: ['5', '6', '8'], answer: '6', status: 'unanswered', attempts: 0 },
     { text: 'QUANTO É 10 + 0?', options: ['0', '1', '10'], answer: '10', status: 'unanswered', attempts: 0 },
-    { text: 'CONTE OS EMOJIS: 🚗🚗🚗', options: ['2', '3', '4'], answer: '3', status: 'unanswered', attempts: 0 },
+    { text: 'CONTE OS EMOJIS:', text2: '🚗🚗🚗', options: ['2', '3', '4'], answer: '3', status: 'unanswered', attempts: 0 },
     { text: 'QUAL FORMA TEM 4 LADOS IGUAIS?', options: ['CÍRCULO', 'TRIÂNGULO', 'QUADRADO'], answer: 'QUADRADO', status: 'unanswered', attempts: 0 },
     { text: 'QUANTO É 3 + 3?', options: ['5', '6', '7'], answer: '6', status: 'unanswered', attempts: 0 },
     { text: 'QUAL NÚMERO É MAIOR: 8 OU 6?', options: ['8', '6', 'IGUAIS'], answer: '8', status: 'unanswered', attempts: 0 },
@@ -416,17 +417,19 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       
       <div className="space-y-8">
         <div className="relative p-8 border-4 border-dashed rounded-lg border-accent">
-          <p className={`font-bold ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>
-              {questionText}
-          </p>
-          <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={() => {
-              const utterance = new SpeechSynthesisUtterance(currentQuestion.text);
-              utterance.lang = 'pt-BR';
-              window.speechSynthesis.speak(utterance);
-          }}>
-            <Volume2 className="w-8 h-8" />
-            <span className="sr-only">Ler em voz alta</span>
-          </Button>
+            <div className={`font-bold text-center ${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>
+                {questionText && <p>{questionText}</p>}
+                {currentQuestion.text2 && <p className="mt-4">{currentQuestion.text2}</p>}
+            </div>
+            <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={() => {
+                const fullText = `${currentQuestion.text} ${currentQuestion.text2 || ''}`;
+                const utterance = new SpeechSynthesisUtterance(fullText);
+                utterance.lang = 'pt-BR';
+                window.speechSynthesis.speak(utterance);
+            }}>
+                <Volume2 className="w-8 h-8" />
+                <span className="sr-only">Ler em voz alta</span>
+            </Button>
         </div>
         <div className="grid grid-cols-3 gap-6">
           {currentQuestion.options.map((option, index) => (

@@ -20,6 +20,7 @@ type Exercise = {
   id: string;
   teacherId: string;
   text: string;
+  text2?: string;
   options: string[];
   answer: string;
   subject: 'matematica' | 'portugues';
@@ -157,7 +158,7 @@ function PrintableWorksheetGenerator() {
                                   <ul className="space-y-2 mb-4">
                                   {selectedExercises.map((ex) => (
                                       <li key={ex.id} className="flex items-center justify-between p-2 text-sm bg-muted rounded-md">
-                                      <span className="truncate pr-2">{ex.text}</span>
+                                      <span className="truncate pr-2">{ex.text}{ex.text2 && ` ${ex.text2}`}</span>
                                       <Button
                                           type="button"
                                           variant="ghost"
@@ -236,7 +237,7 @@ function PrintableWorksheetGenerator() {
                           {chunk.map((exercise, exerciseIndex) => (
                               <div key={exercise.id} className="space-y-4 exercise-item">
                                   <p className="text-2xl font-bold">
-                                      {(pageIndex * exercisesPerPage) + exerciseIndex + 1}. {exercise.text.replace(/___/g, '__________')}
+                                      {(pageIndex * exercisesPerPage) + exerciseIndex + 1}. {`${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
                                   </p>
                                   {exercise.options?.length > 0 ? (
                                       <ul className="options-list">
@@ -298,7 +299,7 @@ function PrintableWorksheetGenerator() {
                             }}
                         />
                         <label htmlFor={`bank-${ex.id}`} className="flex-1 cursor-pointer">
-                            <p className="font-semibold">{ex.text}</p>
+                            <p className="font-semibold">{ex.text}{ex.text2 && ` ${ex.text2}`}</p>
                             <div className="flex gap-2 mt-1">
                                 <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
                                 <Badge variant="outline">{ex.difficulty}</Badge>

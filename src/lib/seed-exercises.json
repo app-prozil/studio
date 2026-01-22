@@ -31,7 +31,8 @@
     {
       "subject": "matematica",
       "difficulty": "easy",
-      "text": "CONTE AS ESTRELAS: ★ ★ ★ ★",
+      "text": "CONTE AS ESTRELAS:",
+      "text2": "★ ★ ★ ★",
       "options": ["3", "5", "4"],
       "answer": "4"
     },
