@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -6,7 +7,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,7 +19,7 @@ type Question = {
   text2?: string;
   options: string[];
   answer: string;
-  questionType?: 'multiple_choice' | 'fill_in_the_blank';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables';
   // Performance fields
   studentAnswer?: string;
   attempts?: number;
@@ -116,6 +117,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [showEndConfetti, setShowEndConfetti] = useState(false);
   const [showCorrectAnswerModal, setShowCorrectAnswerModal] = useState(false);
 
+  // State for organize_syllables game
+  const [constructedSyllables, setConstructedSyllables] = useState<string[]>([]);
+  const [availableSyllables, setAvailableSyllables] = useState<string[]>([]);
+
 
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const taskStartTime = useMemo(() => Date.now(), []);
@@ -124,19 +129,20 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const taskId = searchParams.get('taskId');
   const studentId = searchParams.get('studentId'); 
   
+  const currentQuestion = questions[currentQuestionIndex];
+  const questionType = currentQuestion?.questionType || 'multiple_choice';
+  
   useEffect(() => {
     const isTestDrive = taskId === 'test-drive';
     const isTestMode = isTestDrive || searchParams.get('mode') === 'test';
     const taskSource = searchParams.get('source') || 'student';
     const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
 
-    // 1. Wait for auth to be ready
     if (isAuthLoading) {
       setGameState('loading');
       return;
     }
 
-    // 2. Handle Test Drive mode separately
     if (isTestDrive) {
       setGameState('loading');
       const questionsForTest = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
@@ -147,22 +153,18 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       return;
     }
 
-    // 3. From this point, a real user is required
     if (!user) {
-      // This case should ideally not be hit if navigation is protected, but as a safeguard.
       toast({ variant: "destructive", title: "Acesso Negado", description: "Você precisa estar logado."});
       router.push('/login');
       return;
     }
 
-    // 4. Validate required URL parameters
     if (!studentId || !taskId) {
       toast({ variant: "destructive", title: "Tarefa não encontrada", description: "O link da tarefa parece estar incompleto."});
-      setGameState('finished'); // Go to a safe final state
+      setGameState('finished');
       return;
     }
 
-    // 5. Fetch the task
     setGameState('loading');
     const taskDocRef = doc(firestore, collectionPath, studentId, 'tasks', taskId);
     
@@ -170,19 +172,16 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       if (docSnap.exists()) {
         const taskData = docSnap.data() as Task;
         
-        // Prevent re-doing a completed task unless in test mode
         if (taskData.isCompleted && !isTestMode) {
           toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
-          router.push('/tarefas'); // Navigate away
+          router.push('/tarefas');
           return;
         }
 
         setTask(taskData);
-        // Initialize question state with status and attempts
         const initialQuestions = taskData.questions.map(q => ({...q, status: q.status || 'unanswered', attempts: q.attempts || 0 }));
         setQuestions(initialQuestions);
         
-        // Find where the user left off
         const lastUnansweredIndex = initialQuestions.findIndex(q => q.status !== 'correct');
         setCurrentQuestionIndex(lastUnansweredIndex >= 0 ? lastUnansweredIndex : 0);
 
@@ -204,23 +203,30 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setQuestionStartTime(Date.now());
   }, [currentQuestionIndex]);
   
+  // This useEffect handles shuffling options for all game types
   useEffect(() => {
     if (gameState === 'playing' && questions[currentQuestionIndex]) {
-      const options = [...questions[currentQuestionIndex].options];
+      const currentQ = questions[currentQuestionIndex];
+      const options = [...currentQ.options];
       // Fisher-Yates shuffle
       for (let i = options.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [options[i], options[j]] = [options[j], options[i]];
       }
-      setShuffledOptions(options);
+      
+      if (currentQ.questionType === 'organize_syllables') {
+          setAvailableSyllables(options);
+          setConstructedSyllables([]);
+      } else {
+          setShuffledOptions(options);
+      }
     }
   }, [currentQuestionIndex, questions, gameState]);
-
+  
   const completeTask = useCallback((finalQuestions: Question[]) => {
     const isTestDrive = taskId === 'test-drive';
     const isTestMode = isTestDrive || searchParams.get('mode') === 'test';
     
-    // If it's a test drive or test mode by a teacher, don't save performance data.
     if (isTestMode) return;
 
     if (!firestore || !user || !task?.teacherId || !task.id || !task.studentId) {
@@ -236,7 +242,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         questions: finalQuestions,
       };
       
-      // Always use the studentId from the task data itself for reliability
       const studentTaskRef = doc(firestore, 'students', task.studentId, 'tasks', task.id);
       updateDoc(studentTaskRef, performanceData).catch(e => {
         console.error("Erro ao finalizar tarefa (aluno): ", e);
@@ -268,7 +273,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
   }, [currentQuestionIndex, completeTask]);
 
-  const handleAnswer = useCallback((option: string) => {
+  const handleAnswer = useCallback((answer: string) => {
     if (gameState !== 'playing') return;
 
     const isTestDrive = taskId === 'test-drive';
@@ -276,26 +281,25 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const taskSource = searchParams.get('source') || 'student';
     const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
     const timeTaken = Date.now() - questionStartTime;
-    const currentQuestion = questions[currentQuestionIndex];
+    
     if (!currentQuestion) return;
-    const isAnswerCorrect = option.toUpperCase() === currentQuestion.answer.toUpperCase();
+    const isAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
     
     setGameState('showingAnswer'); 
-    setSelectedAnswer(option);
+    setSelectedAnswer(answer);
     setIsCorrect(isAnswerCorrect);
     
     const updatedQuestions = questions.map((q, index) => {
         if (index === currentQuestionIndex) {
             const newAttempts = (q.attempts || 0) + 1;
             
-            // The status for scoring is only set on the first attempt.
             const newStatus = (q.status === 'unanswered') 
                 ? (isAnswerCorrect ? 'correct' : 'incorrect')
                 : q.status;
 
             return {
                 ...q,
-                studentAnswer: option,
+                studentAnswer: answer,
                 attempts: newAttempts,
                 status: newStatus,
                 timeTaken: (q.timeTaken || 0) + timeTaken,
@@ -314,7 +318,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
     if (isAnswerCorrect) {
       setShowConfetti(true);
-      const delay = currentQuestion.questionType === 'fill_in_the_blank' ? 800 : 100;
+      const delay = questionType === 'fill_in_the_blank' ? 800 : 100;
       setTimeout(() => {
           setShowCorrectAnswerModal(true);
       }, delay);
@@ -328,12 +332,24 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         setGameState('playing');
         setSelectedAnswer(null);
         setIsCorrect(null);
+         if (questionType === 'organize_syllables') {
+            setAvailableSyllables([...constructedSyllables, ...availableSyllables]);
+            setConstructedSyllables([]);
+        }
       }, 2500);
     }
-  }, [gameState, questionStartTime, questions, currentQuestionIndex, handleNextQuestion, firestore, user, studentId, taskId, searchParams]);
+  }, [gameState, questionStartTime, questions, currentQuestion, handleNextQuestion, firestore, user, studentId, taskId, searchParams, questionType, constructedSyllables, availableSyllables]);
+  
+  useEffect(() => {
+    if (questionType === 'organize_syllables' && availableSyllables.length === 0 && constructedSyllables.length > 0) {
+        handleAnswer(constructedSyllables.join(''));
+    }
+  }, [availableSyllables, constructedSyllables, questionType, handleAnswer]);
+
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
+      if (questionType !== 'multiple_choice') return;
       if (gameState !== 'playing' || shuffledOptions.length === 0) return;
 
       if (event.key === '1' && shuffledOptions[0]) {
@@ -349,9 +365,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [gameState, handleAnswer, shuffledOptions]);
+  }, [gameState, handleAnswer, shuffledOptions, questionType]);
 
-  if (gameState === 'loading' || isAuthLoading) {
+  if (gameState === 'loading' || isAuthLoading || !currentQuestion) {
     return (
         <div className="space-y-8">
             <Skeleton className="h-32 w-full" />
@@ -405,75 +421,62 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
-  
-  if (!currentQuestion) {
-     return (
-        <div className="space-y-8">
-             <p className="text-center text-destructive">Não foi possível carregar a pergunta. Tente recarregar a página.</p>
-            <Skeleton className="h-32 w-full" />
-            <div className="grid grid-cols-3 gap-6">
-                <Skeleton className="h-32 w-full" />
-                <Skeleton className="h-32 w-full" />
-                <Skeleton className="h-32 w-full" />
-            </div>
-        </div>
+  const DropZone = ({ text }: { text: string }) => (
+    <span className={cn(
+        'inline-block rounded-md min-w-32 text-center mx-2 px-4 py-2 border-2 border-dashed transition-colors',
+        isCorrect === true ? 'bg-success/20 text-success' : isCorrect === false ? 'bg-destructive/20 text-destructive' : 'bg-muted text-muted-foreground',
+        text && 'border-solid'
+    )}>
+      {text || '...'}
+    </span>
+  );
+
+  const renderQuestion = () => {
+    const renderTextWithBlank = (text: string | undefined, blankContent: string) => {
+      if (!text || !text.includes('___')) {
+        return <span>{text}</span>;
+      }
+      const parts = text.split('___');
+      return (
+        <>
+          <span>{parts[0]}</span>
+          <DropZone text={blankContent} />
+          <span>{parts.slice(1).join('___')}</span>
+        </>
+      );
+    };
+
+    return (
+      <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
+        {questionType === 'fill_in_the_blank' ? (
+            <>
+                <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
+                    {renderTextWithBlank(currentQuestion.text, selectedAnswer || '')}
+                </p>
+                {currentQuestion.text2 && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
+                    {renderTextWithBlank(currentQuestion.text2, selectedAnswer || '')}
+                </p>}
+            </>
+        ) : (
+             <>
+                {currentQuestion.text && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{currentQuestion.text}</p>}
+                {currentQuestion.text2 && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} mt-4`}>{currentQuestion.text2}</p>}
+            </>
+        )}
+      </div>
     );
   }
 
-  const renderQuestion = () => {
-    const questionType = currentQuestion.questionType || 'multiple_choice';
+  const handleSyllableClick = (syllable: string, index: number) => {
+    if (gameState !== 'playing') return;
+    setConstructedSyllables(prev => [...prev, syllable]);
+    setAvailableSyllables(prev => prev.filter((_, i) => i !== index));
+  }
 
-    if (questionType === 'fill_in_the_blank') {
-      const dropZoneColor = isCorrect === true ? 'bg-success/20 text-success' : isCorrect === false ? 'bg-destructive/20 text-destructive' : 'bg-muted text-muted-foreground';
-      
-      const DropZone = () => (
-        <span className={cn(
-            'inline-block rounded-md min-w-32 text-center mx-2 px-4 py-2 border-2 border-dashed transition-colors',
-            dropZoneColor,
-            selectedAnswer && 'border-solid'
-        )}>
-          {selectedAnswer || '...'}
-        </span>
-      );
-
-      const renderTextWithBlank = (text: string | undefined) => {
-        if (!text || !text.includes('___')) {
-          return <span>{text}</span>;
-        }
-        const parts = text.split('___');
-        return (
-          <>
-            <span>{parts[0]}</span>
-            <DropZone />
-            <span>{parts.slice(1).join('___')}</span>
-          </>
-        );
-      };
-
-      return (
-        <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
-          {currentQuestion.text && (
-            <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
-              {renderTextWithBlank(currentQuestion.text)}
-            </p>
-          )}
-          {currentQuestion.text2 && (
-            <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
-              {renderTextWithBlank(currentQuestion.text2)}
-            </p>
-          )}
-        </div>
-      );
-    }
-
-    // Default to multiple choice
-    return (
-      <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
-        {currentQuestion.text && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{currentQuestion.text}</p>}
-        {currentQuestion.text2 && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{currentQuestion.text2}</p>}
-      </div>
-    )
+  const handleClearSyllables = () => {
+    if (gameState !== 'playing') return;
+    setAvailableSyllables(prev => [...prev, ...constructedSyllables].sort(() => Math.random() - 0.5));
+    setConstructedSyllables([]);
   }
 
   return (
@@ -514,23 +517,47 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                 <span className="sr-only">Ler em voz alta</span>
             </Button>
         </div>
-        <div className="grid grid-cols-3 gap-6">
-          {shuffledOptions.map((option, index) => (
-            <Button
-              key={index}
-              onClick={() => handleAnswer(option)}
-              variant={selectedAnswer === option ? (isCorrect ? 'success' : 'destructive') : 'default'}
-              className={cn(
-                  'h-32 text-4xl font-bold relative',
-                  selectedAnswer === option && 'animate-option-click',
-              )}
-              disabled={gameState !== 'playing'}
-            >
-              <span className="absolute top-2 left-3 text-lg font-mono bg-background/50 text-foreground rounded-full h-8 w-8 flex items-center justify-center border-2">{index + 1}</span>
-              {option}
-            </Button>
-          ))}
-        </div>
+        
+        {questionType === 'organize_syllables' && (
+            <div className="space-y-6">
+                <div className="relative p-8 border-4 rounded-lg bg-muted min-h-32 flex items-center justify-center gap-2">
+                    <p className="text-5xl font-bold font-mono tracking-widest">{constructedSyllables.join('')}</p>
+                    {constructedSyllables.length > 0 && gameState === 'playing' && (
+                         <Button variant="ghost" size="icon" className="absolute top-2 right-2" onClick={handleClearSyllables}>
+                            <RotateCcw className="w-6 h-6" />
+                         </Button>
+                    )}
+                </div>
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {availableSyllables.map((syllable, index) => (
+                        <Button key={index} onClick={() => handleSyllableClick(syllable, index)} className="h-24 text-4xl font-bold" disabled={gameState !== 'playing'}>
+                            {syllable}
+                        </Button>
+                    ))}
+                 </div>
+            </div>
+        )}
+
+        {(questionType === 'multiple_choice' || questionType === 'fill_in_the_blank') && (
+            <div className="grid grid-cols-3 gap-6">
+              {shuffledOptions.map((option, index) => (
+                <Button
+                  key={index}
+                  onClick={() => handleAnswer(option)}
+                  variant={selectedAnswer === option ? (isCorrect ? 'success' : 'destructive') : 'default'}
+                  className={cn(
+                      'h-32 text-4xl font-bold relative',
+                      selectedAnswer === option && 'animate-option-click',
+                  )}
+                  disabled={gameState !== 'playing'}
+                >
+                  <span className="absolute top-2 left-3 text-lg font-mono bg-background/50 text-foreground rounded-full h-8 w-8 flex items-center justify-center border-2">{index + 1}</span>
+                  {option}
+                </Button>
+              ))}
+            </div>
+        )}
+
         {gameState === 'showingAnswer' && isCorrect === false && (
           <div className="flex items-center justify-center text-4xl font-bold text-destructive mt-6">
               <XCircle className="w-16 h-16 text-destructive mr-4"/>

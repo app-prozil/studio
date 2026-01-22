@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText, Calendar, Clock, Target, Check, Circle, TestTube, Award, Download } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText, Calendar, Clock, Target, Check, Circle, TestTube, Award, Download, WandSparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
@@ -75,23 +75,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 const exerciseObjectSchema = z.object({
   id: z.string().optional(),
   teacherId: z.string(),
-  questionType: z.enum(['multiple_choice', 'fill_in_the_blank']),
+  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables']),
   text: z.string().min(3, 'A pergunta deve ter pelo menos 3 caracteres.'),
   text2: z.string().optional(),
-  options: z.array(z.string().min(1, "A opção não pode estar vazia.")).length(3, 'Deve haver exatamente 3 opções.'),
+  options: z.array(z.string().min(1, "A opção/sílaba não pode estar vazia.")).min(2, "Deve haver pelo menos 2 itens.").max(6, "Máximo de 6 itens."),
   answer: z.string().min(1, 'A resposta correta é obrigatória.'),
   subject: z.enum(['matematica', 'portugues']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
 });
 
 const exerciseSchema = exerciseObjectSchema.refine(data => {
-    if (data.questionType === 'multiple_choice') {
-        return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
+    if (data.questionType === 'multiple_choice' || data.questionType === 'fill_in_the_blank') {
+        if (data.options.length !== 3) return false;
+        if (data.questionType === 'multiple_choice') {
+            return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
+        }
+    }
+    if (data.questionType === 'organize_syllables') {
+        return data.answer.toUpperCase() === data.options.map(o => o.toUpperCase()).join('');
     }
     return true;
 }, {
-    message: "A resposta correta deve corresponder exatamente a uma das opções.",
-    path: ['answer'],
+    message: "As opções ou a resposta não estão corretas para o tipo de atividade. Múltipla Escolha/Completar Lacuna devem ter 3 opções. Organizar Sílabas: a resposta deve ser a junção das sílabas.",
+    path: ['options'],
 });
 
 const taskSchema = z.object({
@@ -114,7 +120,7 @@ type PerformanceQuestion = {
   text2?: string;
   options: string[];
   answer: string;
-  questionType?: 'multiple_choice' | 'fill_in_the_blank';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables';
   studentAnswer?: string;
   attempts?: number;
   status?: 'correct' | 'incorrect' | 'unanswered';
@@ -155,7 +161,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
-  const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank'>('all');
+  const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables'>('all');
 
   const specialCharsCategories = {
     'Símbolos e Setas': ['★', '☆', '✔', '✖', '●', '■', '▲', '♦', '♥', '♠', '♣', '→', '←', '↑', '↓', '↔', '↩', '↪'],
@@ -177,13 +183,23 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     defaultValues: { text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, questionType: 'multiple_choice' },
   });
   
-  const { watch, getValues, setValue } = form;
+  const { watch, getValues, setValue, control } = form;
+  const { fields, append, remove, replace } = useFieldArray({
+    control,
+    name: "options"
+  });
   const questionType = watch('questionType');
   const watchedOptions = watch('options');
 
   useEffect(() => {
-    if (questionType === 'fill_in_the_blank') {
+    if (questionType === 'fill_in_the_blank' && watchedOptions.length > 0) {
         const correctAnswer = watchedOptions[0];
+        if (getValues('answer') !== correctAnswer) {
+            setValue('answer', correctAnswer, { shouldValidate: true });
+        }
+    }
+    if (questionType === 'organize_syllables' && watchedOptions.length > 0) {
+        const correctAnswer = watchedOptions.join('');
         if (getValues('answer') !== correctAnswer) {
             setValue('answer', correctAnswer, { shouldValidate: true });
         }
@@ -228,44 +244,65 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     }
   };
 
+  const resetForm = useCallback(() => {
+    form.reset({ text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice' });
+  }, [form, teacherId]);
+
   useEffect(() => {
     if (editingExercise) {
       form.reset(editingExercise);
+      replace(editingExercise.options.map(o => o));
     } else {
-      form.reset({ text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice' });
+      resetForm();
     }
-  }, [editingExercise, form, teacherId]);
+  }, [editingExercise, form, resetForm, replace]);
+  
+  useEffect(() => {
+    if (questionType === 'multiple_choice' || questionType === 'fill_in_the_blank') {
+        if (fields.length !== 3) {
+            replace(['', '', '']);
+        }
+    } else if (questionType === 'organize_syllables') {
+        if (fields.length < 2) {
+            replace(['', '']);
+        }
+    }
+  }, [questionType, fields, replace]);
 
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
     
-    const uppercasedValues: Exercise = {
+    const finalValues: Exercise = {
         ...values,
         text: values.text.toUpperCase(),
         text2: values.text2 ? values.text2.toUpperCase() : '',
-        options: values.options.map(o => o.toUpperCase()),
+        options: values.options.filter(o => o.trim() !== '').map(o => o.toUpperCase()),
         answer: values.answer.toUpperCase(),
     };
 
+    if (finalValues.questionType === 'organize_syllables') {
+        finalValues.answer = finalValues.options.join('');
+    }
+
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-      updateDoc(exerciseRef, uppercasedValues).catch(async (serverError) => {
+      updateDoc(exerciseRef, finalValues).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: exerciseRef.path,
           operation: 'update',
-          requestResourceData: uppercasedValues,
+          requestResourceData: finalValues,
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({ variant: 'destructive', title: 'Erro ao atualizar exercício' });
       }).finally(() => {
         toast({ title: 'Exercício atualizado!' });
         setEditingExercise(null);
-        form.reset();
+        resetForm();
         setIsSubmitting(false);
       });
     } else {
       const newExerciseRef = doc(collection(firestore, 'teachers', teacherId, 'exercises'));
-      const newExercise = { ...uppercasedValues, id: newExerciseRef.id, teacherId };
+      const newExercise = { ...finalValues, id: newExerciseRef.id, teacherId };
       setDoc(newExerciseRef, newExercise).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: newExerciseRef.path,
@@ -276,7 +313,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         toast({ variant: 'destructive', title: 'Erro ao salvar exercício' });
       }).finally(() => {
         toast({ title: 'Exercício salvo no banco!' });
-        form.reset();
+        resetForm();
         setIsSubmitting(false);
       });
     }
@@ -299,6 +336,17 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         setIsSubmitting(false);
     });
   };
+
+  const getOptionLabel = (index: number) => {
+    switch (questionType) {
+        case 'fill_in_the_blank':
+            return index === 0 ? 'Opção Correta' : `Distrator ${index}`;
+        case 'organize_syllables':
+            return `Sílaba ${index + 1}`;
+        default: // multiple_choice
+            return `Opção ${index + 1}`;
+    }
+  };
   
   return (
      <div className="grid md:grid-cols-2 gap-8">
@@ -311,15 +359,15 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="questionType" render={({ field }) => (
-                  <FormItem><FormLabel>Tipo de Atividade</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="multiple_choice">Múltipla Escolha</SelectItem><SelectItem value="fill_in_the_blank">Complete a Lacuna</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Tipo de Atividade</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="multiple_choice">Múltipla Escolha</SelectItem><SelectItem value="fill_in_the_blank">Complete a Lacuna</SelectItem><SelectItem value="organize_syllables">Organizar Sílabas</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                 )}/>
 
               <FormField control={form.control} name="text" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta - Parte 1</FormLabel><FormControl><Textarea {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use exatamente 3 underlines para a lacuna)" : 'Ex: QUAL É A COR DO SOL?'} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Pergunta / Dica</FormLabel><FormControl><Textarea {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use ___ para a lacuna)" : 'Ex: QUAL É A COR DO SOL?'} /></FormControl><FormMessage /></FormItem>
               )}/>
 
               <FormField control={form.control} name="text2" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta - Parte 2 (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Ex: ☀️" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Imagem / Complemento (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Ex: ☀️" /></FormControl><FormMessage /></FormItem>
               )}/>
 
               <div className="space-y-3 rounded-lg border p-4">
@@ -359,19 +407,37 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 )}/>
               </div>
 
-              <FormField control={form.control} name="options.0" render={({ field }) => (
-                <FormItem><FormLabel>{questionType === 'fill_in_the_blank' ? 'Opção Correta' : 'Opção 1'}</FormLabel><FormControl><Input {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: AMARELO" : "Ex: AZUL"} /></FormControl><FormMessage /></FormItem>
-              )}/>
-              <FormField control={form.control} name="options.1" render={({ field }) => (
-                <FormItem><FormLabel>{questionType === 'fill_in_the_blank' ? 'Distrator 1' : 'Opção 2'}</FormLabel><FormControl><Input {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: VERDE" : "Ex: AMARELO"} /></FormControl><FormMessage /></FormItem>
-              )}/>
-              <FormField control={form.control} name="options.2" render={({ field }) => (
-                <FormItem><FormLabel>{questionType === 'fill_in_the_blank' ? 'Distrator 2' : 'Opção 3'}</FormLabel><FormControl><Input {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: AZUL" : "Ex: VERDE"} /></FormControl><FormMessage /></FormItem>
-              )}/>
+              <div className="space-y-3">
+                {fields.map((field, index) => (
+                    <FormField key={field.id} control={form.control} name={`options.${index}`} render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>{getOptionLabel(index)}</FormLabel>
+                            <div className="flex items-center gap-2">
+                                <FormControl><Input {...field} placeholder={questionType === 'organize_syllables' ? 'Ex: BO' : 'Ex: AMARELO'} /></FormControl>
+                                {questionType === 'organize_syllables' && fields.length > 2 && (
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                                )}
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    )}/>
+                ))}
+                 {questionType === 'organize_syllables' && fields.length < 6 && (
+                    <Button type="button" variant="outline" size="sm" onClick={() => append('')}><PlusCircle className="mr-2" /> Adicionar Sílaba</Button>
+                )}
+              </div>
               
-              {questionType === 'multiple_choice' && (
+              {(questionType === 'multiple_choice' || questionType === 'organize_syllables') && (
                   <FormField control={form.control} name="answer" render={({ field }) => (
-                    <FormItem><FormLabel>Resposta Correta</FormLabel><FormControl><Input {...field} placeholder="Ex: AMARELO" /></FormControl><FormDescription>O texto da resposta deve corresponder exatamente a uma das opções.</FormDescription><FormMessage /></FormItem>
+                    <FormItem>
+                        <FormLabel>Resposta Correta (Palavra Completa)</FormLabel>
+                        <FormControl><Input {...field} placeholder="Ex: AMARELO" disabled={questionType === 'organize_syllables'} /></FormControl>
+                        <FormDescription>
+                            {questionType === 'multiple_choice' && "O texto deve corresponder a uma das opções."}
+                            {questionType === 'organize_syllables' && "Será preenchida automaticamente com a junção das sílabas."}
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
                   )}/>
               )}
 
@@ -406,8 +472,9 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium pr-2">Tipo de Jogo:</span>
                     <Button variant={questionTypeFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('all')}>Todos</Button>
-                    <Button variant={questionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('multiple_choice')}>Múltipla Escolha</Button>
+                    <Button variant={questionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('multiple_choice')}>M. Escolha</Button>
                     <Button variant={questionTypeFilter === 'fill_in_the_blank' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('fill_in_the_blank')}>Completar</Button>
+                    <Button variant={questionTypeFilter === 'organize_syllables' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('organize_syllables')}>Organizar</Button>
                 </div>
             </div>
             <div className="pt-4">
@@ -432,10 +499,16 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 <div className="flex-1">
                   <p className="font-semibold">{ex.text}{ex.text2 && ` ${ex.text2}`}</p>
                   <p className="text-sm text-muted-foreground">Resposta: {ex.answer}</p>
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex gap-2 mt-1 flex-wrap">
                     <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
                     <Badge variant="outline">{ex.difficulty}</Badge>
-                    <Badge variant={(ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'default' : 'secondary'}>{(ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'Completar' : 'Múltipla Escolha'}</Badge>
+                    <Badge variant={
+                        (ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'default'
+                        : (ex.questionType === 'organize_syllables' ? 'success' : 'secondary')
+                    }>
+                        {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
+                        : (ex.questionType === 'organize_syllables' ? 'Organizar' : 'M. Escolha')}
+                    </Badge>
                   </div>
                 </div>
                 <div className="flex gap-1">
@@ -448,7 +521,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                  {subjectFilter === 'all' && questionTypeFilter === 'all' ? (
                   <>
                     <p className="font-semibold">Seu banco de exercícios está vazio.</p>
-                    <p className="text-sm mt-2">Use o botão "Popular com Exemplos" para adicionar 30 exercícios e começar.</p>
+                    <p className="text-sm mt-2">Use o botão "Popular com Exemplos" para adicionar exercícios e começar.</p>
                   </>
                 ) : (
                   <p>Nenhum exercício encontrado para este filtro.</p>
@@ -483,7 +556,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
-  const [bankQuestionTypeFilter, setBankQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank'>('all');
+  const [bankQuestionTypeFilter, setBankQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables'>('all');
   const [isStudentSelectorOpen, setIsStudentSelectorOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [selectableStudents, setSelectableStudents] = useState<Student[]>([]);
@@ -894,8 +967,9 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium pr-4">Filtrar por Jogo:</span>
                     <Button variant={bankQuestionTypeFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('all')}>Todos</Button>
-                    <Button variant={bankQuestionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('multiple_choice')}>Múltipla Escolha</Button>
+                    <Button variant={bankQuestionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('multiple_choice')}>M. Escolha</Button>
                     <Button variant={bankQuestionTypeFilter === 'fill_in_the_blank' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('fill_in_the_blank')}>Completar</Button>
+                    <Button variant={bankQuestionTypeFilter === 'organize_syllables' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_syllables')}>Organizar</Button>
                   </div>
                </div>
               <div className="flex-1 overflow-y-auto pr-4">
@@ -917,10 +991,16 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                           />
                           <label htmlFor={`bank-${ex.id}`} className="flex-1 cursor-pointer">
                               <p className="font-semibold">{ex.text}{ex.text2 && ` ${ex.text2}`}</p>
-                              <div className="flex gap-2 mt-1">
+                              <div className="flex gap-2 mt-1 flex-wrap">
                                   <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
                                   <Badge variant="outline">{ex.difficulty}</Badge>
-                                  <Badge variant={(ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'default' : 'secondary'}>{(ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'Completar' : 'Múltipla Escolha'}</Badge>
+                                   <Badge variant={
+                                        (ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'default'
+                                        : (ex.questionType === 'organize_syllables' ? 'success' : 'secondary')
+                                    }>
+                                        {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
+                                        : (ex.questionType === 'organize_syllables' ? 'Organizar' : 'M. Escolha')}
+                                    </Badge>
                               </div>
                           </label>
                       </div>

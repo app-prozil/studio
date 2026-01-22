@@ -36,10 +36,10 @@
     {
       "subject": "matematica",
       "difficulty": "easy",
-      "questionType": "multiple_choice",
-      "text": "CONTE AS ESTRELAS:",
+      "questionType": "fill_in_the_blank",
+      "text": "CONTE AS ESTRELAS: ___",
       "text2": "★ ★ ★ ★",
-      "options": ["3", "5", "4"],
+      "options": ["4", "3", "5"],
       "answer": "4"
     },
     {
@@ -143,10 +143,10 @@
     {
       "subject": "portugues",
       "difficulty": "easy",
-      "questionType": "fill_in_the_blank",
-      "text": "QUAL DESTAS FIGURAS É UM ___?",
-      "text2": "🏠 ⚽ 🦆",
-      "options": ["PATO", "BOLA", "CASA"],
+      "questionType": "organize_syllables",
+      "text": "FORME A PALAVRA:",
+      "text2": "🦆",
+      "options": ["PA", "TO"],
       "answer": "PATO"
     },
     {
@@ -160,10 +160,11 @@
     {
       "subject": "portugues",
       "difficulty": "easy",
-      "questionType": "multiple_choice",
-      "text": "O PLURAL DE 'MENINO' É ___.",
-      "options": ["MENINA", "MENINOS", "MENINAS"],
-      "answer": "MENINOS"
+      "questionType": "organize_syllables",
+      "text": "FORME A PALAVRA:",
+      "text2": "🏠",
+      "options": ["CA", "SA"],
+      "answer": "CASA"
     },
     {
       "subject": "portugues",
@@ -184,16 +185,17 @@
     {
       "subject": "portugues",
       "difficulty": "medium",
-      "questionType": "multiple_choice",
-      "text": "QUAL PALAVRA ESTÁ ESCRITA INCORRETAMENTE? 'CASA', 'MEZA', 'CARRO'",
-      "options": ["CASA", "MEZA", "CARRO"],
-      "answer": "MEZA"
+      "questionType": "organize_syllables",
+      "text": "FORME O NOME DO ANIMAL:",
+      "text2": "🐒",
+      "options": ["MA", "CA", "CO"],
+      "answer": "MACACO"
     },
     {
       "subject": "portugues",
       "difficulty": "medium",
       "questionType": "multiple_choice",
-      "text": "O ANTÔNIMO DE 'RÁPIDO' É ___.",
+      "text": "QUAL O ANTÔNIMO DE 'RÁPIDO'?",
       "options": ["VELOZ", "LENTO", "FORTE"],
       "answer": "LENTO"
     },
@@ -216,10 +218,11 @@
     {
       "subject": "portugues",
       "difficulty": "hard",
-      "questionType": "multiple_choice",
-      "text": "QUAL O TEMPO VERBAL DA FRASE: 'ELE ESTUDARA MUITO PARA A PROVA.'?",
-      "options": ["PRETÉRITO PERFEITO", "FUTURO DO PRESENTE", "PRETÉRITO MAIS-QUE-PERFEITO"],
-      "answer": "PRETÉRITO MAIS-QUE-PERFEITO"
+      "questionType": "organize_syllables",
+      "text": "FORME A PALAVRA:",
+      "text2": "🦋",
+      "options": ["BOR", "BO", "LE", "TA"],
+      "answer": "BORBOLETA"
     },
     {
       "subject": "portugues",
@@ -240,10 +243,11 @@
     {
       "subject": "portugues",
       "difficulty": "hard",
-      "questionType": "multiple_choice",
-      "text": "CLASSIFIQUE O SUJEITO DA ORAÇÃO: 'CHOVEU MUITO ONTEM.'",
-      "options": ["SUJEITO SIMPLES", "SUJEITO INDETERMINADO", "ORAÇÃO SEM SUJEITO"],
-      "answer": "ORAÇÃO SEM SUJEITO"
+      "questionType": "organize_syllables",
+      "text": "FORME O NOME DO MEIO DE TRANSPORTE:",
+      "text2": "🚁",
+      "options": ["HE", "LI", "CÓP", "TE", "RO"],
+      "answer": "HELICÓPTERO"
     }
   ]
 }

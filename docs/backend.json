@@ -106,7 +106,8 @@
           "description": "The type of interaction for the question.",
           "enum": [
             "multiple_choice",
-            "fill_in_the_blank"
+            "fill_in_the_blank",
+            "organize_syllables"
           ]
         },
         "subject": {
@@ -134,12 +135,11 @@
         },
         "options": {
           "type": "array",
-          "description": "For multiple_choice, these are the options. For fill_in_the_blank, these are the choices to drag, with the first being the correct one.",
+          "description": "Options for the question. For multiple_choice/fill_in_the_blank, there are 3 choices. For organize_syllables, these are the syllables to be organized (2-6).",
           "items": {
             "type": "string"
           },
-          "minItems": 3,
-          "maxItems": 3
+          "minItems": 2
         },
         "answer": {
           "type": "string"
@@ -235,7 +235,8 @@
                 "type": "string",
                 "enum": [
                   "multiple_choice",
-                  "fill_in_the_blank"
+                  "fill_in_the_blank",
+                  "organize_syllables"
                 ]
               },
               "text": {
