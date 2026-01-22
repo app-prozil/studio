@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -154,6 +155,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
+  const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank'>('all');
 
   const specialCharsCategories = {
     'Símbolos e Setas': ['★', '☆', '✔', '✖', '●', '■', '▲', '♦', '♥', '♠', '♣', '→', '←', '↑', '↓', '↔', '↩', '↪'],
@@ -193,11 +195,12 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     if (isLoading || !exercises) {
       return [];
     }
-    if (subjectFilter === 'all') {
-      return exercises;
-    }
-    return exercises.filter((ex) => ex.subject === subjectFilter);
-  }, [exercises, subjectFilter, isLoading]);
+    return exercises.filter(ex => {
+        const subjectMatch = subjectFilter === 'all' || ex.subject === subjectFilter;
+        const typeMatch = questionTypeFilter === 'all' || ex.questionType === questionTypeFilter;
+        return subjectMatch && typeMatch;
+    });
+  }, [exercises, subjectFilter, questionTypeFilter, isLoading]);
 
   const handleSeedExercises = async () => {
     if (!teacherId) {
@@ -386,21 +389,32 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         <CardHeader>
             <CardTitle>Seu Banco de Exercícios</CardTitle>
             <CardDescription>Visualize, gerencie e adicione exercícios de exemplo.</CardDescription>
-            <div className="flex flex-wrap items-center gap-2 pt-4 justify-between">
-                <div className="flex items-center gap-2">
-                    <Button variant={subjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('all')}>
-                        Todos ({exercises?.length || 0})
-                    </Button>
-                    <Button variant={subjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('matematica')}>
-                        Matemática ({exercises?.filter(e => e.subject === 'matematica').length || 0})
-                    </Button>
-                    <Button variant={subjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('portugues')}>
-                        Português ({exercises?.filter(e => e.subject === 'portugues').length || 0})
-                    </Button>
+            <div className="space-y-4 pt-4 border-t">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium pr-2">Matéria:</span>
+                  <Button variant={subjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('all')}>
+                      Todos ({exercises?.length || 0})
+                  </Button>
+                  <Button variant={subjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('matematica')}>
+                      Matemática ({exercises?.filter(e => e.subject === 'matematica').length || 0})
+                  </Button>
+                  <Button variant={subjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('portugues')}>
+                      Português ({exercises?.filter(e => e.subject === 'portugues').length || 0})
+                  </Button>
                 </div>
-                <Button 
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium pr-2">Tipo de Jogo:</span>
+                    <Button variant={questionTypeFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('all')}>Todos</Button>
+                    <Button variant={questionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('multiple_choice')}>Múltipla Escolha</Button>
+                    <Button variant={questionTypeFilter === 'fill_in_the_blank' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('fill_in_the_blank')}>Completar</Button>
+                </div>
+            </div>
+            <div className="pt-4">
+               <Button 
                     onClick={handleSeedExercises} 
                     disabled={isLoading || isSeeding || (exercises && exercises.length > 0)}
+                    size="sm"
+                    variant="secondary"
                 >
                     {isSeeding ? <Loader2 className="animate-spin mr-2"/> : <PlusCircle className="mr-2"/>}
                     Popular com Exemplos
@@ -468,6 +482,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
+  const [bankQuestionTypeFilter, setBankQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank'>('all');
   const [isStudentSelectorOpen, setIsStudentSelectorOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [selectableStudents, setSelectableStudents] = useState<Student[]>([]);
@@ -492,9 +507,12 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
   const filteredBankExercises = useMemo(() => {
     if (!exercises) return [];
-    if (bankSubjectFilter === 'all') return exercises;
-    return exercises.filter(ex => ex.subject === bankSubjectFilter);
-  }, [exercises, bankSubjectFilter]);
+    return exercises.filter(ex => {
+      const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
+      const typeMatch = bankQuestionTypeFilter === 'all' || ex.questionType === bankQuestionTypeFilter;
+      return subjectMatch && typeMatch;
+    });
+  }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
   
   const filteredStudents = useMemo(() => {
     if (!selectableStudents) return [];
@@ -864,12 +882,20 @@ function TaskManager({ teacherId }: { teacherId: string }) {
       <Dialog open={isBankOpen} onOpenChange={setIsBankOpen}>
           <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
               <DialogHeader><DialogTitle>Adicionar Exercícios do Banco</DialogTitle><DialogDescription>Selecione os exercícios que você quer adicionar a esta tarefa.</DialogDescription></DialogHeader>
-               <div className="flex flex-wrap items-center gap-2 pt-2 border-y pb-4">
-                  <span className="text-sm font-medium pr-4">Filtrar por:</span>
-                  <Button variant={bankSubjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('all')}>Todos</Button>
-                  <Button variant={bankSubjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('matematica')}>Matemática</Button>
-                  <Button variant={bankSubjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('portugues')}>Português</Button>
-              </div>
+               <div className="space-y-4 pt-2 border-y pb-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium pr-4">Filtrar por Matéria:</span>
+                    <Button variant={bankSubjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('all')}>Todos</Button>
+                    <Button variant={bankSubjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('matematica')}>Matemática</Button>
+                    <Button variant={bankSubjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('portugues')}>Português</Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium pr-4">Filtrar por Jogo:</span>
+                    <Button variant={bankQuestionTypeFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('all')}>Todos</Button>
+                    <Button variant={bankQuestionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('multiple_choice')}>Múltipla Escolha</Button>
+                    <Button variant={bankQuestionTypeFilter === 'fill_in_the_blank' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('fill_in_the_blank')}>Completar</Button>
+                  </div>
+               </div>
               <div className="flex-1 overflow-y-auto pr-4">
                   {isLoadingExercises ? (
                     <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -892,6 +918,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                               <div className="flex gap-2 mt-1">
                                   <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
                                   <Badge variant="outline">{ex.difficulty}</Badge>
+                                  <Badge variant={ex.questionType === 'fill_in_the_blank' ? 'default' : 'secondary'}>{ex.questionType === 'fill_in_the_blank' ? 'Completar' : 'Múltipla Escolha'}</Badge>
                               </div>
                           </label>
                       </div>
