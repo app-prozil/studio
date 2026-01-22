@@ -71,7 +71,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 
 // Schemas
-const exerciseSchema = z.object({
+const exerciseObjectSchema = z.object({
   id: z.string().optional(),
   teacherId: z.string(),
   questionType: z.enum(['multiple_choice', 'fill_in_the_blank']),
@@ -81,7 +81,9 @@ const exerciseSchema = z.object({
   answer: z.string().min(1, 'A resposta correta é obrigatória.'),
   subject: z.enum(['matematica', 'portugues']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
-}).refine(data => {
+});
+
+const exerciseSchema = exerciseObjectSchema.refine(data => {
     if (data.questionType === 'multiple_choice') {
         return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
     }
@@ -100,7 +102,7 @@ const taskSchema = z.object({
   description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
   dueDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Data inválida.' }),
   isCompleted: z.boolean().optional(),
-  questions: z.array(exerciseSchema.pick({ text: true, text2: true, options: true, answer: true, questionType: true })).min(1, 'A tarefa deve ter pelo menos uma questão.'),
+  questions: z.array(exerciseObjectSchema.pick({ text: true, text2: true, options: true, answer: true, questionType: true })).min(1, 'A tarefa deve ter pelo menos uma questão.'),
 });
 
 
