@@ -144,7 +144,7 @@
       "subject": "portugues",
       "difficulty": "easy",
       "questionType": "organize_syllables",
-      "text": "FORME A PALAVRA:",
+      "text": "ORGANIZE AS SÍLABAS E FORME O NOME DO ANIMAL:",
       "text2": "🦆",
       "options": ["PA", "TO"],
       "answer": "PATO"
@@ -161,7 +161,7 @@
       "subject": "portugues",
       "difficulty": "easy",
       "questionType": "organize_syllables",
-      "text": "FORME A PALAVRA:",
+      "text": "ORGANIZE AS SÍLABAS E FORME A PALAVRA:",
       "text2": "🏠",
       "options": ["CA", "SA"],
       "answer": "CASA"
@@ -186,7 +186,7 @@
       "subject": "portugues",
       "difficulty": "medium",
       "questionType": "organize_syllables",
-      "text": "FORME O NOME DO ANIMAL:",
+      "text": "ORGANIZE AS SÍLABAS E FORME O NOME DO ANIMAL:",
       "text2": "🐒",
       "options": ["MA", "CA", "CO"],
       "answer": "MACACO"
@@ -219,7 +219,7 @@
       "subject": "portugues",
       "difficulty": "hard",
       "questionType": "organize_syllables",
-      "text": "FORME A PALAVRA:",
+      "text": "ORGANIZE AS SÍLABAS E FORME O NOME DO INSETO:",
       "text2": "🦋",
       "options": ["BOR", "BO", "LE", "TA"],
       "answer": "BORBOLETA"
@@ -244,7 +244,7 @@
       "subject": "portugues",
       "difficulty": "hard",
       "questionType": "organize_syllables",
-      "text": "FORME O NOME DO MEIO DE TRANSPORTE:",
+      "text": "ORGANIZE AS SÍLABAS E FORME O MEIO DE TRANSPORTE:",
       "text2": "🚁",
       "options": ["HE", "LI", "CÓP", "TE", "RO"],
       "answer": "HELICÓPTERO"

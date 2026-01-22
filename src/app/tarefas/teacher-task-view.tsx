@@ -194,12 +194,6 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
   useEffect(() => {
     const currentOptions = JSON.parse(watchedOptionsString);
-    if (questionType === 'fill_in_the_blank' && currentOptions.length > 0) {
-        const correctAnswer = currentOptions[0];
-        if (getValues('answer') !== correctAnswer) {
-            setValue('answer', correctAnswer, { shouldValidate: true });
-        }
-    }
     if (questionType === 'organize_syllables' && currentOptions.length > 0) {
         const correctAnswer = currentOptions.join('');
         if (getValues('answer') !== correctAnswer) {
@@ -365,7 +359,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 )}/>
 
               <FormField control={form.control} name="text" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta / Dica</FormLabel><FormControl><Textarea {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use ___ para a lacuna)" : 'Ex: QUAL É A COR DO SOL?'} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Pergunta / Dica</FormLabel><FormControl><Textarea {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use ___ para a lacuna)" : (questionType === 'organize_syllables' ? "Ex: ORGANIZE AS SÍLABAS PARA FORMAR O NOME DO ANIMAL:" : 'Ex: QUAL É A COR DO SOL?')} /></FormControl><FormMessage /></FormItem>
               )}/>
 
               <FormField control={form.control} name="text2" render={({ field }) => (
