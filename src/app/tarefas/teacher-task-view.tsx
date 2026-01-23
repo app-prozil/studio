@@ -87,16 +87,45 @@ const exerciseObjectSchema = z.object({
 const exerciseSchema = exerciseObjectSchema.refine(data => {
     if (data.questionType === 'multiple_choice' || data.questionType === 'fill_in_the_blank') {
         if (data.options.length !== 3) return false;
-        if (data.options.some(o => o.trim() === '')) return false;
+        if (data.options.some(o => o.trim() === '')) return false; // Ensure no empty options
         return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
     }
-    // The cross-field validation for 'organize_syllables' is removed
-    // to prevent re-rendering issues when using the field array.
-    // The correct answer is constructed on form submission.
+    // No need for complex validation on organize_syllables here, answer is built on submit
     return true;
 }, {
-    message: "As opções ou a resposta não são válidas. Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas.",
+    message: "Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas.",
     path: ['options'],
+});
+
+const performanceQuestionSchema = z.object({
+  text: z.string(),
+  text2: z.string().optional(),
+  options: z.array(z.string()),
+  answer: z.string(),
+  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables']).optional(),
+  studentAnswer: z.string().optional(),
+  attempts: z.number().optional(),
+  status: z.enum(['correct', 'incorrect', 'unanswered']).optional(),
+  timeTaken: z.number().optional(),
+});
+
+const taskSchema = z.object({
+  title: z.string().min(3, { message: "O título deve ter pelo menos 3 caracteres." }),
+  studentProzilId: z.string().min(1, { message: "É obrigatório selecionar um aluno." }),
+  description: z.string().optional(),
+  dueDate: z.string().min(1, { message: "A data de entrega é obrigatória." }),
+  subject: z.enum(['matematica', 'portugues']),
+  taskType: z.enum(['jogo_interativo', 'folha_imprimivel']),
+  questions: z.array(performanceQuestionSchema).min(1, { message: "A tarefa deve ter pelo menos um exercício." }),
+  isCompleted: z.boolean(),
+  id: z.string().optional(),
+  createdAt: z.string().optional(),
+  teacherId: z.string().optional(),
+  studentId: z.string().optional(),
+  studentName: z.string().optional(),
+  teacherName: z.string().optional(),
+  completedAt: z.string().optional(),
+  totalTime: z.number().optional(),
 });
 
 
@@ -179,7 +208,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
   const getOptionLabel = (index: number) => {
     if (questionType === 'fill_in_the_blank') {
-        if (index === 0) return 'Opção Correta';
+        return 'Opção Correta';
     }
     if (questionType === 'organize_syllables') {
         return `Sílaba ${index + 1}`;
@@ -222,7 +251,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   useEffect(() => {
     if (questionType === 'fill_in_the_blank') {
       // Auto-set the answer to the first option, no validation needed here
-      setValue('answer', firstOption || '', { shouldValidate: false });
+      setValue('answer', firstOption || '', { shouldValidate: true });
     }
   }, [firstOption, questionType, setValue]);
 
@@ -288,7 +317,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
     
-    const finalValues: Exercise = {
+    let finalValues: Exercise = {
         ...values,
         text: values.text.toUpperCase(),
         text2: values.text2 ? values.text2.toUpperCase() : '',
@@ -300,6 +329,10 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         finalValues.answer = finalValues.options.join('');
     }
 
+    if (finalValues.questionType === 'fill_in_the_blank') {
+      finalValues.answer = finalValues.options[0];
+    }
+    
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
       updateDoc(exerciseRef, finalValues).catch(async (serverError) => {
@@ -461,6 +494,14 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         <FormMessage />
                     </FormItem>
                   )}/>
+              )}
+              {questionType === 'fill_in_the_blank' && (
+                <FormField control={form.control} name="answer" render={({ field }) => (
+                  <FormItem className="hidden">
+                      <FormLabel>Resposta Correta (automática)</FormLabel>
+                      <FormControl><Input {...field} readOnly /></FormControl>
+                  </FormItem>
+                )}/>
               )}
 
               <div className="flex gap-2">
