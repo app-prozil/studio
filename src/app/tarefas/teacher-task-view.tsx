@@ -121,9 +121,11 @@ const exerciseSchema = exerciseObjectSchema.refine(data => {
         if (data.options.some(o => o.trim() === '')) return false;
         return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
     }
+    // For organize_syllables, we don't validate for empty strings on change,
+    // as it would prevent adding new empty fields. This validation should happen onSubmit.
     return true;
 }, {
-    message: "Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas.",
+    message: "Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas. Para Organizar Sílabas, deve ter entre 2 e 6 sílabas.",
     path: ['options'],
 });
 
@@ -294,10 +296,6 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     if (questionType === 'multiple_choice' || questionType === 'fill_in_the_blank') {
         if (fields.length !== 3) {
             replace(['', '', '']);
-        }
-    } else if (questionType === 'organize_syllables') {
-        if (fields.length < 2) {
-            replace(['', '']);
         }
     }
   }, [questionType, fields.length, replace]);
