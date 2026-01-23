@@ -193,7 +193,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const getOptionLabel = (index: number) => {
     switch (questionType) {
         case 'fill_in_the_blank':
-            return index === 0 ? 'Opção Correta' : `Distrator ${index}`;
+            return `Opção ${index + 1}`;
         case 'organize_syllables':
             return `Sílaba ${index + 1}`;
         default: // multiple_choice
@@ -207,7 +207,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         const mcPlaceholders = ['Ex: AMARELO (será a resposta)', 'Ex: AZUL', 'Ex: VERDE'];
         return mcPlaceholders[index] || 'Opção';
       case 'fill_in_the_blank':
-        const ftbPlaceholders = ['Ex: AMARELO', 'Ex: AZUL', 'Ex: VERDE'];
+        const ftbPlaceholders = ['Ex: AMARELO (será a resposta)', 'Ex: AZUL', 'Ex: VERDE'];
         return ftbPlaceholders[index] || 'Opção';
       case 'organize_syllables':
         const osPlaceholders = ['Ex: BOR', 'Ex: BO', 'Ex: LE', 'Ex: TA'];
@@ -218,17 +218,15 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   };
 
   const watchedOptions = watch('options');
-  const watchedOptionsString = JSON.stringify(watchedOptions);
-
+  
   useEffect(() => {
-    const currentOptions = JSON.parse(watchedOptionsString);
-    if (questionType === 'organize_syllables' && currentOptions.length > 0) {
-        const correctAnswer = currentOptions.join('');
+    if (questionType === 'organize_syllables' && watchedOptions.length > 0) {
+        const correctAnswer = watchedOptions.join('');
         if (getValues('answer') !== correctAnswer) {
             setValue('answer', correctAnswer, { shouldValidate: true });
         }
     }
-  }, [watchedOptionsString, questionType, getValues, setValue]);
+  }, [watchedOptions, questionType, getValues, setValue]);
 
 
   const filteredExercises = useMemo(() => {
