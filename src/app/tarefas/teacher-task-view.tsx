@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -72,31 +72,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 
 // Schemas
-const exerciseObjectSchema = z.object({
-  id: z.string().optional(),
-  teacherId: z.string(),
-  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables']),
-  text: z.string().min(3, 'A pergunta deve ter pelo menos 3 caracteres.'),
-  text2: z.string().optional(),
-  options: z.array(z.string()).min(2, "Deve haver pelo menos 2 itens.").max(6, "Máximo de 6 itens."),
-  answer: z.string().min(1, 'A resposta correta é obrigatória.'),
-  subject: z.enum(['matematica', 'portugues']),
-  difficulty: z.enum(['easy', 'medium', 'hard']),
-});
-
-const exerciseSchema = exerciseObjectSchema.refine(data => {
-    if (data.questionType === 'multiple_choice' || data.questionType === 'fill_in_the_blank') {
-        if (data.options.length !== 3) return false;
-        if (data.options.some(o => o.trim() === '')) return false; // Ensure no empty options
-        return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
-    }
-    // No need for complex validation on organize_syllables here, answer is built on submit
-    return true;
-}, {
-    message: "Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas.",
-    path: ['options'],
-});
-
 const performanceQuestionSchema = z.object({
   text: z.string(),
   text2: z.string().optional(),
@@ -126,6 +101,30 @@ const taskSchema = z.object({
   teacherName: z.string().optional(),
   completedAt: z.string().optional(),
   totalTime: z.number().optional(),
+});
+
+const exerciseObjectSchema = z.object({
+  id: z.string().optional(),
+  teacherId: z.string(),
+  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables']),
+  text: z.string().min(3, 'A pergunta deve ter pelo menos 3 caracteres.'),
+  text2: z.string().optional(),
+  options: z.array(z.string()).min(2, "Deve haver pelo menos 2 itens.").max(6, "Máximo de 6 itens."),
+  answer: z.string().min(1, 'A resposta correta é obrigatória.'),
+  subject: z.enum(['matematica', 'portugues']),
+  difficulty: z.enum(['easy', 'medium', 'hard']),
+});
+
+const exerciseSchema = exerciseObjectSchema.refine(data => {
+    if (data.questionType === 'multiple_choice' || data.questionType === 'fill_in_the_blank') {
+        if (data.options.length !== 3) return false;
+        if (data.options.some(o => o.trim() === '')) return false;
+        return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
+    }
+    return true;
+}, {
+    message: "Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas.",
+    path: ['options'],
 });
 
 
@@ -199,7 +198,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     defaultValues: { text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, questionType: 'multiple_choice' },
   });
   
-  const { watch, getValues, setValue, control } = form;
+  const { watch, setValue, control } = form;
   const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "options"
@@ -232,7 +231,6 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     return `Ex: Opção ${index + 1}`;
   };
 
-  const watchedOptions = watch('options');
   const firstOption = watch('options.0');
   
   const resetForm = useCallback(() => {
@@ -240,17 +238,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   }, [form, teacherId]);
 
   useEffect(() => {
-    if (questionType === 'organize_syllables') {
-        const newAnswer = watchedOptions.join('');
-        if (getValues('answer') !== newAnswer) {
-          setValue('answer', newAnswer, { shouldValidate: false });
-        }
-    }
-  }, [watchedOptions, questionType, getValues, setValue]);
-
-  useEffect(() => {
     if (questionType === 'fill_in_the_blank') {
-      // Auto-set the answer to the first option, no validation needed here
       setValue('answer', firstOption || '', { shouldValidate: true });
     }
   }, [firstOption, questionType, setValue]);
@@ -487,7 +475,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormField control={form.control} name="answer" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Resposta Correta (Palavra Completa)</FormLabel>
-                        <FormControl><Input {...field} placeholder='Ex: BORBOLETA' disabled={questionType === 'organize_syllables'} /></FormControl>
+                        <FormControl><Input {...field} placeholder='Ex: BORBOLETA' disabled /></FormControl>
                         <FormDescription>
                             Será preenchida automaticamente com a junção das sílabas.
                         </FormDescription>
