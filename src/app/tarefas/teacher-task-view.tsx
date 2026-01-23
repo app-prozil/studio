@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -188,8 +189,35 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     name: "options"
   });
   const questionType = watch('questionType');
-  const watchedOptions = watch('options');
 
+  const getOptionLabel = (index: number) => {
+    switch (questionType) {
+        case 'fill_in_the_blank':
+            return index === 0 ? 'Opção Correta' : `Distrator ${index}`;
+        case 'organize_syllables':
+            return `Sílaba ${index + 1}`;
+        default: // multiple_choice
+            return `Opção ${index + 1}`;
+    }
+  };
+
+  const getOptionPlaceholder = (index: number): string => {
+    switch (questionType) {
+      case 'multiple_choice':
+        const mcPlaceholders = ['Ex: AMARELO (será a resposta)', 'Ex: AZUL', 'Ex: VERDE'];
+        return mcPlaceholders[index] || 'Opção';
+      case 'fill_in_the_blank':
+        const ftbPlaceholders = ['Ex: AMARELO', 'Ex: AZUL', 'Ex: VERDE'];
+        return ftbPlaceholders[index] || 'Opção';
+      case 'organize_syllables':
+        const osPlaceholders = ['Ex: BOR', 'Ex: BO', 'Ex: LE', 'Ex: TA'];
+        return osPlaceholders[index] || 'Sílaba';
+      default:
+        return 'Opção';
+    }
+  };
+
+  const watchedOptions = watch('options');
   const watchedOptionsString = JSON.stringify(watchedOptions);
 
   useEffect(() => {
@@ -332,17 +360,6 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         setIsSubmitting(false);
     });
   };
-
-  const getOptionLabel = (index: number) => {
-    switch (questionType) {
-        case 'fill_in_the_blank':
-            return index === 0 ? 'Opção Correta' : `Distrator ${index}`;
-        case 'organize_syllables':
-            return `Sílaba ${index + 1}`;
-        default: // multiple_choice
-            return `Opção ${index + 1}`;
-    }
-  };
   
   return (
      <div className="grid md:grid-cols-2 gap-8">
@@ -359,11 +376,17 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 )}/>
 
               <FormField control={form.control} name="text" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta / Dica</FormLabel><FormControl><Textarea {...field} placeholder={questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use ___ para a lacuna)" : (questionType === 'organize_syllables' ? "Ex: ORGANIZE AS SÍLABAS PARA FORMAR O NOME DO ANIMAL:" : 'Ex: QUAL É A COR DO SOL?')} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Pergunta / Dica</FormLabel><FormControl><Textarea {...field} placeholder={
+                    questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use ___ para a lacuna)" :
+                    questionType === 'organize_syllables' ? "Ex: ORGANIZE AS SÍLABAS E FORME O NOME DO INSETO:" :
+                    'Ex: QUAL É A COR DO SOL?'
+                } /></FormControl><FormMessage /></FormItem>
               )}/>
 
               <FormField control={form.control} name="text2" render={({ field }) => (
-                <FormItem><FormLabel>Imagem / Complemento (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Ex: ☀️" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Imagem / Complemento (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder={
+                    questionType === 'organize_syllables' ? 'Ex: 🦋' : 'Ex: ☀️'
+                } /></FormControl><FormMessage /></FormItem>
               )}/>
 
               <div className="space-y-3 rounded-lg border p-4">
@@ -409,7 +432,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         <FormItem>
                             <FormLabel>{getOptionLabel(index)}</FormLabel>
                             <div className="flex items-center gap-2">
-                                <FormControl><Input {...field} placeholder={questionType === 'organize_syllables' ? 'Ex: BO' : 'Ex: AMARELO'} /></FormControl>
+                                <FormControl><Input {...field} placeholder={getOptionPlaceholder(index)} /></FormControl>
                                 {questionType === 'organize_syllables' && fields.length > 2 && (
                                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                                 )}
@@ -427,7 +450,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormField control={form.control} name="answer" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Resposta Correta (Palavra Completa)</FormLabel>
-                        <FormControl><Input {...field} placeholder="Ex: AMARELO" disabled={questionType === 'organize_syllables'} /></FormControl>
+                        <FormControl><Input {...field} placeholder={questionType === 'organize_syllables' ? 'Ex: BORBOLETA' : 'Ex: AMARELO'} disabled={questionType === 'organize_syllables'} /></FormControl>
                         <FormDescription>
                             {questionType === 'multiple_choice' && "O texto deve corresponder a uma das opções."}
                             {questionType === 'organize_syllables' && "Será preenchida automaticamente com a junção das sílabas."}
