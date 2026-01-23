@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -118,14 +118,16 @@ const exerciseObjectSchema = z.object({
 const exerciseSchema = exerciseObjectSchema.refine(data => {
     if (data.questionType === 'multiple_choice' || data.questionType === 'fill_in_the_blank') {
         if (data.options.length !== 3) return false;
+        // Check for empty options only on submit, not on change
         if (data.options.some(o => o.trim() === '')) return false;
         return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
     }
-    // For organize_syllables, we don't validate for empty strings on change,
-    // as it would prevent adding new empty fields. This validation should happen onSubmit.
+    if (data.questionType === 'organize_syllables') {
+      return data.options.join('') === data.answer;
+    }
     return true;
 }, {
-    message: "Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas. Para Organizar Sílabas, deve ter entre 2 e 6 sílabas.",
+    message: "Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas. Para Organizar Sílabas, a resposta deve ser a junção das sílabas.",
     path: ['options'],
 });
 
@@ -197,7 +199,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   
   const form = useForm<Exercise>({
     resolver: zodResolver(exerciseSchema),
-    defaultValues: { text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, questionType: 'multiple_choice' },
+    defaultValues: { text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice' },
   });
   
   const { watch, setValue, control } = form;
@@ -245,6 +247,16 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     }
   }, [firstOption, questionType, setValue]);
 
+  const handleQuestionTypeChange = (value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables') => {
+    setValue('questionType', value);
+    if (value === 'multiple_choice' || value === 'fill_in_the_blank') {
+      replace(['', '', '']);
+    } else if (value === 'organize_syllables') {
+      // When switching to organize syllables, start with 2 fields.
+      replace(['', '']);
+    }
+  };
+
 
   const filteredExercises = useMemo(() => {
     if (isLoading || !exercises) {
@@ -253,7 +265,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
         const subjectMatch = subjectFilter === 'all' || ex.subject === subjectFilter;
         const effectiveQuestionType = ex.questionType || 'multiple_choice';
-        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === questionTypeFilter;
+        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
         return subjectMatch && typeMatch;
     });
   }, [exercises, subjectFilter, questionTypeFilter, isLoading]);
@@ -292,14 +304,6 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     }
   }, [editingExercise, form, resetForm, replace]);
   
-  useEffect(() => {
-    if (questionType === 'multiple_choice' || questionType === 'fill_in_the_blank') {
-        if (fields.length !== 3) {
-            replace(['', '', '']);
-        }
-    }
-  }, [questionType, fields.length, replace]);
-
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
     
@@ -383,7 +387,16 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="questionType" render={({ field }) => (
-                  <FormItem><FormLabel>Tipo de Atividade</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="multiple_choice">Múltipla Escolha</SelectItem><SelectItem value="fill_in_the_blank">Complete a Lacuna</SelectItem><SelectItem value="organize_syllables">Organizar Sílabas</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Tipo de Atividade</FormLabel>
+                    <Select onValueChange={(value) => handleQuestionTypeChange(value as any)} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="multiple_choice">Múltipla Escolha</SelectItem>
+                        <SelectItem value="fill_in_the_blank">Complete a Lacuna</SelectItem>
+                        <SelectItem value="organize_syllables">Organizar Sílabas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  <FormMessage /></FormItem>
                 )}/>
 
               <FormField control={form.control} name="text" render={({ field }) => (
@@ -633,7 +646,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
-      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
