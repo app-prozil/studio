@@ -87,17 +87,17 @@ const exerciseObjectSchema = z.object({
 const exerciseSchema = exerciseObjectSchema.refine(data => {
     if (data.questionType === 'multiple_choice' || data.questionType === 'fill_in_the_blank') {
         if (data.options.length !== 3) return false;
-        if (data.questionType === 'multiple_choice') {
-            return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
-        }
+        return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
     }
     if (data.questionType === 'organize_syllables') {
         const joinedOptions = data.options.map(o => o.toUpperCase()).join('');
+        // Check against empty string to prevent validation errors on empty fields
+        if (data.answer.trim() === '' && joinedOptions.trim() === '') return true;
         return data.answer.toUpperCase() === joinedOptions;
     }
     return true;
 }, {
-    message: "As opções ou a resposta não estão corretas para o tipo de atividade. Múltipla Escolha/Completar Lacuna devem ter 3 opções. Organizar Sílabas: a resposta deve ser a junção das sílabas.",
+    message: "As opções ou a resposta não são válidas. Múltipla Escolha/Completar Lacuna: a resposta deve ser uma das 3 opções. Organizar Sílabas: a resposta deve ser a junção das sílabas.",
     path: ['options'],
 });
 
@@ -192,39 +192,49 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const questionType = watch('questionType');
 
   const getOptionLabel = (index: number) => {
-    switch (questionType) {
-        case 'fill_in_the_blank':
-            return `Opção ${index + 1}`;
-        case 'organize_syllables':
-            return `Sílaba ${index + 1}`;
-        default: // multiple_choice
-            return `Opção ${index + 1}`;
+    if (questionType === 'fill_in_the_blank') {
+        if (index === 0) return 'Opção Correta';
     }
+    if (questionType === 'organize_syllables') {
+        return `Sílaba ${index + 1}`;
+    }
+    return `Opção ${index + 1}`;
   };
 
   const getOptionPlaceholder = (index: number): string => {
-    switch (questionType) {
-      case 'organize_syllables':
-        const osPlaceholders = ['Ex: BOR', 'Ex: BO', 'Ex: LE', 'Ex: TA'];
-        return osPlaceholders[index] || 'Sílaba';
-      default: // multiple_choice and fill_in_the_blank
-        const defaultPlaceholders = ['Ex: AMARELO (será a resposta)', 'Ex: AZUL', 'Ex: VERDE'];
-        return defaultPlaceholders[index] || 'Opção';
+    if (questionType === 'organize_syllables') {
+      const osPlaceholders = ['Ex: BOR', 'Ex: BO', 'Ex: LE', 'Ex: TA'];
+      return osPlaceholders[index] || 'Sílaba';
     }
+    // For both multiple_choice and fill_in_the_blank
+    if (index === 0) {
+      return 'Ex: AMARELO (será a resposta)';
+    }
+    const defaultPlaceholders = ['Ex: AZUL', 'Ex: VERDE'];
+    return defaultPlaceholders[index - 1] || 'Opção';
   };
 
   const watchedOptions = watch('options');
+  const firstOption = watch('options.0');
   
   const resetForm = useCallback(() => {
     form.reset({ text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice' });
   }, [form, teacherId]);
 
   useEffect(() => {
-    const newAnswer = watchedOptions.join('');
-    if (questionType === 'organize_syllables' && getValues('answer') !== newAnswer) {
-      setValue('answer', newAnswer, { shouldValidate: true });
+    if (questionType === 'organize_syllables') {
+        const newAnswer = watchedOptions.join('');
+        if (getValues('answer') !== newAnswer) {
+          setValue('answer', newAnswer, { shouldValidate: true });
+        }
     }
   }, [watchedOptions, questionType, getValues, setValue]);
+
+  useEffect(() => {
+    if (questionType === 'fill_in_the_blank') {
+      setValue('answer', firstOption || '', { shouldValidate: true });
+    }
+  }, [firstOption, questionType, setValue]);
 
 
   const filteredExercises = useMemo(() => {
@@ -369,7 +379,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
               <FormField control={form.control} name="text" render={({ field }) => (
                 <FormItem><FormLabel>Pergunta / Dica</FormLabel><FormControl><Textarea {...field} placeholder={
-                    questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use ___ para a lacuna)" :
+                    questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use 3 underline ___ para a lacuna)" :
                     questionType === 'organize_syllables' ? "Ex: ORGANIZE AS SÍLABAS E FORME O NOME DO INSETO:" :
                     'Ex: QUAL É A COR DO SOL?'
                 } /></FormControl><FormMessage /></FormItem>
@@ -438,13 +448,13 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 )}
               </div>
               
-              {(questionType === 'multiple_choice' || questionType === 'fill_in_the_blank') && (
+              {questionType === 'multiple_choice' && (
                   <FormField control={form.control} name="answer" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Resposta Correta</FormLabel>
                         <FormControl><Input {...field} placeholder='Ex: AMARELO'/></FormControl>
                         <FormDescription>
-                            Para múltipla escolha, o texto deve corresponder a uma das opções.
+                            O texto deve corresponder exatamente a uma das opções.
                         </FormDescription>
                         <FormMessage />
                     </FormItem>
