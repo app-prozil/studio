@@ -78,7 +78,7 @@ const exerciseObjectSchema = z.object({
   questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables']),
   text: z.string().min(3, 'A pergunta deve ter pelo menos 3 caracteres.'),
   text2: z.string().optional(),
-  options: z.array(z.string().min(1, "A opção/sílaba não pode estar vazia.")).min(2, "Deve haver pelo menos 2 itens.").max(6, "Máximo de 6 itens."),
+  options: z.array(z.string()).min(2, "Deve haver pelo menos 2 itens.").max(6, "Máximo de 6 itens."),
   answer: z.string().min(1, 'A resposta correta é obrigatória.'),
   subject: z.enum(['matematica', 'portugues']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
@@ -87,30 +87,16 @@ const exerciseObjectSchema = z.object({
 const exerciseSchema = exerciseObjectSchema.refine(data => {
     if (data.questionType === 'multiple_choice' || data.questionType === 'fill_in_the_blank') {
         if (data.options.length !== 3) return false;
+        if (data.options.some(o => o.trim() === '')) return false;
         return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
     }
-    if (data.questionType === 'organize_syllables') {
-        const joinedOptions = data.options.map(o => o.toUpperCase()).join('');
-        // Check against empty string to prevent validation errors on empty fields
-        if (data.answer.trim() === '' && joinedOptions.trim() === '') return true;
-        return data.answer.toUpperCase() === joinedOptions;
-    }
+    // The cross-field validation for 'organize_syllables' is removed
+    // to prevent re-rendering issues when using the field array.
+    // The correct answer is constructed on form submission.
     return true;
 }, {
-    message: "As opções ou a resposta não são válidas. Múltipla Escolha/Completar Lacuna: a resposta deve ser uma das 3 opções. Organizar Sílabas: a resposta deve ser a junção das sílabas.",
+    message: "As opções ou a resposta não são válidas. Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas.",
     path: ['options'],
-});
-
-const taskSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(3, 'O título deve ter pelo menos 3 caracteres.'),
-  studentProzilId: z.string().min(1, 'O ID ProZil do aluno é obrigatório.'),
-  subject: z.enum(['matematica', 'portugues']),
-  taskType: z.enum(['jogo_interativo', 'folha_imprimivel']),
-  description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
-  dueDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Data inválida.' }),
-  isCompleted: z.boolean().optional(),
-  questions: z.array(exerciseObjectSchema.pick({ text: true, text2: true, options: true, answer: true, questionType: true })).min(1, 'A tarefa deve ter pelo menos uma questão.'),
 });
 
 
@@ -206,12 +192,15 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       const osPlaceholders = ['Ex: BOR', 'Ex: BO', 'Ex: LE', 'Ex: TA'];
       return osPlaceholders[index] || 'Sílaba';
     }
-    // For both multiple_choice and fill_in_the_blank
-    if (index === 0) {
-      return 'Ex: AMARELO (será a resposta)';
+    if (questionType === 'fill_in_the_blank') {
+       if (index === 0) {
+        return 'Ex: AMARELO (será a resposta)';
+      }
+      const defaultPlaceholders = ['Ex: AZUL', 'Ex: VERDE'];
+      return defaultPlaceholders[index - 1] || 'Opção';
     }
-    const defaultPlaceholders = ['Ex: AZUL', 'Ex: VERDE'];
-    return defaultPlaceholders[index - 1] || 'Opção';
+    // For multiple_choice
+    return `Ex: Opção ${index + 1}`;
   };
 
   const watchedOptions = watch('options');
@@ -232,6 +221,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
   useEffect(() => {
     if (questionType === 'fill_in_the_blank') {
+      // Auto-set the answer to the first option, no validation needed here
       setValue('answer', firstOption || '', { shouldValidate: false });
     }
   }, [firstOption, questionType, setValue]);
@@ -293,7 +283,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
             replace(['', '']);
         }
     }
-  }, [questionType, fields, replace]);
+  }, [questionType, fields.length, replace]);
 
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
