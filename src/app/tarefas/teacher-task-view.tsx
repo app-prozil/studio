@@ -92,7 +92,8 @@ const exerciseSchema = exerciseObjectSchema.refine(data => {
         }
     }
     if (data.questionType === 'organize_syllables') {
-        return data.answer.toUpperCase() === data.options.map(o => o.toUpperCase()).join('');
+        const joinedOptions = data.options.map(o => o.toUpperCase()).join('');
+        return data.answer.toUpperCase() === joinedOptions;
     }
     return true;
 }, {
@@ -203,28 +204,25 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
   const getOptionPlaceholder = (index: number): string => {
     switch (questionType) {
-      case 'multiple_choice':
-        const mcPlaceholders = ['Ex: AMARELO (será a resposta)', 'Ex: AZUL', 'Ex: VERDE'];
-        return mcPlaceholders[index] || 'Opção';
-      case 'fill_in_the_blank':
-        const ftbPlaceholders = ['Ex: AMARELO (será a resposta)', 'Ex: AZUL', 'Ex: VERDE'];
-        return ftbPlaceholders[index] || 'Opção';
       case 'organize_syllables':
         const osPlaceholders = ['Ex: BOR', 'Ex: BO', 'Ex: LE', 'Ex: TA'];
         return osPlaceholders[index] || 'Sílaba';
-      default:
-        return 'Opção';
+      default: // multiple_choice and fill_in_the_blank
+        const defaultPlaceholders = ['Ex: AMARELO (será a resposta)', 'Ex: AZUL', 'Ex: VERDE'];
+        return defaultPlaceholders[index] || 'Opção';
     }
   };
 
   const watchedOptions = watch('options');
   
+  const resetForm = useCallback(() => {
+    form.reset({ text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice' });
+  }, [form, teacherId]);
+
   useEffect(() => {
-    if (questionType === 'organize_syllables' && watchedOptions.length > 0) {
-        const correctAnswer = watchedOptions.join('');
-        if (getValues('answer') !== correctAnswer) {
-            setValue('answer', correctAnswer, { shouldValidate: true });
-        }
+    const newAnswer = watchedOptions.join('');
+    if (questionType === 'organize_syllables' && getValues('answer') !== newAnswer) {
+      setValue('answer', newAnswer, { shouldValidate: true });
     }
   }, [watchedOptions, questionType, getValues, setValue]);
 
@@ -265,10 +263,6 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         setIsSeeding(false);
     }
   };
-
-  const resetForm = useCallback(() => {
-    form.reset({ text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice' });
-  }, [form, teacherId]);
 
   useEffect(() => {
     if (editingExercise) {
@@ -444,14 +438,25 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 )}
               </div>
               
-              {(questionType === 'multiple_choice' || questionType === 'organize_syllables') && (
+              {(questionType === 'multiple_choice' || questionType === 'fill_in_the_blank') && (
+                  <FormField control={form.control} name="answer" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Resposta Correta</FormLabel>
+                        <FormControl><Input {...field} placeholder='Ex: AMARELO'/></FormControl>
+                        <FormDescription>
+                            Para múltipla escolha, o texto deve corresponder a uma das opções.
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                  )}/>
+              )}
+               {questionType === 'organize_syllables' && (
                   <FormField control={form.control} name="answer" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Resposta Correta (Palavra Completa)</FormLabel>
-                        <FormControl><Input {...field} placeholder={questionType === 'organize_syllables' ? 'Ex: BORBOLETA' : 'Ex: AMARELO'} disabled={questionType === 'organize_syllables'} /></FormControl>
+                        <FormControl><Input {...field} placeholder='Ex: BORBOLETA' disabled={questionType === 'organize_syllables'} /></FormControl>
                         <FormDescription>
-                            {questionType === 'multiple_choice' && "O texto deve corresponder a uma das opções."}
-                            {questionType === 'organize_syllables' && "Será preenchida automaticamente com a junção das sílabas."}
+                            Será preenchida automaticamente com a junção das sílabas.
                         </FormDescription>
                         <FormMessage />
                     </FormItem>
