@@ -123,9 +123,10 @@ const exerciseSchema = exerciseObjectSchema.refine(data => {
         if (data.options.length !== 3) return false;
         return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
     }
+    // For organize_syllables, we trust the auto-generated answer, but still check for empty syllables
     return true;
 }, {
-    message: "Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas. Para Organizar Sílabas, deve haver de 2 a 6 sílabas não vazias.",
+    message: "Para M. Escolha/Completar, deve haver 3 opções não vazias e a resposta deve ser uma delas. Para Organizar Sílabas, deve haver de 2 a 6 sílabas não vazias.",
     path: ['options'],
 });
 
@@ -208,7 +209,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const questionType = watch('questionType');
 
   const getOptionLabel = (index: number) => {
-    if (questionType === 'fill_in_the_blank') {
+    if (questionType === 'fill_in_the_blank' && index === 0) {
         return 'Opção Correta';
     }
     if (questionType === 'organize_syllables') {
@@ -293,6 +294,19 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     }
   }, [editingExercise, form, resetForm, replace]);
   
+  useEffect(() => {
+    if (questionType === 'fill_in_the_blank') {
+      const firstOption = watch('options.0');
+      setValue('answer', firstOption || '', { shouldValidate: false });
+    } else if (questionType === 'organize_syllables') {
+       const syllables = watch('options');
+       if (Array.isArray(syllables)) {
+         setValue('answer', syllables.join(''), { shouldValidate: false });
+       }
+    }
+  }, [watch('options'), questionType, setValue, watch]);
+
+
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
     
@@ -303,14 +317,6 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         options: values.options.filter(o => o.trim() !== '').map(o => o.toUpperCase()),
         answer: values.answer.toUpperCase(),
     };
-
-    if (finalValues.questionType === 'organize_syllables') {
-        finalValues.answer = finalValues.options.join('');
-    }
-
-    if (finalValues.questionType === 'fill_in_the_blank') {
-      finalValues.answer = finalValues.options[0];
-    }
     
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
@@ -1618,3 +1624,4 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
     </div>
   );
 }
+
