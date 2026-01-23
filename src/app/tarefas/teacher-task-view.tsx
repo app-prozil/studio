@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -116,18 +116,16 @@ const exerciseObjectSchema = z.object({
 });
 
 const exerciseSchema = exerciseObjectSchema.refine(data => {
+    if (data.options.some(o => o.trim() === '')) {
+      return false; // Fail if any option is empty
+    }
     if (data.questionType === 'multiple_choice' || data.questionType === 'fill_in_the_blank') {
         if (data.options.length !== 3) return false;
-        // Check for empty options only on submit, not on change
-        if (data.options.some(o => o.trim() === '')) return false;
         return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
-    }
-    if (data.questionType === 'organize_syllables') {
-      return data.options.join('') === data.answer;
     }
     return true;
 }, {
-    message: "Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas. Para Organizar Sílabas, a resposta deve ser a junção das sílabas.",
+    message: "Para Múltipla Escolha/Completar Lacuna, deve haver 3 opções não vazias e a resposta deve ser uma delas. Para Organizar Sílabas, deve haver de 2 a 6 sílabas não vazias.",
     path: ['options'],
 });
 
@@ -235,24 +233,15 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     return `Ex: Opção ${index + 1}`;
   };
 
-  const firstOption = watch('options.0');
-  
   const resetForm = useCallback(() => {
     form.reset({ text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice' });
   }, [form, teacherId]);
-
-  useEffect(() => {
-    if (questionType === 'fill_in_the_blank') {
-      setValue('answer', firstOption || '', { shouldValidate: true });
-    }
-  }, [firstOption, questionType, setValue]);
 
   const handleQuestionTypeChange = (value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables') => {
     setValue('questionType', value);
     if (value === 'multiple_choice' || value === 'fill_in_the_blank') {
       replace(['', '', '']);
     } else if (value === 'organize_syllables') {
-      // When switching to organize syllables, start with 2 fields.
       replace(['', '']);
     }
   };
