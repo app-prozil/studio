@@ -225,14 +225,14 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     if (questionType === 'organize_syllables') {
         const newAnswer = watchedOptions.join('');
         if (getValues('answer') !== newAnswer) {
-          setValue('answer', newAnswer, { shouldValidate: true });
+          setValue('answer', newAnswer, { shouldValidate: false });
         }
     }
   }, [watchedOptions, questionType, getValues, setValue]);
 
   useEffect(() => {
     if (questionType === 'fill_in_the_blank') {
-      setValue('answer', firstOption || '', { shouldValidate: true });
+      setValue('answer', firstOption || '', { shouldValidate: false });
     }
   }, [firstOption, questionType, setValue]);
 
