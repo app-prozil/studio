@@ -519,7 +519,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     )}/>
                 ))}
                  {questionType === 'organize_syllables' && fields.length < 6 && (
-                    <Button type="button" variant="outline" size="sm" onClick={() => append("")}><PlusCircle className="mr-2" /> Adicionar Sílaba</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => append('')}><PlusCircle className="mr-2" /> Adicionar Sílaba</Button>
                 )}
                 {questionType === 'memory_game' && fields.length < 12 && (
                     <Button type="button" variant="outline" size="sm" onClick={() => { append(""); append(""); }}><PlusCircle className="mr-2" /> Adicionar Par</Button>
@@ -818,10 +818,22 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
     const batch = writeBatch(firestore);
     
-    const questionsForDb = values.questions.map(q => ({
-        ...q,
+    const questionsForDb = values.questions.map(q => {
+      const newQ: any = {
+        text: q.text,
         text2: q.text2 || '',
-    }));
+        options: q.options,
+        answer: q.answer,
+        questionType: q.questionType || 'multiple_choice',
+      };
+      
+      if (q.studentAnswer !== undefined) newQ.studentAnswer = q.studentAnswer;
+      if (q.attempts !== undefined) newQ.attempts = q.attempts;
+      if (q.status !== undefined) newQ.status = q.status;
+      if (q.timeTaken !== undefined) newQ.timeTaken = q.timeTaken;
+
+      return newQ as PerformanceQuestion;
+    });
 
     if (editingTask?.id) {
         const taskData = {
@@ -1733,6 +1745,7 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
 
 
 
