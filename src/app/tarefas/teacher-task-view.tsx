@@ -4,6 +4,7 @@
 
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -194,6 +195,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
   const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game'>('all');
+  const [focusedInput, setFocusedInput] = useState<string | null>('text2');
 
   const specialCharsCategories = {
     'Símbolos e Setas': ['★', '☆', '✔', '✖', '●', '■', '▲', '♦', '♥', '♠', '♣', '→', '←', '↑', '↓', '↔', '↩', '↪'],
@@ -430,7 +432,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
               )}/>
 
               <FormField control={form.control} name="text2" render={({ field }) => (
-                <FormItem><FormLabel>Imagem / Complemento (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder={
+                <FormItem><FormLabel>Imagem / Complemento (Opcional)</FormLabel><FormControl><Textarea {...field} onFocus={() => setFocusedInput('text2')} placeholder={
                     questionType === 'organize_syllables' ? 'Ex: 🦋' : 'Ex: ☀️'
                 } /></FormControl><FormMessage /></FormItem>
               )}/>
@@ -450,8 +452,10 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                             key={char}
                             className="h-9 w-9 text-lg"
                             onClick={() => {
-                              const currentText = form.getValues('text2') || '';
-                              form.setValue('text2', currentText + char, { shouldValidate: true });
+                              if (focusedInput) {
+                                  const currentText = form.getValues(focusedInput as any) || '';
+                                  form.setValue(focusedInput as any, currentText + char, { shouldValidate: true });
+                              }
                             }}
                           >
                             {char}
@@ -478,9 +482,9 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         <FormItem>
                             <FormLabel>{getOptionLabel(index)}</FormLabel>
                             <div className="flex items-center gap-2">
-                                <FormControl><Input {...field} placeholder={getOptionPlaceholder(index)} /></FormControl>
+                                <FormControl><Input {...field} onFocus={() => setFocusedInput(`options.${index}`)} placeholder={getOptionPlaceholder(index)} /></FormControl>
                                 {(questionType === 'organize_syllables' || questionType === 'memory_game') && (
-                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={(questionType === 'organize_syllables' || questionType === 'memory_game') && fields.length <= 2}>
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 2}>
                                         <Trash2 className="w-4 h-4 text-destructive" />
                                     </Button>
                                 )}
@@ -493,7 +497,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     <Button type="button" variant="outline" size="sm" onClick={() => append("")}><PlusCircle className="mr-2" /> Adicionar Sílaba</Button>
                 )}
                 {questionType === 'memory_game' && fields.length < 12 && (
-                    <Button type="button" variant="outline" size="sm" onClick={() => append(['', ''])}><PlusCircle className="mr-2" /> Adicionar Par</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => { append(""); append(""); }}><PlusCircle className="mr-2" /> Adicionar Par</Button>
                 )}
               </div>
               
