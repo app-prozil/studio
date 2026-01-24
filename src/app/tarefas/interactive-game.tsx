@@ -6,7 +6,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift, RotateCcw } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift, RotateCcw, Bot } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -385,6 +385,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
 
     if (isMatch) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 2000);
+        
         const newMatchedPairs = [...matchedPairs, firstCardValue, secondCardValue];
         setMatchedPairs(newMatchedPairs);
         setFlippedCards([]);
@@ -624,7 +627,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                                 !isFlipped && 'hover:bg-primary/90'
                             )}
                         >
-                            {isFlipped ? option : '?'}
+                            {isFlipped ? option : <Bot className="w-16 h-16 text-primary-foreground/70" />}
                         </button>
                     );
                 })}
