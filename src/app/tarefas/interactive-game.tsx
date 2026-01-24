@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import Confetti from 'react-confetti';
+import confetti from 'canvas-confetti';
 
 type Question = {
   text: string;
@@ -87,25 +87,12 @@ type InteractiveGameProps = {
   subject: 'math' | 'portuguese' | 'memoria';
 };
 
-function useWindowSize() {
-  const [size, setSize] = useState([0, 0]);
-  useEffect(() => {
-    function updateSize() {
-      setSize([window.innerWidth, window.innerHeight]);
-    }
-    window.addEventListener('resize', updateSize);
-    updateSize();
-    return () => window.removeEventListener('resize', updateSize);
-  }, []);
-  return { width: size[0], height: size[1] };
-}
 
 export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { width, height } = useWindowSize();
   const { user, isUserLoading: isAuthLoading } = useUser();
 
   const [task, setTask] = useState<Task | null>(null);
@@ -118,8 +105,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   
   const [isGiftOpened, setIsGiftOpened] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [showEndConfetti, setShowEndConfetti] = useState(false);
   const [showCorrectAnswerModal, setShowCorrectAnswerModal] = useState(false);
 
   // State for organize_syllables game
@@ -141,6 +126,22 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   
   const currentQuestion = questions[currentQuestionIndex];
   const questionType = currentQuestion?.questionType || 'multiple_choice';
+
+  const triggerConfettiExplosion = () => {
+    let params = {
+      particleCount: 500,
+      spread: 90,
+      startVelocity: 70,
+      origin: { x: 0, y: 0.5 },
+      angle: 45
+    };
+    // From left
+    confetti(params);
+    // From right
+    params.origin.x = 1;
+    params.angle = 135;
+    confetti(params);
+  };
   
   useEffect(() => {
     const isTestDrive = taskId === 'test-drive';
@@ -335,14 +336,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
 
     if (isAnswerCorrect) {
-      setShowConfetti(true);
+      triggerConfettiExplosion();
       const delay = questionType === 'fill_in_the_blank' ? 800 : 100;
       setTimeout(() => {
           setShowCorrectAnswerModal(true);
       }, delay);
       setTimeout(() => {
         setShowCorrectAnswerModal(false);
-        setShowConfetti(false);
         handleNextQuestion(updatedQuestions);
       }, delay + 1700);
     } else {
@@ -385,8 +385,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
 
     if (isMatch) {
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 2000);
+        triggerConfettiExplosion();
         
         const newMatchedPairs = [...matchedPairs, firstCardValue, secondCardValue];
         setMatchedPairs(newMatchedPairs);
@@ -451,7 +450,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const studentName = task?.studentName || 'Visitante';
     return (
       <>
-        {showEndConfetti && width > 0 && height > 0 && <Confetti width={width} height={height} recycle={false} numberOfPieces={800} gravity={0.08} />}
         <div className="relative flex flex-col items-center justify-center text-center h-96 space-y-4">
           <div className={cn("particle-burst", isGiftOpened && "is-active")}>
             {Array.from({ length: 30 }).map((_, i) => (
@@ -465,7 +463,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
               <p className="text-2xl text-muted-foreground z-10">VOCÊ CONCLUIU A TAREFA!</p>
               <button onClick={() => {
                   setIsGiftOpened(true);
-                  setTimeout(() => setShowEndConfetti(true), 100);
+                  setTimeout(() => {
+                    confetti({
+                        particleCount: 800,
+                        spread: 120,
+                        gravity: 0.08,
+                    });
+                  }, 100);
                 }} className="animate-gift-bounce focus:outline-none relative z-10">
                 <Gift className="w-40 h-40 text-primary" />
                 <span className="mt-4 block text-lg font-semibold">CLIQUE NO SEU PRÊMIO!</span>
@@ -548,16 +552,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   return (
     <>
-      {showConfetti && width > 0 && height > 0 && (
-          <Confetti
-            width={width}
-            height={height}
-            recycle={false}
-            numberOfPieces={400}
-            gravity={0.1}
-          />
-      )}
-      
       <Dialog open={showCorrectAnswerModal} onOpenChange={setShowCorrectAnswerModal}>
         <DialogContent className="max-w-md text-center bg-transparent border-none shadow-none" onPointerDownOutside={(e) => e.preventDefault()}>
             <DialogHeader>
