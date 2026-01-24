@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -115,7 +116,18 @@ const exerciseObjectSchema = z.object({
   difficulty: z.enum(['easy', 'medium', 'hard']),
 });
 
-const exerciseSchema = exerciseObjectSchema;
+const exerciseSchema = exerciseObjectSchema.refine(
+    (data) => {
+        if (data.questionType !== 'organize_syllables') {
+             return !data.options.some(option => option.trim() === '');
+        }
+        return true;
+    },
+    {
+        message: "Nenhuma opção pode estar vazia.",
+        path: ["options"],
+    }
+);
 
 
 type Exercise = z.infer<typeof exerciseSchema>;
@@ -188,16 +200,25 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     defaultValues: { text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice' },
   });
   
-  const { watch, setValue, control, getValues } = form;
+  const { watch, setValue, control } = form;
   const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "options"
   });
   const questionType = watch('questionType');
 
+  const handleQuestionTypeChange = (value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables') => {
+    setValue('questionType', value);
+    if (value === 'organize_syllables') {
+      replace(['', '']);
+    } else {
+      replace(['', '', '']);
+    }
+  };
+
   const getOptionLabel = (index: number) => {
-    if (questionType === 'fill_in_the_blank' && index === 0) {
-        return 'Opção Correta';
+    if (questionType === 'fill_in_the_blank') {
+        return index === 0 ? 'Opção Correta' : `Opção Incorreta ${index}`;
     }
     if (questionType === 'organize_syllables') {
         return `Sílaba ${index + 1}`;
@@ -224,16 +245,6 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const resetForm = useCallback(() => {
     form.reset({ text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice' });
   }, [form, teacherId]);
-
-  const handleQuestionTypeChange = (value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables') => {
-    setValue('questionType', value);
-    if (value === 'multiple_choice' || value === 'fill_in_the_blank') {
-      replace(['', '', '']);
-    } else if (value === 'organize_syllables') {
-      replace(['', '']);
-    }
-  };
-
 
   const filteredExercises = useMemo(() => {
     if (isLoading || !exercises) {
@@ -282,32 +293,25 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   }, [editingExercise, form, resetForm, replace]);
   
   const watchedOptions = watch('options');
-  useEffect(() => {
-    if (questionType === 'fill_in_the_blank') {
-      const firstOption = Array.isArray(watchedOptions) ? watchedOptions[0] : '';
-      if (getValues('answer') !== (firstOption || '')) {
-        setValue('answer', firstOption || '', { shouldValidate: false });
-      }
-    } else if (questionType === 'organize_syllables') {
-       if (Array.isArray(watchedOptions)) {
-         const newAnswer = watchedOptions.join('');
-         if (getValues('answer') !== newAnswer) {
-           setValue('answer', newAnswer, { shouldValidate: false });
-         }
-       }
-    }
-  }, [JSON.stringify(watchedOptions), questionType, setValue, getValues]);
-
 
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
     
+    let answerValue;
+    if (values.questionType === 'fill_in_the_blank') {
+        answerValue = values.options[0].toUpperCase();
+    } else if (values.questionType === 'organize_syllables') {
+        answerValue = values.options.join('').toUpperCase();
+    } else {
+        answerValue = values.answer.toUpperCase();
+    }
+
     let finalValues: Exercise = {
         ...values,
         text: values.text.toUpperCase(),
         text2: values.text2 ? values.text2.toUpperCase() : '',
         options: values.options.filter(o => o.trim() !== '').map(o => o.toUpperCase()),
-        answer: values.answer.toUpperCase(),
+        answer: answerValue,
     };
     
     if (editingExercise?.id) {
@@ -453,7 +457,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     )}/>
                 ))}
                  {questionType === 'organize_syllables' && fields.length < 6 && (
-                    <Button type="button" variant="outline" size="sm" onClick={() => append('')}><PlusCircle className="mr-2" /> Adicionar Sílaba</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ value: "" })}><PlusCircle className="mr-2" /> Adicionar Sílaba</Button>
                 )}
               </div>
               
@@ -473,7 +477,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormField control={form.control} name="answer" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Resposta Correta (Palavra Completa)</FormLabel>
-                        <FormControl><Input {...field} placeholder='Ex: BORBOLETA' disabled /></FormControl>
+                        <FormControl><Input value={watchedOptions.join('')} placeholder='Ex: BORBOLETA' readOnly /></FormControl>
                         <FormDescription>
                             Será preenchida automaticamente com a junção das sílabas.
                         </FormDescription>
@@ -485,7 +489,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 <FormField control={form.control} name="answer" render={({ field }) => (
                   <FormItem className="hidden">
                       <FormLabel>Resposta Correta (automática)</FormLabel>
-                      <FormControl><Input {...field} readOnly /></FormControl>
+                      <FormControl><Input {...field} readOnly value={watchedOptions[0]} /></FormControl>
                   </FormItem>
                 )}/>
               )}
@@ -885,7 +889,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                             {selectedExercises.map((ex, index) => (
                             <li key={ex.id || index} className="flex items-center justify-between p-2 border rounded-md">
                                 <span className="truncate">{ex.text}{ex.text2 && ` ${ex.text2}`}</span>
-                                <Button type="button" variant="ghost" size="icon" onClick={()={() => setSelectedExercises(prev => prev.filter(p => p.id !== ex.id))}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => setSelectedExercises(prev => prev.filter(p => p.id !== ex.id))}><Trash2 className="w-4 h-4 text-destructive"/></Button>
                             </li> 
                             ))}
                         </ul>
@@ -979,7 +983,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                     <div 
                     key={student.id} 
                     className="p-3 border rounded-md cursor-pointer hover:bg-muted"
-                    onClick={()={() => {
+                    onClick={() => {
                         if (student.prozilId) {
                           form.setValue('studentProzilId', student.prozilId);
                           setIsStudentSelectorOpen(false);
@@ -1618,3 +1622,6 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 }
 
     
+
+    
+
