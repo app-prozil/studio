@@ -3,6 +3,7 @@
 
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -81,7 +82,7 @@ const performanceQuestionSchema = z.object({
   text2: z.string().optional(),
   options: z.array(z.string()),
   answer: z.string(),
-  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables']).optional(),
+  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game']).optional(),
   studentAnswer: z.string().optional(),
   attempts: z.number().optional(),
   status: z.enum(['correct', 'incorrect', 'unanswered']).optional(),
@@ -110,10 +111,10 @@ const taskSchema = z.object({
 const exerciseObjectSchema = z.object({
   id: z.string().optional(),
   teacherId: z.string(),
-  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables']),
+  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game']),
   text: z.string().min(3, 'A pergunta deve ter pelo menos 3 caracteres.'),
   text2: z.string().optional(),
-  options: z.array(z.string()).min(2, "Deve haver pelo menos 2 itens.").max(6, "Máximo de 6 itens."),
+  options: z.array(z.string()).min(2, "Deve haver pelo menos 2 itens.").max(12, "Máximo de 12 itens (6 pares)."),
   answer: z.string().min(1, 'A resposta correta é obrigatória.'),
   subject: z.enum(['matematica', 'portugues']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
@@ -121,13 +122,24 @@ const exerciseObjectSchema = z.object({
 
 const exerciseSchema = exerciseObjectSchema.refine(
     (data) => {
-        if (data.questionType !== 'organize_syllables') {
+        if (data.questionType !== 'organize_syllables' && data.questionType !== 'memory_game') {
              return !data.options.some(option => option.trim() === '');
         }
         return true;
     },
     {
         message: "Nenhuma opção pode estar vazia.",
+        path: ["options"],
+    }
+).refine(
+    (data) => {
+        if (data.questionType === 'memory_game') {
+             return data.options.length % 2 === 0;
+        }
+        return true;
+    },
+    {
+        message: "O Jogo da Memória deve ter um número par de itens para formar os pares.",
         path: ["options"],
     }
 );
@@ -140,7 +152,7 @@ type PerformanceQuestion = {
   text2?: string;
   options: string[];
   answer: string;
-  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game';
   studentAnswer?: string;
   attempts?: number;
   status?: 'correct' | 'incorrect' | 'unanswered';
@@ -181,7 +193,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
-  const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables'>('all');
+  const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game'>('all');
 
   const specialCharsCategories = {
     'Símbolos e Setas': ['★', '☆', '✔', '✖', '●', '■', '▲', '♦', '♥', '♠', '♣', '→', '←', '↑', '↓', '↔', '↩', '↪'],
@@ -210,10 +222,12 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   });
   const questionType = watch('questionType');
 
-  const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables') => {
+  const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game') => {
     setValue('questionType', value);
     if (value === 'organize_syllables') {
       replace(['', '']);
+    } else if (value === 'memory_game') {
+      replace(['', '', '', '']); // Start with 2 pairs
     } else {
       replace(['', '', '']);
     }
@@ -225,6 +239,11 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     }
     if (questionType === 'organize_syllables') {
         return `Sílaba ${index + 1}`;
+    }
+    if (questionType === 'memory_game') {
+        const pair = Math.floor(index / 2) + 1;
+        const item = index % 2 === 0 ? 'A' : 'B';
+        return `Par ${pair} - Item ${item}`;
     }
     return `Opção ${index + 1}`;
   };
@@ -240,6 +259,10 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       }
       const defaultPlaceholders = ['Ex: AZUL', 'Ex: VERDE'];
       return defaultPlaceholders[index - 1] || 'Opção';
+    }
+    if (questionType === 'memory_game') {
+        const mgPlaceholders = ['Ex: GATO', 'Ex: 🐱', 'Ex: 2+2', 'Ex: 4'];
+        return mgPlaceholders[index] || 'Item';
     }
     // For multiple_choice
     const mcPlaceholders = ['Ex: AMARELO', 'Ex: AZUL', 'Ex: VERDE'];
@@ -306,6 +329,8 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         answerValue = values.options[0].toUpperCase();
     } else if (values.questionType === 'organize_syllables') {
         answerValue = values.options.join('').toUpperCase();
+    } else if (values.questionType === 'memory_game') {
+        answerValue = "N/A"; // Not used for memory game
     } else {
         answerValue = values.answer.toUpperCase();
     }
@@ -389,6 +414,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         <SelectItem value="multiple_choice">Múltipla Escolha</SelectItem>
                         <SelectItem value="fill_in_the_blank">Complete a Lacuna</SelectItem>
                         <SelectItem value="organize_syllables">Organizar Sílabas</SelectItem>
+                        <SelectItem value="memory_game">Jogo da Memória</SelectItem>
                       </SelectContent>
                     </Select>
                   <FormMessage /></FormItem>
@@ -398,6 +424,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 <FormItem><FormLabel>Pergunta / Dica</FormLabel><FormControl><Textarea {...field} placeholder={
                     questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use 3 underline ___ para a lacuna)" :
                     questionType === 'organize_syllables' ? "Ex: ORGANIZE AS SÍLABAS E FORME O NOME DO INSETO:" :
+                    questionType === 'memory_game' ? "Ex: ENCONTRE OS PARES CORRESPONDENTES" :
                     'Ex: QUAL É A COR DO SOL?'
                 } /></FormControl><FormMessage /></FormItem>
               )}/>
@@ -452,8 +479,8 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                             <FormLabel>{getOptionLabel(index)}</FormLabel>
                             <div className="flex items-center gap-2">
                                 <FormControl><Input {...field} placeholder={getOptionPlaceholder(index)} /></FormControl>
-                                {questionType === 'organize_syllables' && (
-                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 2}>
+                                {(questionType === 'organize_syllables' || questionType === 'memory_game') && (
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={(questionType === 'organize_syllables' || questionType === 'memory_game') && fields.length <= 2}>
                                         <Trash2 className="w-4 h-4 text-destructive" />
                                     </Button>
                                 )}
@@ -464,6 +491,9 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 ))}
                  {questionType === 'organize_syllables' && fields.length < 6 && (
                     <Button type="button" variant="outline" size="sm" onClick={() => append("")}><PlusCircle className="mr-2" /> Adicionar Sílaba</Button>
+                )}
+                {questionType === 'memory_game' && fields.length < 12 && (
+                    <Button type="button" variant="outline" size="sm" onClick={() => append(['', ''])}><PlusCircle className="mr-2" /> Adicionar Par</Button>
                 )}
               </div>
               
@@ -534,6 +564,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     <Button variant={questionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('multiple_choice')}>M. Escolha</Button>
                     <Button variant={questionTypeFilter === 'fill_in_the_blank' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('fill_in_the_blank')}>Completar</Button>
                     <Button variant={questionTypeFilter === 'organize_syllables' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('organize_syllables')}>Organizar</Button>
+                    <Button variant={questionTypeFilter === 'memory_game' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('memory_game')}>Memória</Button>
                 </div>
             </div>
             <div className="pt-4">
@@ -566,7 +597,8 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         : (ex.questionType === 'organize_syllables' ? 'success' : 'secondary')
                     }>
                         {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
-                        : (ex.questionType === 'organize_syllables' ? 'Organizar' : 'M. Escolha')}
+                        : (ex.questionType === 'organize_syllables' ? 'Organizar' 
+                        : (ex.questionType === 'memory_game' ? 'destructive' : 'M. Escolha'))}
                     </Badge>
                   </div>
                 </div>
@@ -615,7 +647,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
-  const [bankQuestionTypeFilter, setBankQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables'>('all');
+  const [bankQuestionTypeFilter, setBankQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game'>('all');
   const [isStudentSelectorOpen, setIsStudentSelectorOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [selectableStudents, setSelectableStudents] = useState<Student[]>([]);
@@ -1029,6 +1061,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                     <Button variant={bankQuestionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('multiple_choice')}>M. Escolha</Button>
                     <Button variant={bankQuestionTypeFilter === 'fill_in_the_blank' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('fill_in_the_blank')}>Completar</Button>
                     <Button variant={bankQuestionTypeFilter === 'organize_syllables' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_syllables')}>Organizar</Button>
+                    <Button variant={bankQuestionTypeFilter === 'memory_game' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('memory_game')}>Memória</Button>
                   </div>
                </div>
               <div className="flex-1 overflow-y-auto pr-4">
@@ -1058,7 +1091,8 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                                         : (ex.questionType === 'organize_syllables' ? 'success' : 'secondary')
                                     }>
                                         {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
-                                        : (ex.questionType === 'organize_syllables' ? 'Organizar' : 'M. Escolha')}
+                                        : (ex.questionType === 'organize_syllables' ? 'Organizar' 
+                                        : (ex.questionType === 'memory_game' ? 'destructive' : 'M. Escolha'))}
                                     </Badge>
                               </div>
                           </label>
@@ -1634,3 +1668,6 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
 
+
+
+    
