@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -207,14 +208,14 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   });
   const questionType = watch('questionType');
 
-  const handleQuestionTypeChange = (value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables') => {
+  const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables') => {
     setValue('questionType', value);
     if (value === 'organize_syllables') {
       replace(['', '']);
     } else {
       replace(['', '', '']);
     }
-  };
+  }, [setValue, replace]);
 
   const getOptionLabel = (index: number) => {
     if (questionType === 'fill_in_the_blank') {
@@ -239,7 +240,8 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       return defaultPlaceholders[index - 1] || 'Opção';
     }
     // For multiple_choice
-    return `Ex: Opção ${index + 1}`;
+    const mcPlaceholders = ['Ex: AMARELO', 'Ex: AZUL', 'Ex: VERDE'];
+    return mcPlaceholders[index] || `Ex: Opção ${index + 1}`;
   };
 
   const resetForm = useCallback(() => {
@@ -253,7 +255,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
         const subjectMatch = subjectFilter === 'all' || ex.subject === subjectFilter;
         const effectiveQuestionType = ex.questionType || 'multiple_choice';
-        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
+        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === questionTypeFilter;
         return subjectMatch && typeMatch;
     });
   }, [exercises, subjectFilter, questionTypeFilter, isLoading]);
@@ -467,7 +469,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         <FormLabel>Resposta Correta</FormLabel>
                         <FormControl><Input {...field} placeholder='Ex: AMARELO'/></FormControl>
                         <FormDescription>
-                            O texto deve corresponder exatamente a uma das opções.
+                            O texto deve corresponder exatamente à opção correta acima.
                         </FormDescription>
                         <FormMessage />
                     </FormItem>
@@ -637,7 +639,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
-      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
@@ -1624,4 +1626,5 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
     
 
     
+
 
