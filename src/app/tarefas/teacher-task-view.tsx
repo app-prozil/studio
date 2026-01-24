@@ -707,7 +707,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
-      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
@@ -824,7 +824,21 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     }));
 
     if (editingTask?.id) {
-        const taskData = { ...values, questions: questionsForDb, teacherId, dueDate: new Date(values.dueDate).toISOString(), studentName, teacherName, studentId: editingTask.studentId };
+        const taskData = {
+            title: values.title,
+            studentProzilId: values.studentProzilId,
+            description: values.description || '',
+            dueDate: new Date(values.dueDate).toISOString(),
+            subject: values.subject,
+            taskType: values.taskType,
+            questions: questionsForDb,
+            isCompleted: values.isCompleted,
+            studentId: editingTask.studentId,
+            studentName: studentName,
+            teacherName: teacherName,
+            teacherId: teacherId,
+            createdAt: editingTask.createdAt, 
+        };
         const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', editingTask.id);
         const studentTaskRef = doc(firestore, 'students', editingTask.studentId, 'tasks', editingTask.id);
         
@@ -832,7 +846,22 @@ function TaskManager({ teacherId }: { teacherId: string }) {
         batch.update(studentTaskRef, taskData);
     } else {
         const newTaskId = doc(collection(firestore, 'teachers')).id;
-        const taskData = { ...values, questions: questionsForDb, id: newTaskId, teacherId, isCompleted: false, createdAt: new Date().toISOString(), dueDate: new Date(values.dueDate).toISOString(), studentId: studentUid, studentName, teacherName };
+        const taskData = {
+            id: newTaskId,
+            title: values.title,
+            studentProzilId: values.studentProzilId,
+            description: values.description || '',
+            dueDate: new Date(values.dueDate).toISOString(),
+            subject: values.subject,
+            taskType: values.taskType,
+            questions: questionsForDb,
+            isCompleted: false,
+            createdAt: new Date().toISOString(),
+            teacherId: teacherId,
+            studentId: studentUid,
+            studentName: studentName,
+            teacherName: teacherName,
+        };
 
         const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', newTaskId);
         const studentTaskRef = doc(firestore, 'students', studentUid, 'tasks', newTaskId);
@@ -1704,5 +1733,6 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
 
 
