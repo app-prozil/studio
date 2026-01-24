@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -195,10 +188,11 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
   const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game'>('all');
-  const [focusedInput, setFocusedInput] = useState<string | null>('text2');
+  const [focusedInput, setFocusedInput] = useState<string | null>('text');
 
   const specialCharsCategories = {
-    'Símbolos e Setas': ['★', '☆', '✔', '✖', '●', '■', '▲', '♦', '♥', '♠', '♣', '→', '←', '↑', '↓', '↔', '↩', '↪'],
+    'Mãos e Gestos (Libras)': ['🤟', '🤘', '🤙', '👋', '🤚', '🖐', '✋', '🖖', '👌', '🤏', '🤌', '🤞', '✌️', '🫰', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '🫶', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦵', '🦿', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄'],
+    'Símbolos e Setas': ['+', '-', '×', '÷', '=', '≠', '<', '>', '≤', '≥', '★', '☆', '✔', '✖', '●', '■', '▲', '♦', '♥', '♠', '♣', '→', '←', '↑', '↓', '↔', '↩', '↪'],
     'Pessoas e Profissões': ['😀', '😁', '😂', '😊', '😍', '🤔', '👍', '👎', '👏', '🙏', '💪', '👨‍🏫', '👩‍🏫', '👨‍🎓', '👩‍🎓', '👨‍⚕️', '👩‍⚕️', '👨‍⚖️', '👩‍⚖️', '👨‍🌾', '👩‍🌾', '👨‍🍳', '👩‍🍳', '👨‍🔧', '👩‍🔧', '👨‍🏭', '👩‍🏭', '👨‍💼', '👩‍💼', '👨‍🔬', '👩‍🔬', '👨‍💻', '👩‍💻', '👨‍🎤', '👩‍🎤', '👨‍🎨', '👩‍🎨', '👨‍✈️', '👩‍✈️', '👨‍🚀', '👩‍🚀', '👨‍🚒', '👩‍🚒', '👮', '👮‍♀️', '🕵️', '🕵️‍♀️', '💂', '💂‍♀️', '👷', '👷‍♀️'],
     'Animais': ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐽', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🐣', '🐥', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🐈', '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊️', '🐇', '🦝', '🦨', '🐿️'],
     'Natureza e Clima': ['💐', '🌸', '💮', '🏵️', '🌹', '🥀', '🌺', '🌻', '🌼', '🌷', '🌱', '🌲', '🌳', '🌴', '🌵', '🌾', '🌿', '☘️', '🍀', '🍁', '🍂', '🍃', '🍄', '🌍', '🌕', '🌙', '☀️', '⭐', '☁️', '⛅', '⛈️', '🌧️', '🌨️', '🌩️', '🌪️', '🔥', '🌊'],
@@ -423,18 +417,38 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 )}/>
 
               <FormField control={form.control} name="text" render={({ field }) => (
-                <FormItem><FormLabel>Pergunta / Dica</FormLabel><FormControl><Textarea {...field} placeholder={
-                    questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use 3 underline ___ para a lacuna)" :
-                    questionType === 'organize_syllables' ? "Ex: ORGANIZE AS SÍLABAS E FORME O NOME DO INSETO:" :
-                    questionType === 'memory_game' ? "Ex: ENCONTRE OS PARES CORRESPONDENTES" :
-                    'Ex: QUAL É A COR DO SOL?'
-                } /></FormControl><FormMessage /></FormItem>
+                <FormItem>
+                  <FormLabel>Pergunta / Dica</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field}
+                      onFocus={() => setFocusedInput('text')}
+                      placeholder={
+                        questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use 3 underline ___ para a lacuna)" :
+                        questionType === 'organize_syllables' ? "Ex: ORGANIZE AS SÍLABAS E FORME O NOME DO INSETO:" :
+                        questionType === 'memory_game' ? "Ex: ENCONTRE OS PARES CORRESPONDENTES" :
+                        'Ex: QUAL É A COR DO SOL?'
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}/>
 
               <FormField control={form.control} name="text2" render={({ field }) => (
-                <FormItem><FormLabel>Imagem / Complemento (Opcional)</FormLabel><FormControl><Textarea {...field} onFocus={() => setFocusedInput('text2')} placeholder={
-                    questionType === 'organize_syllables' ? 'Ex: 🦋' : 'Ex: ☀️'
-                } /></FormControl><FormMessage /></FormItem>
+                <FormItem>
+                  <FormLabel>Imagem / Complemento (Opcional)</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field} 
+                      onFocus={() => setFocusedInput('text2')} 
+                      placeholder={
+                        questionType === 'organize_syllables' ? 'Ex: 🦋' : 'Ex: ☀️'
+                      } 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}/>
 
               <div className="space-y-3 rounded-lg border p-4">
@@ -1163,7 +1177,7 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
       
       const addPageNumbers = () => {
         const pageCount = pdf.internal.pages.length - 1;
-        for(let i = 1; i <= pageCount; i++) {
+        for(let i = 1; i <= pageCount, i++) {
             pdf.setPage(i);
             pdf.setFontSize(9);
             pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
@@ -1369,7 +1383,7 @@ function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenChange, 
         
         const addPageNumbers = () => {
             const pageCount = pdf.internal.pages.length - 1;
-            for(let i = 1; i <= pageCount; i++) {
+            for(let i = 1; i <= pageCount, i++) {
                 pdf.setPage(i);
                 pdf.setFontSize(9);
                 pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
