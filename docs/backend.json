@@ -115,7 +115,8 @@
           "type": "string",
           "enum": [
             "matematica",
-            "portugues"
+            "portugues",
+            "memoria"
           ]
         },
         "difficulty": {
@@ -193,7 +194,8 @@
           "type": "string",
           "enum": [
             "matematica",
-            "portugues"
+            "portugues",
+            "memoria"
           ]
         },
         "description": {
@@ -408,5 +410,3 @@
     "reasoning": "The Firestore structure is designed to provide a clear separation between teacher and student data, ensuring efficient data access and security. The primary principle applied is Authorization Independence by avoiding `get()` calls in the security rules. This is achieved by structuring the data in a way that allows authorization to be determined based on the path and the user's authentication status, eliminating the need to fetch parent document data. The structure utilizes hierarchical paths to establish clear ownership for user-created content (Tasks, Exercises). For the QAPs requirement, the design segregates data based on ownership and role (teacher/student), thus filtering during list operations can be achieved securely using path-based rules. Tasks are organized under students, with a reference to the teacher who assigned them, enabling secure and efficient retrieval of tasks by students or teachers. Denormalization is used to include any necessary authorization data directly within the Task document (e.g., the studentId and the full question data)."
   }
 }
-
-    

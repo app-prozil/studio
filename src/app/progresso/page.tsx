@@ -21,7 +21,7 @@ type PerformanceQuestion = {
 
 type Task = {
   id: string;
-  subject: 'matematica' | 'portugues';
+  subject: 'matematica' | 'portugues' | 'memoria';
   isCompleted: boolean;
   completedAt?: string;
   studentId: string;
@@ -42,6 +42,10 @@ const chartConfig = {
   portugues: {
     label: 'Português',
     color: 'hsl(var(--primary))',
+  },
+  memoria: {
+    label: 'Memória',
+    color: 'hsl(var(--chart-3))',
   },
 } satisfies ChartConfig;
 
@@ -72,7 +76,7 @@ function ProgressDashboard({ tasks, name }: { tasks: Task[] | null, name: string
       return completedDate.getMonth() === currentMonth && completedDate.getFullYear() === currentYear;
     }).length;
 
-    const monthlyData: { [key: string]: { matematica: number[], portugues: number[] } } = {};
+    const monthlyData: { [key: string]: { matematica: number[], portugues: number[], memoria: number[] } } = {};
 
     validTasks.forEach(task => {
       if (!task.completedAt) return;
@@ -80,25 +84,29 @@ function ProgressDashboard({ tasks, name }: { tasks: Task[] | null, name: string
       const monthKey = format(date, 'MMM', { locale: ptBR }).toLowerCase();
       
       if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { matematica: [], portugues: [] };
+        monthlyData[monthKey] = { matematica: [], portugues: [], memoria: [] };
       }
 
       const score = (task.questions.filter(q => q.status === 'correct').length / task.questions.length) * 100;
       
       if (task.subject === 'matematica') {
         monthlyData[monthKey].matematica.push(score);
-      } else {
+      } else if (task.subject === 'portugues') {
         monthlyData[monthKey].portugues.push(score);
+      } else if (task.subject === 'memoria') {
+        monthlyData[monthKey].memoria.push(score);
       }
     });
     
     const chartData = Object.keys(monthlyData).map(month => {
       const matScores = monthlyData[month].matematica;
       const porScores = monthlyData[month].portugues;
+      const memScores = monthlyData[month].memoria;
       return {
         month: month.charAt(0).toUpperCase() + month.slice(1),
         matematica: matScores.length > 0 ? Math.round(matScores.reduce((a, b) => a + b, 0) / matScores.length) : null,
         portugues: porScores.length > 0 ? Math.round(porScores.reduce((a, b) => a + b, 0) / porScores.length) : null,
+        memoria: memScores.length > 0 ? Math.round(memScores.reduce((a, b) => a + b, 0) / memScores.length) : null,
       };
     });
     
@@ -159,6 +167,7 @@ function ProgressDashboard({ tasks, name }: { tasks: Task[] | null, name: string
                 <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
                 <Bar dataKey="matematica" fill="var(--color-matematica)" radius={4} />
                 <Bar dataKey="portugues" fill="var(--color-portugues)" radius={4} />
+                <Bar dataKey="memoria" fill="var(--color-memoria)" radius={4} />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>

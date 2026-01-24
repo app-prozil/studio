@@ -88,7 +88,7 @@ const taskSchema = z.object({
   studentProzilId: z.string().min(1, { message: "É obrigatório selecionar um aluno." }),
   description: z.string().optional(),
   dueDate: z.string().min(1, { message: "A data de entrega é obrigatória." }),
-  subject: z.enum(['matematica', 'portugues']),
+  subject: z.enum(['matematica', 'portugues', 'memoria']),
   taskType: z.enum(['jogo_interativo', 'folha_imprimivel']),
   questions: z.array(performanceQuestionSchema).min(1, { message: "A tarefa deve ter pelo menos um exercício." }),
   isCompleted: z.boolean(),
@@ -110,7 +110,7 @@ const exerciseObjectSchema = z.object({
   text2: z.string().optional(),
   options: z.array(z.string()).min(2, "Deve haver pelo menos 2 itens.").max(12, "Máximo de 12 itens (6 pares)."),
   answer: z.string(),
-  subject: z.enum(['matematica', 'portugues']),
+  subject: z.enum(['matematica', 'portugues', 'memoria']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
 });
 
@@ -175,7 +175,7 @@ type Task = {
   studentProzilId: string;
   studentName?: string;
   teacherName?: string;
-  subject: 'matematica' | 'portugues';
+  subject: 'matematica' | 'portugues' | 'memoria';
   taskType: 'jogo_interativo' | 'folha_imprimivel';
   isCompleted: boolean;
   completedAt?: string;
@@ -197,7 +197,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [isSeeding, setIsSeeding] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
-  const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
+  const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues' | 'memoria'>('all');
   const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game'>('all');
   const [focusedInput, setFocusedInput] = useState<string | null>('text');
 
@@ -494,7 +494,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <FormField control={form.control} name="subject" render={({ field }) => (
-                  <FormItem><FormLabel>Matéria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="matematica">Matemática</SelectItem><SelectItem value="portugues">Português</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Matéria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="matematica">Matemática</SelectItem><SelectItem value="portugues">Português</SelectItem><SelectItem value="memoria">Memória</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                 )}/>
                 <FormField control={form.control} name="difficulty" render={({ field }) => (
                   <FormItem><FormLabel>Dificuldade</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="easy">Fácil</SelectItem><SelectItem value="medium">Médio</SelectItem><SelectItem value="hard">Difícil</SelectItem></SelectContent></Select><FormMessage /></FormItem>
@@ -586,6 +586,9 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <Button variant={subjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('portugues')}>
                       Português ({exercises?.filter(e => e.subject === 'portugues').length || 0})
                   </Button>
+                  <Button variant={subjectFilter === 'memoria' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('memoria')}>
+                      Memória ({exercises?.filter(e => e.subject === 'memoria').length || 0})
+                  </Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium pr-2">Tipo de Jogo:</span>
@@ -619,7 +622,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <p className="font-semibold">{ex.text}{ex.text2 && ` ${ex.text2}`}</p>
                   <p className="text-sm text-muted-foreground">Resposta: {ex.answer}</p>
                   <div className="flex gap-2 mt-1 flex-wrap">
-                    <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
+                    <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : ex.subject === 'portugues' ? 'Português' : 'Memória'}</Badge>
                     <Badge variant="outline">{ex.difficulty}</Badge>
                     <Badge variant={
                         (ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'default'
@@ -675,7 +678,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
-  const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
+  const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues' | 'memoria'>('all');
   const [bankQuestionTypeFilter, setBankQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game'>('all');
   const [isStudentSelectorOpen, setIsStudentSelectorOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
@@ -917,7 +920,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
 
                 <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel>Matéria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="matematica">Matemática</SelectItem><SelectItem value="portugues">Português</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel>Matéria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="matematica">Matemática</SelectItem><SelectItem value="portugues">Português</SelectItem><SelectItem value="memoria">Memória</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                     <FormField control={form.control} name="taskType" render={({ field }) => (<FormItem><FormLabel>Tipo de Tarefa</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="jogo_interativo">Jogo Interativo</SelectItem><SelectItem value="folha_imprimivel">Folha Imprimível</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                 </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
@@ -1083,6 +1086,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                     <Button variant={bankSubjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('all')}>Todos</Button>
                     <Button variant={bankSubjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('matematica')}>Matemática</Button>
                     <Button variant={bankSubjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('portugues')}>Português</Button>
+                    <Button variant={bankSubjectFilter === 'memoria' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('memoria')}>Memória</Button>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium pr-4">Filtrar por Jogo:</span>
@@ -1113,7 +1117,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                           <label htmlFor={`bank-${ex.id}`} className="flex-1 cursor-pointer">
                               <p className="font-semibold">{ex.text}{ex.text2 && ` ${ex.text2}`}</p>
                               <div className="flex gap-2 mt-1 flex-wrap">
-                                  <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
+                                  <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : ex.subject === 'portugues' ? 'Português' : 'Memória'}</Badge>
                                   <Badge variant="outline">{ex.difficulty}</Badge>
                                    <Badge variant={
                                         (ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'default'
@@ -1700,4 +1704,5 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
 

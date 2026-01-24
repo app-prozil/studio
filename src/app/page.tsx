@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Book, Calculator, Printer, LogIn } from 'lucide-react';
+import { ArrowRight, Book, Calculator, Printer, LogIn, Puzzle } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function Home() {
   const mathImage = PlaceHolderImages.find(img => img.id === 'math-learning');
   const portugueseImage = PlaceHolderImages.find(img => img.id === 'portuguese-reading');
+  const memoryImage = PlaceHolderImages.find(img => img.id === 'memory-game');
   const printingImage = PlaceHolderImages.find(img => img.id === 'printable-worksheets');
   
   const { user, isUserLoading } = useUser();
@@ -38,6 +39,7 @@ export default function Home() {
 
   const hasMathTask = tasks?.some(t => t.subject === 'matematica');
   const hasPortugueseTask = tasks?.some(t => t.subject === 'portugues');
+  const hasMemoryTask = tasks?.some(t => t.subject === 'memoria');
 
   // Unified loading state
   const isLoading = isUserLoading || (user && (isTeacherLoading || isStudentLoading || isLoadingTasks));
@@ -71,7 +73,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2">
         <Card className="flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -157,9 +159,52 @@ export default function Home() {
              )}
           </CardFooter>
         </Card>
+        
+        <Card className="flex flex-col">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Puzzle className="w-8 h-8 text-primary" />
+              <span className="text-2xl font-headline">Jogos da Memória</span>
+            </CardTitle>
+            <CardDescription>
+              {isTeacherOrAdmin
+                ? "Crie jogos de memória para associar conceitos."
+                : "Desafie sua memória e encontre os pares."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow">
+            {memoryImage && <div className="relative h-48 mb-4 overflow-hidden rounded-lg">
+                <Image
+                  src={memoryImage.imageUrl}
+                  alt={memoryImage.description}
+                  fill
+                  style={{ objectFit: 'cover' }}
+                  data-ai-hint={memoryImage.imageHint}
+                />
+            </div>}
+            <p className="mb-4 text-muted-foreground">
+              Associe palavras, imagens e números de forma divertida e interativa.
+            </p>
+          </CardContent>
+          <CardFooter>
+            {user ? (
+                <Button asChild className="w-full" disabled={isStudent && !hasMemoryTask}>
+                  <Link href={isTeacherOrAdmin ? '/tarefas' : (isStudent ? '/tarefas' : '/memoria')}>
+                    {isTeacherOrAdmin ? "Criar Jogo da Memória" : (isStudent ? 'Ver Tarefas' : 'Começar a Jogar')} <ArrowRight className="ml-2" />
+                  </Link>
+                </Button>
+            ) : (
+                <Button asChild className="w-full">
+                  <Link href="/login">
+                    Logar para Visualizar <LogIn className="ml-2" />
+                  </Link>
+                </Button>
+            )}
+          </CardFooter>
+        </Card>
 
         {showPrintCard && (
-          <Card className="flex flex-col md:col-span-2 lg:col-span-1">
+          <Card className="flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Printer className="w-8 h-8 text-primary" />

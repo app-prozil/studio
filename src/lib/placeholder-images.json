@@ -9,7 +9,7 @@
     {
       "id": "portuguese-reading",
       "description": "Child focused on reading a large print book",
-      "imageUrl": "https://images.unsplash.com/photo-1666888740974-3e31589c16b7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjaGlsZCUyMHJlYWRpbmclMjBib29rfGVufDB8fHx8MTc2ODQ3NjQ2MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1666888740974-3e31589c16b7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjaGlsZCUyMHJlYWRpbmclMjBib29rfGVufDB8fHx8fDE3Njg0NzY0NjB8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "child reading book"
     },
     {
@@ -17,6 +17,12 @@
       "description": "Neatly arranged printed worksheets on a desk",
       "imageUrl": "https://images.unsplash.com/photo-1581019055756-93b5361f9536?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwcmludGVkJTIwd29ya3NoZWV0c3xlbnwwfHx8fDE3Njg0NzY0NjB8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "printed worksheets"
+    },
+    {
+      "id": "memory-game",
+      "description": "Colorful memory game cards spread on a table",
+      "imageUrl": "https://images.unsplash.com/photo-1721333088921-98b778ea472f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtZW1vcnklMjBnYW1lfGVufDB8fHx8MTc2OTE2Njc3Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "memory game"
     }
   ]
 }

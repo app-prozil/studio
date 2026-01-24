@@ -31,7 +31,7 @@ type Task = {
     teacherId: string;
     studentId: string;
     questions: Question[];
-    subject: 'math' | 'portuguese';
+    subject: 'math' | 'portuguese' | 'memoria';
     studentName?: string;
     isCompleted?: boolean;
     // Performance fields
@@ -69,6 +69,10 @@ const testDrivePortugueseQuestions: Question[] = [
     { text: "QUAL O FEMININO DE 'PAI'?", options: ["TIA", "MÃE", "AVÓ"], answer: "MÃE", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
 ];
 
+const testDriveMemoryQuestions: Question[] = [
+    { text: "ENCONTRE OS PARES: ANIMAL E SOM", questionType: 'memory_game', options: ["GATO", "MIAU", "CÃO", "AU AU", "VACA", "MUUU"], answer: "N/A", status: 'unanswered', attempts: 0 },
+    { text: "ENCONTRE OS PARES: SOMA E RESULTADO", questionType: 'memory_game', options: ["2+2", "4", "5+3", "8", "1+1", "2"], answer: "N/A", status: 'unanswered', attempts: 0 },
+];
 
 const testDriveTaskBase = {
   id: 'test-drive',
@@ -80,7 +84,7 @@ const testDriveTaskBase = {
 
 
 type InteractiveGameProps = {
-  subject: 'math' | 'portuguese';
+  subject: 'math' | 'portuguese' | 'memoria';
 };
 
 function useWindowSize() {
@@ -151,7 +155,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
     if (isTestDrive) {
       setGameState('loading');
-      const questionsForTest = subject === 'math' ? testDriveMathQuestions : testDrivePortugueseQuestions;
+      const questionsForTest = 
+        subject === 'math' ? testDriveMathQuestions 
+        : subject === 'portuguese' ? testDrivePortugueseQuestions
+        : testDriveMemoryQuestions;
       const mockTask: Task = { ...testDriveTaskBase, questions: questionsForTest, subject };
       setTask(mockTask);
       setQuestions(mockTask.questions.map(q => ({...q, status: 'unanswered', attempts: 0 })));

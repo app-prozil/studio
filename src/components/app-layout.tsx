@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User as UserIcon, LogIn, ClipboardCheck, Shield } from 'lucide-react';
+import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User as UserIcon, LogIn, ClipboardCheck, Shield, Puzzle } from 'lucide-react';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -37,6 +37,7 @@ const menuItems = [
   { href: '/', label: 'Início', icon: Home },
   { href: '/matematica', label: 'Matemática', icon: Calculator },
   { href: '/portugues', label: 'Português', icon: Book },
+  { href: '/memoria', label: 'Memória', icon: Puzzle },
   { href: '/tarefas', label: 'Tarefas', icon: ClipboardCheck },
   { href: '/imprimir', label: 'Imprimir', icon: Printer },
   { href: '/progresso', label: 'Progresso', icon: BarChart },

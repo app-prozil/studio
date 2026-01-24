@@ -34,7 +34,7 @@ type Task = {
   studentProzilId: string;
   studentName?: string;
   teacherName?: string;
-  subject: 'matematica' | 'portugues';
+  subject: 'matematica' | 'portugues' | 'memoria';
   taskType: 'jogo_interativo' | 'folha_imprimivel';
   isCompleted: boolean;
   completedAt?: string;
@@ -118,7 +118,7 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
                                      <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> Enviada em {format(new Date(task.createdAt), "dd/MM/yyyy", { locale: ptBR })}</span>
                                    )}
                                    <span className="flex items-center gap-1">
-                                    <BookOpen className="w-3 h-3"/> {task.subject === 'matematica' ? 'Matemática' : 'Português'}
+                                    <BookOpen className="w-3 h-3"/> {task.subject === 'matematica' ? 'Matemática' : task.subject === 'portugues' ? 'Português' : 'Memória'}
                                    </span>
                                    <span className="flex items-center gap-1">
                                     <FileText className="w-3 h-3"/> {task.questions?.length || 0} questões
