@@ -2,6 +2,7 @@
 
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -451,8 +452,10 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                             <FormLabel>{getOptionLabel(index)}</FormLabel>
                             <div className="flex items-center gap-2">
                                 <FormControl><Input {...field} placeholder={getOptionPlaceholder(index)} /></FormControl>
-                                {questionType === 'organize_syllables' && fields.length > 2 && (
-                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                                {questionType === 'organize_syllables' && (
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 2}>
+                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
                                 )}
                             </div>
                             <FormMessage />
@@ -1627,6 +1630,7 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
     
 
     
+
 
 
 
