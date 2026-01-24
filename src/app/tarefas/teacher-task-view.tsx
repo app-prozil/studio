@@ -626,11 +626,14 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     <Badge variant="outline">{ex.difficulty}</Badge>
                     <Badge variant={
                         (ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'default'
-                        : (ex.questionType === 'organize_syllables' ? 'success' : 'secondary')
+                        : (ex.questionType === 'organize_syllables') ? 'success'
+                        : (ex.questionType === 'memory_game') ? 'destructive'
+                        : 'secondary'
                     }>
                         {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
-                        : (ex.questionType === 'organize_syllables' ? 'Organizar' 
-                        : (ex.questionType === 'memory_game' ? 'destructive' : 'M. Escolha'))}
+                        : (ex.questionType === 'organize_syllables') ? 'Organizar' 
+                        : (ex.questionType === 'memory_game') ? 'Memória' 
+                        : 'M. Escolha'}
                     </Badge>
                   </div>
                 </div>
@@ -827,10 +830,10 @@ function TaskManager({ teacherId }: { teacherId: string }) {
         questionType: q.questionType || 'multiple_choice',
       };
       
-      if (q.studentAnswer !== undefined) newQ.studentAnswer = q.studentAnswer;
-      if (q.attempts !== undefined) newQ.attempts = q.attempts;
-      if (q.status !== undefined) newQ.status = q.status;
-      if (q.timeTaken !== undefined) newQ.timeTaken = q.timeTaken;
+      if (q.studentAnswer) newQ.studentAnswer = q.studentAnswer;
+      if (q.attempts) newQ.attempts = q.attempts;
+      if (q.status) newQ.status = q.status;
+      if (q.timeTaken) newQ.timeTaken = q.timeTaken;
 
       return newQ as PerformanceQuestion;
     });
@@ -838,19 +841,20 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     if (editingTask?.id) {
         const taskData: { [key: string]: any } = {
             title: values.title,
-            studentProzilId: values.studentProzilId,
             description: values.description || '',
             dueDate: new Date(values.dueDate).toISOString(),
             subject: values.subject,
             taskType: values.taskType,
             questions: questionsForDb,
             isCompleted: values.isCompleted,
-            studentId: editingTask.studentId,
-            studentName: studentName || editingTask.studentName || 'Aluno',
-            teacherName: teacherName || editingTask.teacherName || 'Professor',
-            teacherId: teacherId,
-            createdAt: editingTask.createdAt || new Date().toISOString(),
         };
+
+        if (values.studentProzilId) taskData.studentProzilId = values.studentProzilId;
+        if (studentName) taskData.studentName = studentName;
+        if (teacherName) taskData.teacherName = teacherName;
+        if (teacherId) taskData.teacherId = teacherId;
+        if (editingTask.studentId) taskData.studentId = editingTask.studentId;
+        if (editingTask.createdAt) taskData.createdAt = editingTask.createdAt;
 
         if (!values.isCompleted && editingTask.isCompleted) {
             taskData.completedAt = deleteField();
@@ -1170,11 +1174,14 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                                   <Badge variant="outline">{ex.difficulty}</Badge>
                                    <Badge variant={
                                         (ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'default'
-                                        : (ex.questionType === 'organize_syllables' ? 'success' : 'secondary')
+                                        : (ex.questionType === 'organize_syllables') ? 'success'
+                                        : (ex.questionType === 'memory_game') ? 'destructive'
+                                        : 'secondary'
                                     }>
                                         {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
-                                        : (ex.questionType === 'organize_syllables' ? 'Organizar' 
-                                        : (ex.questionType === 'memory_game' ? 'destructive' : 'M. Escolha'))}
+                                        : (ex.questionType === 'organize_syllables') ? 'Organizar' 
+                                        : (ex.questionType === 'memory_game') ? 'Memória' 
+                                        : 'M. Escolha'}
                                     </Badge>
                               </div>
                           </label>
@@ -1753,8 +1760,3 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
-
-
-
-
-
