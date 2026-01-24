@@ -109,7 +109,7 @@ const exerciseObjectSchema = z.object({
   text: z.string().min(3, 'A pergunta deve ter pelo menos 3 caracteres.'),
   text2: z.string().optional(),
   options: z.array(z.string()).min(2, "Deve haver pelo menos 2 itens.").max(12, "Máximo de 12 itens (6 pares)."),
-  answer: z.string().min(1, 'A resposta correta é obrigatória.'),
+  answer: z.string(),
   subject: z.enum(['matematica', 'portugues']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
 });
@@ -135,6 +135,17 @@ const exerciseSchema = exerciseObjectSchema.refine(
     {
         message: "O Jogo da Memória deve ter um número par de itens para formar os pares.",
         path: ["options"],
+    }
+).refine(
+    (data) => {
+        if (data.questionType !== 'memory_game') {
+            return data.answer.trim().length > 0;
+        }
+        return true;
+    },
+    {
+        message: "A resposta correta é obrigatória para este tipo de atividade.",
+        path: ["answer"],
     }
 );
 
@@ -1689,3 +1700,4 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
