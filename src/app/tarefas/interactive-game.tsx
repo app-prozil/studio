@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -19,7 +18,7 @@ type Question = {
   text2?: string;
   options: string[];
   answer: string;
-  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game';
   // Performance fields
   studentAnswer?: string;
   attempts?: number;
@@ -42,6 +41,7 @@ type Task = {
 
 const testDriveMathQuestions: Question[] = [
     { text: 'QUANTO É 5 + 3?', options: ['7', '8', '9'], answer: '8', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
+    { text: "ENCONTRE OS PARES: SOMA E RESULTADO", questionType: 'memory_game', options: ["2+2", "4", "5+3", "8", "1+1", "2"], answer: "N/A", status: 'unanswered', attempts: 0 },
     { text: 'QUAL NÚMERO VEM DEPOIS DE 9?', options: ['8', '10', '11'], answer: '10', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
     { text: 'CONTE OS EMOJIS:', text2: '👍👍👍👍👍', options: ['4', '5', '6'], answer: '5', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
     { text: 'QUANTO É 4 - 2?', options: ['1', '2', '3'], answer: '2', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
@@ -56,6 +56,7 @@ const testDriveMathQuestions: Question[] = [
 
 const testDrivePortugueseQuestions: Question[] = [
     { text: "QUAL O SINÔNIMO DE 'BONITO'?", options: ["FEIO", "BELO", "GRANDE"], answer: "BELO", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
+    { text: "ENCONTRE OS PARES: ANIMAL E SOM", questionType: 'memory_game', options: ["GATO", "MIAU", "CÃO", "AU AU", "VACA", "MUUU"], answer: "N/A", status: 'unanswered', attempts: 0 },
     { text: "COMPLETE COM O VERBO CORRETO: EU ___ PÃO.", options: ["COMO", "COME", "COMEMOS"], answer: "COMO", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
     { text: "O PLURAL DE 'MENINO' É ___.", options: ["MENINA", "MENINOS", "MENINAS"], answer: "MENINOS", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
     { text: "O CONTRÁRIO DE 'ABRIR' É ___.", options: ["FECHAR", "CORRER", "PULAR"], answer: "FECHAR", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
@@ -120,6 +121,11 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   // State for organize_syllables game
   const [constructedSyllables, setConstructedSyllables] = useState<string[]>([]);
   const [availableSyllables, setAvailableSyllables] = useState<string[]>([]);
+  
+  // State for memory_game
+  const [flippedCards, setFlippedCards] = useState<number[]>([]);
+  const [matchedPairs, setMatchedPairs] = useState<string[]>([]);
+  const [isChecking, setIsChecking] = useState(false);
 
 
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
@@ -201,6 +207,11 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   useEffect(() => {
     setQuestionStartTime(Date.now());
+    // Reset game-specific state when question changes
+    setFlippedCards([]);
+    setMatchedPairs([]);
+    setIsChecking(false);
+    setConstructedSyllables([]);
   }, [currentQuestionIndex]);
   
   // This useEffect handles shuffling options for all game types
@@ -345,6 +356,52 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         handleAnswer(constructedSyllables.join(''));
     }
   }, [availableSyllables, constructedSyllables, questionType, handleAnswer]);
+
+  // Memory Game: check for matches
+  useEffect(() => {
+    if (questionType !== 'memory_game' || flippedCards.length !== 2) return;
+
+    setIsChecking(true);
+    const [firstIndex, secondIndex] = flippedCards;
+    const firstCardValue = shuffledOptions[firstIndex];
+    const secondCardValue = shuffledOptions[secondIndex];
+
+    const originalOptions = currentQuestion.options;
+    let isMatch = false;
+    for (let i = 0; i < originalOptions.length; i += 2) {
+        const pair1 = originalOptions[i];
+        const pair2 = originalOptions[i + 1];
+        if ((firstCardValue === pair1 && secondCardValue === pair2) || (firstCardValue === pair2 && secondCardValue === pair1)) {
+            isMatch = true;
+            break;
+        }
+    }
+
+    if (isMatch) {
+        const newMatchedPairs = [...matchedPairs, firstCardValue, secondCardValue];
+        setMatchedPairs(newMatchedPairs);
+        setFlippedCards([]);
+        setIsChecking(false);
+
+        if (newMatchedPairs.length === originalOptions.length) {
+            setTimeout(() => {
+                handleAnswer(currentQuestion.answer); // "N/A"
+            }, 500);
+        }
+    } else {
+        setTimeout(() => {
+            setFlippedCards([]);
+            setIsChecking(false);
+        }, 1200);
+    }
+  }, [flippedCards, currentQuestion, matchedPairs, shuffledOptions, handleAnswer, questionType]);
+
+  const handleCardClick = (index: number) => {
+    if (isChecking || flippedCards.length >= 2 || flippedCards.includes(index) || matchedPairs.includes(shuffledOptions[index])) {
+      return;
+    }
+    setFlippedCards(prev => [...prev, index]);
+  };
 
 
   useEffect(() => {
@@ -535,6 +592,35 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                         </Button>
                     ))}
                  </div>
+            </div>
+        )}
+        
+        {questionType === 'memory_game' && (
+            <div className={cn(
+                "grid gap-4",
+                shuffledOptions.length > 8 ? "grid-cols-4" : "grid-cols-3"
+            )}>
+                {shuffledOptions.map((option, index) => {
+                    const isFlipped = flippedCards.includes(index) || matchedPairs.includes(option);
+                    const isMatched = matchedPairs.includes(option);
+                    
+                    return (
+                        <button
+                            key={index}
+                            onClick={() => handleCardClick(index)}
+                            disabled={isChecking || isFlipped}
+                            className={cn(
+                                "h-32 rounded-lg text-3xl font-bold flex items-center justify-center transition-colors duration-300",
+                                "focus:ring-4 focus:ring-ring focus:ring-offset-2 focus:outline-none",
+                                isFlipped ? 'bg-secondary text-secondary-foreground' : 'bg-primary text-primary-foreground',
+                                isMatched && 'border-4 border-success !bg-success/20',
+                                !isFlipped && 'hover:bg-primary/90'
+                            )}
+                        >
+                            {isFlipped ? option : '?'}
+                        </button>
+                    );
+                })}
             </div>
         )}
 
