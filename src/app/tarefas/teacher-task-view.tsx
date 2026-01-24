@@ -1,6 +1,7 @@
 
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -459,7 +460,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     )}/>
                 ))}
                  {questionType === 'organize_syllables' && fields.length < 6 && (
-                    <Button type="button" variant="outline" size="sm" onClick={() => append({ value: "" })}><PlusCircle className="mr-2" /> Adicionar Sílaba</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => append("")}><PlusCircle className="mr-2" /> Adicionar Sílaba</Button>
                 )}
               </div>
               
@@ -1626,5 +1627,6 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
     
 
     
+
 
 
