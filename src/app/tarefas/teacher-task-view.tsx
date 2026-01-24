@@ -115,20 +115,7 @@ const exerciseObjectSchema = z.object({
   difficulty: z.enum(['easy', 'medium', 'hard']),
 });
 
-const exerciseSchema = exerciseObjectSchema.refine(data => {
-    if (data.options.some(o => o.trim() === '')) {
-      return false; // Fail if any option is empty
-    }
-    if (data.questionType === 'multiple_choice' || data.questionType === 'fill_in_the_blank') {
-        if (data.options.length !== 3) return false;
-        return data.options.map(o => o.toUpperCase()).includes(data.answer.toUpperCase());
-    }
-    // For organize_syllables, we trust the auto-generated answer, but still check for empty syllables
-    return true;
-}, {
-    message: "Para M. Escolha/Completar, deve haver 3 opções não vazias e a resposta deve ser uma delas. Para Organizar Sílabas, deve haver de 2 a 6 sílabas não vazias.",
-    path: ['options'],
-});
+const exerciseSchema = exerciseObjectSchema;
 
 
 type Exercise = z.infer<typeof exerciseSchema>;
@@ -201,7 +188,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     defaultValues: { text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice' },
   });
   
-  const { watch, setValue, control } = form;
+  const { watch, setValue, control, getValues } = form;
   const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "options"
@@ -294,17 +281,22 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     }
   }, [editingExercise, form, resetForm, replace]);
   
+  const watchedOptions = watch('options');
   useEffect(() => {
     if (questionType === 'fill_in_the_blank') {
-      const firstOption = watch('options.0');
-      setValue('answer', firstOption || '', { shouldValidate: false });
+      const firstOption = Array.isArray(watchedOptions) ? watchedOptions[0] : '';
+      if (getValues('answer') !== (firstOption || '')) {
+        setValue('answer', firstOption || '', { shouldValidate: false });
+      }
     } else if (questionType === 'organize_syllables') {
-       const syllables = watch('options');
-       if (Array.isArray(syllables)) {
-         setValue('answer', syllables.join(''), { shouldValidate: false });
+       if (Array.isArray(watchedOptions)) {
+         const newAnswer = watchedOptions.join('');
+         if (getValues('answer') !== newAnswer) {
+           setValue('answer', newAnswer, { shouldValidate: false });
+         }
        }
     }
-  }, [watch('options'), questionType, setValue, watch]);
+  }, [JSON.stringify(watchedOptions), questionType, setValue, getValues]);
 
 
   const onSubmit = (values: Exercise) => {
@@ -893,7 +885,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                             {selectedExercises.map((ex, index) => (
                             <li key={ex.id || index} className="flex items-center justify-between p-2 border rounded-md">
                                 <span className="truncate">{ex.text}{ex.text2 && ` ${ex.text2}`}</span>
-                                <Button type="button" variant="ghost" size="icon" onClick={() => setSelectedExercises(prev => prev.filter(p => p.id !== ex.id))}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                                <Button type="button" variant="ghost" size="icon" onClick={()={() => setSelectedExercises(prev => prev.filter(p => p.id !== ex.id))}><Trash2 className="w-4 h-4 text-destructive"/></Button>
                             </li> 
                             ))}
                         </ul>
@@ -987,7 +979,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                     <div 
                     key={student.id} 
                     className="p-3 border rounded-md cursor-pointer hover:bg-muted"
-                    onClick={() => {
+                    onClick={()={() => {
                         if (student.prozilId) {
                           form.setValue('studentProzilId', student.prozilId);
                           setIsStudentSelectorOpen(false);
@@ -1625,3 +1617,4 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
   );
 }
 
+    
