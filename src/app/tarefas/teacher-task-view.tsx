@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, updateDoc, deleteDoc, writeBatch, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, deleteDoc, writeBatch, getDoc, getDocs, query, where, deleteField } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Button } from '@/components/ui/button';
@@ -836,7 +836,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     });
 
     if (editingTask?.id) {
-        const taskData = {
+        const taskData: { [key: string]: any } = {
             title: values.title,
             studentProzilId: values.studentProzilId,
             description: values.description || '',
@@ -846,11 +846,19 @@ function TaskManager({ teacherId }: { teacherId: string }) {
             questions: questionsForDb,
             isCompleted: values.isCompleted,
             studentId: editingTask.studentId,
-            studentName: studentName,
-            teacherName: teacherName,
+            studentName: studentName || editingTask.studentName || 'Aluno',
+            teacherName: teacherName || editingTask.teacherName || 'Professor',
             teacherId: teacherId,
-            createdAt: editingTask.createdAt, 
+            createdAt: editingTask.createdAt || new Date().toISOString(),
         };
+
+        if (!values.isCompleted && editingTask.isCompleted) {
+            taskData.completedAt = deleteField();
+            taskData.totalTime = deleteField();
+        } else if (values.isCompleted && !editingTask.isCompleted) {
+            taskData.completedAt = new Date().toISOString();
+        }
+
         const teacherTaskRef = doc(firestore, 'teachers', teacherId, 'tasks', editingTask.id);
         const studentTaskRef = doc(firestore, 'students', editingTask.studentId, 'tasks', editingTask.id);
         
@@ -1745,6 +1753,7 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
 
 
 
