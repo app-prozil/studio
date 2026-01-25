@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Moon, Sun, Monitor, TestTube } from 'lucide-react';
+import { Moon, Sun, Monitor, TestTube, Venus, Mars } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
@@ -37,7 +37,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label className="text-lg">Esquema de Cores</Label>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <Button variant={theme === 'light' ? 'default' : 'outline'} onClick={() => setTheme('light')} className="h-20 flex flex-col gap-2 text-lg">
                 <Sun className="w-8 h-8"/>
                 Claro
@@ -49,6 +49,14 @@ export default function SettingsPage() {
               <Button variant={theme === 'system' ? 'default' : 'outline'} onClick={() => setTheme('system')} className="h-20 flex flex-col gap-2 text-lg">
                 <Monitor className="w-8 h-8"/>
                 Sistema
+              </Button>
+              <Button variant={theme === 'pink' ? 'default' : 'outline'} onClick={() => setTheme('pink')} className="h-20 flex flex-col gap-2 text-lg bg-pink-500/10 border-pink-500/20 text-pink-700 dark:bg-pink-500/10 dark:text-pink-300">
+                <Venus className="w-8 h-8"/>
+                Rosa
+              </Button>
+              <Button variant={theme === 'blue' ? 'default' : 'outline'} onClick={() => setTheme('blue')} className="h-20 flex flex-col gap-2 text-lg bg-blue-500/10 border-blue-500/20 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                <Mars className="w-8 h-8"/>
+                Azul
               </Button>
             </div>
           </div>

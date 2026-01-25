@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'dark' | 'light' | 'system';
+type Theme = 'dark' | 'light' | 'system' | 'pink' | 'blue';
 
 type ThemeProviderProps = {
   children: React.ReactNode;
@@ -42,7 +42,7 @@ export function ThemeProvider({
   useEffect(() => {
     const root = window.document.documentElement;
 
-    root.classList.remove('dark', 'light');
+    root.classList.remove('dark', 'light', 'pink', 'blue');
 
     let effectiveTheme = theme;
     if (theme === 'system' && enableSystem) {
