@@ -18,7 +18,7 @@ type Question = {
   text2?: string;
   options: string[];
   answer: string;
-  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence';
   categories?: string[];
   categoryItems?: { item: string, category: string }[];
   // Performance fields
@@ -132,6 +132,11 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     incorrectCategory: string | null;
   }>({ unplacedItems: [], placedItems: {}, selectedItem: null, incorrectCategory: null });
 
+  // State for organize_sentence
+  const [constructedSentence, setConstructedSentence] = useState<string[]>([]);
+  const [availableSentenceWords, setAvailableSentenceWords] = useState<string[]>([]);
+  const [isWrongSentenceShake, setIsWrongSentenceShake] = useState(false);
+
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const taskStartTime = useMemo(() => Date.now(), []);
 
@@ -238,6 +243,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setGuessedLetters({});
     setChancesLeft(6);
     setAnimatingHeartIndex(null);
+    setConstructedSentence([]);
+    setAvailableSentenceWords([]);
+    setIsWrongSentenceShake(false);
     if (currentQuestion?.questionType === 'organize_categories') {
       const items = [...(currentQuestion.categoryItems || [])].sort(() => Math.random() - 0.5);
       const initialPlaced = currentQuestion.categories?.reduce((acc, cat) => ({...acc, [cat]: []}), {}) || {};
@@ -264,6 +272,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       if (currentQ.questionType === 'organize_syllables') {
           setAvailableSyllables(options);
           setConstructedSyllables([]);
+      } else if (currentQ.questionType === 'organize_sentence') {
+          setAvailableSentenceWords(options);
+          setConstructedSentence([]);
       } else {
           setShuffledOptions(options);
       }
@@ -575,6 +586,53 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       setTimeout(() => {
         setOrganizeCategoryState(prev => ({ ...prev, incorrectCategory: null }));
       }, 500);
+    }
+  };
+
+  // Handlers for "Organize Sentence" game
+  const handleSelectSentenceWord = (word: string) => {
+    if (gameState !== 'playing') return;
+    setConstructedSentence(prev => [...prev, word]);
+    setAvailableSentenceWords(prev => prev.filter(w => w !== word));
+  };
+
+  const handleDeselectSentenceWord = (word: string, index: number) => {
+    if (gameState !== 'playing') return;
+    setAvailableSentenceWords(prev => [...prev, word]);
+    setConstructedSentence(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleClearSentence = () => {
+    if (gameState !== 'playing') return;
+    setAvailableSentenceWords(prev => [...prev, ...constructedSentence].sort(() => Math.random() - 0.5));
+    setConstructedSentence([]);
+  };
+
+  const handleCheckSentence = () => {
+    if (gameState !== 'playing' || constructedSentence.length === 0) return;
+    
+    const userAnswer = constructedSentence.join(' ');
+    const isAnswerCorrect = userAnswer.toUpperCase() === currentQuestion.answer.toUpperCase();
+
+    if (isAnswerCorrect) {
+      try {
+        const utterance = new SpeechSynthesisUtterance(currentQuestion.answer);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
+        console.error("Speech synthesis failed.", e);
+      }
+      handleAnswer(userAnswer);
+    } else {
+      setIsWrongSentenceShake(true);
+      setTimeout(() => setIsWrongSentenceShake(false), 600);
+      toast({
+        variant: 'destructive',
+        title: 'Quase lá!',
+        description: 'A ordem das palavras não parece correta. Tente de novo!',
+        duration: 2500,
+      });
     }
   };
 
@@ -938,6 +996,57 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
               </div>
             </div>
           );
+        })()}
+
+        {questionType === 'organize_sentence' && (() => {
+            return (
+                <div className="space-y-6">
+                    <div className={cn("relative p-4 sm:p-6 border-4 rounded-lg bg-muted min-h-40 flex items-center justify-center flex-wrap gap-3", isWrongSentenceShake && "animate-shake")}>
+                        {constructedSentence.length === 0 && (
+                            <p className="text-muted-foreground text-center">Clique nas palavras abaixo para montar a frase aqui.</p>
+                        )}
+                        {constructedSentence.map((word, index) => (
+                            <Button
+                                key={`${word}-${index}`}
+                                variant="secondary"
+                                className="h-auto p-3 sm:p-4 text-3xl sm:text-4xl font-bold shadow-lg animate-item-pop-in cursor-pointer"
+                                style={{'--animation-delay': `${index * 50}ms`} as React.CSSProperties}
+                                onClick={() => handleDeselectSentenceWord(word, index)}
+                            >
+                                {word}
+                            </Button>
+                        ))}
+                        {constructedSentence.length > 0 && gameState === 'playing' && (
+                            <Button variant="ghost" size="icon" className="absolute top-2 right-2" onClick={handleClearSentence}>
+                                <RotateCcw className="w-6 h-6" />
+                            </Button>
+                        )}
+                    </div>
+                    <div className="p-4 border rounded-lg min-h-40 bg-muted/50 flex flex-wrap items-center justify-center gap-3">
+                        {availableSentenceWords.map((word, index) => (
+                            <Button
+                                key={`${word}-${index}`}
+                                variant="default"
+                                className="h-auto p-3 sm:p-4 text-3xl sm:text-4xl font-bold shadow-md hover:scale-105 transition-transform"
+                                onClick={() => handleSelectSentenceWord(word)}
+                                disabled={gameState !== 'playing'}
+                            >
+                                {word}
+                            </Button>
+                        ))}
+                    </div>
+                    <div className="flex justify-center">
+                        <Button
+                            size="lg"
+                            className="text-2xl h-14"
+                            onClick={handleCheckSentence}
+                            disabled={gameState !== 'playing' || constructedSentence.length === 0}
+                        >
+                            <CheckCircle className="mr-3" /> Verificar Frase
+                        </Button>
+                    </div>
+                </div>
+            );
         })()}
 
         {gameState === 'showingAnswer' && isCorrect === false && questionType !== 'guess_the_word' && (
