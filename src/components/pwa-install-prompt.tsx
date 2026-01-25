@@ -1,27 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { usePWAInstall } from '@/hooks/use-pwa-install';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 export function PWAInstallPrompt() {
   const { canInstall, isStandalone, triggerInstall } = usePWAInstall();
   const { toast, dismiss } = useToast();
-  const isMobile = useIsMobile();
   const toastId = 'pwa-install-toast';
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    const hasBeenShown = sessionStorage.getItem('pwaInstallPromptShown');
 
-  useEffect(() => {
-    if (mounted && isMobile && canInstall && !isStandalone) {
+    if (canInstall && !isStandalone && !hasBeenShown) {
+      sessionStorage.setItem('pwaInstallPromptShown', 'true');
       toast({
         id: toastId,
+        duration: 300000, // 5 minutes
         title: "Instale o ProZil em seu dispositivo",
         description: "Tenha acesso rápido e uma experiência otimizada adicionando à sua tela inicial.",
         action: (
@@ -36,7 +33,7 @@ export function PWAInstallPrompt() {
         ),
       });
     }
-  }, [mounted, canInstall, isStandalone, isMobile, triggerInstall, toast, dismiss]);
+  }, [canInstall, isStandalone, triggerInstall, toast, dismiss]);
 
   // This component renders nothing itself, it just triggers a toast.
   return null;

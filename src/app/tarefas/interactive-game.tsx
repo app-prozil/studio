@@ -667,17 +667,17 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
         {questionType === 'fill_in_the_blank' ? (
             <>
-                <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
+                <p className={`${subject === 'math' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
                     {renderTextWithBlank(currentQuestion.text, selectedAnswer || '')}
                 </p>
-                {currentQuestion.text2 && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
+                {currentQuestion.text2 && <p className={`${subject === 'math' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
                     {renderTextWithBlank(currentQuestion.text2, selectedAnswer || '')}
                 </p>}
             </>
         ) : (
              <>
-                {currentQuestion.text && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'}`}>{currentQuestion.text}</p>}
-                {currentQuestion.text2 && <p className={`${subject === 'math' ? 'text-6xl font-mono tracking-widest' : 'text-5xl'} mt-4`}>{currentQuestion.text2}</p>}
+                {currentQuestion.text && <p className={`${subject === 'math' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl'}`}>{currentQuestion.text}</p>}
+                {currentQuestion.text2 && <p className={`${subject === 'math' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl'} mt-4`}>{currentQuestion.text2}</p>}
             </>
         )}
       </div>
@@ -747,7 +747,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         
         {questionType === 'memory_game' && (
             <div className={cn(
-                "grid gap-4",
+                "grid gap-2 sm:gap-4",
                 shuffledOptions.length > 8 ? "grid-cols-4" : "grid-cols-3"
             )}>
                 {shuffledOptions.map((option, index) => {
@@ -760,7 +760,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                             onClick={() => handleCardClick(index)}
                             disabled={isChecking || isFlipped}
                             className={cn(
-                                "flip-card h-32 rounded-lg text-3xl font-bold",
+                                "flip-card h-24 sm:h-32 rounded-lg text-2xl sm:text-3xl font-bold",
                                 isFlipped && "flipped"
                             )}
                         >
@@ -771,7 +771,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                                     "focus:ring-4 focus:ring-ring focus:ring-offset-2 focus:outline-none",
                                     "hover:bg-primary/90"
                                 )}>
-                                    <Bot className="w-16 h-16 text-primary-foreground/70" />
+                                    <Bot className="w-12 h-12 sm:w-16 sm:h-16 text-primary-foreground/70" />
                                 </div>
                                 <div className={cn(
                                     "flip-card-back",
@@ -788,14 +788,14 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         )}
 
         {(questionType === 'multiple_choice' || questionType === 'fill_in_the_blank') && (
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
               {shuffledOptions.map((option, index) => (
                 <Button
                   key={index}
                   onClick={() => handleAnswer(option)}
                   variant={selectedAnswer === option ? (isCorrect ? 'success' : 'destructive') : 'default'}
                   className={cn(
-                      'h-32 text-4xl font-bold relative',
+                      'h-28 text-3xl sm:h-32 sm:text-4xl font-bold relative',
                       selectedAnswer === option && 'animate-option-click',
                   )}
                   disabled={gameState !== 'playing'}
@@ -846,7 +846,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                 {/* Word Display */}
                 <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
                   {secretWord.split('').map((letter, index) => (
-                    <div key={`${letter}-${index}`} className="flip-card h-20 w-16">
+                    <div key={`${letter}-${index}`} className="flip-card h-16 w-12 sm:h-20 sm:w-16">
                       <div
                         className={cn(
                           'flip-card-inner',
@@ -854,7 +854,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                         )}
                       >
                         <div className="flip-card-front bg-muted rounded-lg" />
-                        <div className="flip-card-back bg-card rounded-lg flex items-center justify-center text-4xl font-bold uppercase text-primary">
+                        <div className="flip-card-back bg-card rounded-lg flex items-center justify-center text-3xl sm:text-4xl font-bold uppercase text-primary">
                           {letter}
                         </div>
                       </div>
@@ -903,7 +903,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                   <Button
                     key={item.item}
                     variant={organizeCategoryState.selectedItem?.item === item.item ? 'default' : 'secondary'}
-                    className="h-auto p-4 text-5xl font-bold shadow-lg"
+                    className="h-auto p-3 sm:p-4 text-4xl sm:text-5xl font-bold shadow-lg"
                     onClick={() => handleOrganizeItemSelect(item)}
                     disabled={gameState !== 'playing'}
                   >
@@ -927,7 +927,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                       {organizeCategoryState.placedItems[category]?.map(placedItem => (
                         <span
                           key={placedItem}
-                          className="bg-success/20 text-success-foreground p-3 rounded-lg text-5xl font-bold animate-item-pop-in"
+                          className="bg-success/20 text-success-foreground p-2 sm:p-3 rounded-lg text-4xl sm:text-5xl font-bold animate-item-pop-in"
                         >
                           {placedItem}
                         </span>
