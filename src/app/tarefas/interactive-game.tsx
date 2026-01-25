@@ -87,7 +87,7 @@ const testDriveTaskBase = {
 
 
 type InteractiveGameProps = {
-  subject: 'math' | 'portuguese' | 'memoria';
+  subject: 'matematica' | 'portugues' | 'memoria';
 };
 
 interface SentenceWord {
@@ -218,7 +218,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     if (isTestDrive) {
       setGameState('loading');
       const questionsForTest = 
-        subject === 'math' ? testDriveMathQuestions 
+        subject === 'matematica' ? testDriveMathQuestions 
         : subject === 'portugues' ? testDrivePortugueseQuestions
         : testDriveMemoryQuestions;
       const mockTask: Task = { ...testDriveTaskBase, questions: questionsForTest, subject };
@@ -770,17 +770,17 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
         {questionType === 'fill_in_the_blank' ? (
             <>
-                <p className={`${subject === 'math' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
+                <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
                     {renderTextWithBlank(currentQuestion.text, selectedAnswer || '')}
                 </p>
-                {currentQuestion.text2 && <p className={`${subject === 'math' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
+                {currentQuestion.text2 && <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
                     {renderTextWithBlank(currentQuestion.text2, selectedAnswer || '')}
                 </p>}
             </>
         ) : (
              <>
-                {currentQuestion.text && <p className={`${subject === 'math' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl'}`}>{currentQuestion.text}</p>}
-                {currentQuestion.text2 && <p className={`${subject === 'math' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl'} mt-4`}>{currentQuestion.text2}</p>}
+                {currentQuestion.text && <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl'}`}>{currentQuestion.text}</p>}
+                {currentQuestion.text2 && <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl'} mt-4`}>{currentQuestion.text2}</p>}
             </>
         )}
       </div>

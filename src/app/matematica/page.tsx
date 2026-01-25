@@ -116,7 +116,7 @@ function MathGamePageContent() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <InteractiveGame subject="math" />
+        <InteractiveGame subject="matematica" />
       </CardContent>
     </Card>
   );

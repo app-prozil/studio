@@ -117,7 +117,7 @@ function PortugueseGamePageContent() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <InteractiveGame subject="portuguese" />
+        <InteractiveGame subject="portugues" />
       </CardContent>
     </Card>
   );

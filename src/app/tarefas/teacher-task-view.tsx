@@ -327,7 +327,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
         const subjectMatch = subjectFilter === 'all' || ex.subject === subjectFilter;
         const effectiveQuestionType = ex.questionType || 'multiple_choice';
-        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
+        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === questionTypeFilter;
         return subjectMatch && typeMatch;
     });
   }, [exercises, subjectFilter, questionTypeFilter, isLoading]);
@@ -924,7 +924,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
-      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
@@ -1995,4 +1995,5 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
 
