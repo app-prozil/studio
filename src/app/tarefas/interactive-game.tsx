@@ -897,7 +897,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                   <Button
                     key={item.item}
                     variant={organizeCategoryState.selectedItem?.item === item.item ? 'default' : 'secondary'}
-                    className="h-auto p-4 text-2xl font-bold shadow-lg"
+                    className="h-auto p-4 text-5xl font-bold shadow-lg"
                     onClick={() => handleOrganizeItemSelect(item)}
                     disabled={gameState !== 'playing'}
                   >
@@ -921,7 +921,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                       {organizeCategoryState.placedItems[category]?.map(placedItem => (
                         <span
                           key={placedItem}
-                          className="bg-success/20 text-success-foreground p-3 rounded-lg text-xl font-semibold animate-item-pop-in"
+                          className="bg-success/20 text-success-foreground p-3 rounded-lg text-5xl font-bold animate-item-pop-in"
                         >
                           {placedItem}
                         </span>
