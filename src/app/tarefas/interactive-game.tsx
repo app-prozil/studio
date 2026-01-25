@@ -120,6 +120,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [guessedLetters, setGuessedLetters] = useState<Record<string, 'correct' | 'incorrect'>>({});
   const [chancesLeft, setChancesLeft] = useState(6);
   const [isWrongGuessShake, setIsWrongGuessShake] = useState(false);
+  const [animatingHeartIndex, setAnimatingHeartIndex] = useState<number | null>(null);
 
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const taskStartTime = useMemo(() => Date.now(), []);
@@ -226,6 +227,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setConstructedSyllables([]);
     setGuessedLetters({});
     setChancesLeft(6);
+    setAnimatingHeartIndex(null);
   }, [currentQuestionIndex]);
   
   // This useEffect handles shuffling options for all game types
@@ -427,6 +429,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     if (isCorrectGuess) {
         setGuessedLetters(prev => ({ ...prev, [letter]: 'correct' }));
     } else {
+        setAnimatingHeartIndex(chancesLeft - 1);
+        toast({
+            variant: 'destructive',
+            title: 'Letra Incorreta!',
+            description: 'Você perdeu uma chance.',
+            duration: 2000,
+        });
         setGuessedLetters(prev => ({ ...prev, [letter]: 'incorrect' }));
         setChancesLeft(prev => prev - 1);
         setIsWrongGuessShake(true);
@@ -737,15 +746,20 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                 <div className={cn("space-y-8", isWrongGuessShake && "animate-shake")}>
                 {/* Chances */}
                 <div className="flex justify-center gap-2">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                    <Heart
-                        key={`heart-${i}`}
-                        className={cn(
-                        "w-10 h-10 transition-all",
-                        i < chancesLeft ? "text-red-500 fill-red-500" : "text-muted-foreground/50",
-                        )}
-                    />
-                    ))}
+                    {Array.from({ length: 6 }).map((_, i) => {
+                        const isAnimatingNow = i === animatingHeartIndex;
+                        const isActive = i < chancesLeft;
+                        return (
+                            <Heart
+                            key={`heart-${i}`}
+                            className={cn(
+                                "w-10 h-10 transition-colors duration-300",
+                                isActive ? "text-red-500 fill-red-500" : "text-muted-foreground/50",
+                                isAnimatingNow && "animate-heart-lost text-red-500 fill-red-500"
+                            )}
+                            />
+                        );
+                    })}
                 </div>
 
                 {/* Word Display */}
