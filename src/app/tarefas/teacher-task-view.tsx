@@ -742,7 +742,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
-      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
@@ -854,28 +854,25 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     const batch = writeBatch(firestore);
     
     const questionsForDb = values.questions.map(q => {
-        const newQ: PerformanceQuestion = {
-          text: q.text,
-          text2: q.text2 || undefined,
-          options: q.options,
-          answer: q.answer,
-          questionType: q.questionType || 'multiple_choice',
-          studentAnswer: q.studentAnswer || undefined,
-          attempts: q.attempts || undefined,
-          status: q.status || 'unanswered',
-          timeTaken: q.timeTaken || undefined,
-        };
-        // Remove undefined keys to keep Firestore happy
-        Object.keys(newQ).forEach(key => (newQ as any)[key] === undefined && delete (newQ as any)[key]);
-        return newQ;
-      });
+      const newQ: PerformanceQuestion = {
+        text: q.text,
+        options: q.options,
+        answer: q.answer,
+        questionType: q.questionType || 'multiple_choice',
+      };
+      if (q.text2) newQ.text2 = q.text2;
+      if (q.studentAnswer) newQ.studentAnswer = q.studentAnswer;
+      if (q.attempts) newQ.attempts = q.attempts;
+      if (q.status) newQ.status = q.status;
+      if (q.timeTaken) newQ.timeTaken = q.timeTaken;
+      return newQ;
+    });
 
     if (editingTask?.id) {
         const taskData: { [key: string]: any } = {};
 
-        // Only add fields that have a value
         if (values.title) taskData.title = values.title;
-        if (values.description) taskData.description = values.description;
+        taskData.description = values.description || '';
         if (values.dueDate) taskData.dueDate = new Date(values.dueDate).toISOString();
         if (values.subject) taskData.subject = values.subject;
         if (values.taskType) taskData.taskType = values.taskType;
@@ -1797,4 +1794,5 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
 
