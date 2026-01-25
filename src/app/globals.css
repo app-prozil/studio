@@ -154,6 +154,7 @@
     --size: 8px;
     width: var(--size);
     height: var(--size);
+    opacity: 0;
   }
 
   .particle-burst.is-active .particle {
