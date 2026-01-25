@@ -124,6 +124,14 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [isWrongGuessShake, setIsWrongGuessShake] = useState(false);
   const [animatingHeartIndex, setAnimatingHeartIndex] = useState<number | null>(null);
 
+  // State for organize_categories
+  const [organizeCategoryState, setOrganizeCategoryState] = useState<{
+    unplacedItems: { item: string; category: string }[];
+    placedItems: Record<string, string[]>;
+    selectedItem: { item: string; category: string } | null;
+    incorrectCategory: string | null;
+  }>({ unplacedItems: [], placedItems: {}, selectedItem: null, incorrectCategory: null });
+
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const taskStartTime = useMemo(() => Date.now(), []);
 
@@ -230,7 +238,17 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setGuessedLetters({});
     setChancesLeft(6);
     setAnimatingHeartIndex(null);
-  }, [currentQuestionIndex]);
+    if (currentQuestion?.questionType === 'organize_categories') {
+      const items = [...(currentQuestion.categoryItems || [])].sort(() => Math.random() - 0.5);
+      const initialPlaced = currentQuestion.categories?.reduce((acc, cat) => ({...acc, [cat]: []}), {}) || {};
+      setOrganizeCategoryState({
+        unplacedItems: items,
+        placedItems: initialPlaced,
+        selectedItem: null,
+        incorrectCategory: null,
+      });
+    }
+  }, [currentQuestionIndex, currentQuestion]);
   
   // This useEffect handles shuffling options for all game types
   useEffect(() => {
@@ -511,6 +529,49 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       window.removeEventListener('keydown', handleKeyPress);
     };
   }, [gameState, handleAnswer, shuffledOptions, questionType, handleLetterGuess]);
+
+  // Handler for "Organize Categories" game
+  const handleOrganizeItemSelect = (item: { item: string; category: string }) => {
+    if (gameState !== 'playing') return;
+    setOrganizeCategoryState(prev => ({
+      ...prev,
+      selectedItem: prev.selectedItem?.item === item.item ? null : item,
+    }));
+  };
+
+  const handleOrganizeCategoryClick = (category: string) => {
+    const { selectedItem, unplacedItems, placedItems } = organizeCategoryState;
+
+    if (gameState !== 'playing' || !selectedItem) return;
+
+    if (selectedItem.category === category) {
+      triggerConfettiExplosion();
+      
+      const newUnplaced = unplacedItems.filter(i => i.item !== selectedItem.item);
+      const newPlaced = { ...placedItems, [category]: [...placedItems[category], selectedItem.item] };
+
+      setOrganizeCategoryState({
+        unplacedItems: newUnplaced,
+        placedItems: newPlaced,
+        selectedItem: null,
+        incorrectCategory: null,
+      });
+
+      if (newUnplaced.length === 0) {
+        setTimeout(() => handleAnswer(currentQuestion.answer), 500);
+      }
+    } else {
+      setOrganizeCategoryState(prev => ({
+        ...prev,
+        incorrectCategory: category,
+        selectedItem: null,
+      }));
+      setTimeout(() => {
+        setOrganizeCategoryState(prev => ({ ...prev, incorrectCategory: null }));
+      }, 500);
+    }
+  };
+
 
   if (gameState === 'loading' || isAuthLoading || !currentQuestion) {
     return (
@@ -827,6 +888,52 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             );
         })()}
 
+        {questionType === 'organize_categories' && (() => {
+          const categories = currentQuestion.categories || [];
+          return (
+            <div className="space-y-8">
+              <div className="flex flex-wrap items-center justify-center gap-4 p-4 border rounded-lg min-h-[10rem] bg-muted/50">
+                {organizeCategoryState.unplacedItems.map((item) => (
+                  <Button
+                    key={item.item}
+                    variant={organizeCategoryState.selectedItem?.item === item.item ? 'default' : 'secondary'}
+                    className="h-auto p-4 text-2xl font-bold shadow-lg"
+                    onClick={() => handleOrganizeItemSelect(item)}
+                    disabled={gameState !== 'playing'}
+                  >
+                    {item.item}
+                  </Button>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {categories.map((category) => (
+                  <div
+                    key={category}
+                    onClick={() => handleOrganizeCategoryClick(category)}
+                    className={cn(
+                      "p-4 border-4 border-dashed rounded-xl min-h-[15rem] transition-colors flex flex-col items-center",
+                      organizeCategoryState.selectedItem ? 'cursor-pointer hover:border-primary hover:bg-primary/5' : 'cursor-default',
+                      organizeCategoryState.incorrectCategory === category && 'animate-shake border-destructive'
+                    )}
+                  >
+                    <h3 className="text-2xl font-bold text-center mb-4">{category}</h3>
+                    <div className="flex flex-wrap justify-center gap-3">
+                      {organizeCategoryState.placedItems[category]?.map(placedItem => (
+                        <span
+                          key={placedItem}
+                          className="bg-success/20 text-success-foreground p-3 rounded-lg text-xl font-semibold animate-item-pop-in"
+                        >
+                          {placedItem}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {gameState === 'showingAnswer' && isCorrect === false && questionType !== 'guess_the_word' && (
           <div className="flex items-center justify-center text-4xl font-bold text-destructive mt-6">
               <XCircle className="w-16 h-16 text-destructive mr-4"/>
@@ -837,4 +944,3 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     </>
   );
 }
-
