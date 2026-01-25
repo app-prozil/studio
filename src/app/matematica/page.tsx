@@ -13,8 +13,12 @@ import { doc } from 'firebase/firestore';
 function MathGamePageContent() {
   const searchParams = useSearchParams();
   const taskId = searchParams.get('taskId');
+  const mode = searchParams.get('mode');
+  const exerciseId = searchParams.get('exerciseId');
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  
+  const isTestMode = mode === 'test_exercise' && !!exerciseId;
 
   const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
@@ -59,7 +63,7 @@ function MathGamePageContent() {
     );
   }
 
-  if (!taskId) {
+  if (!taskId && !isTestMode) {
     if (isTeacher) {
         return (
             <Card className="w-full max-w-lg mx-auto text-center">
