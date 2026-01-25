@@ -561,6 +561,12 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         setTimeout(() => handleAnswer(currentQuestion.answer), 500);
       }
     } else {
+      toast({
+        variant: 'destructive',
+        title: 'Categoria Incorreta!',
+        description: 'Tente colocar este item em outra categoria.',
+        duration: 2000,
+      });
       setOrganizeCategoryState(prev => ({
         ...prev,
         incorrectCategory: category,
