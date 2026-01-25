@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -397,12 +398,14 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       case 'organize_categories':
         answerValue = "N/A";
         optionsValue = [];
-        finalValues.categories = values.categories?.filter(c => c.trim() !== '');
-        finalValues.categoryItems = values.categoryItems?.filter(i => i.item.trim() !== '');
+        finalValues.categories = values.categories?.filter(c => c.trim() !== '').map(c => c.toUpperCase());
+        finalValues.categoryItems = values.categoryItems
+            ?.filter(i => i.item.trim() !== '')
+            .map(i => ({ item: i.item.toUpperCase(), category: i.category.toUpperCase() }));
         break;
       case 'organize_sentence':
         answerValue = values.answer.toUpperCase();
-        optionsValue = values.answer.split(' ').filter(word => word.trim() !== '');
+        optionsValue = values.answer.toUpperCase().split(' ').filter(word => word.trim() !== '');
         break;
       default: // 'multiple_choice'
         answerValue = values.answer.toUpperCase();
@@ -1971,6 +1974,9 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
 
+
+
+    
 
 
     
