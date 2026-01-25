@@ -750,14 +750,23 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                         const isAnimatingNow = i === animatingHeartIndex;
                         const isActive = i < chancesLeft;
                         return (
-                            <Heart
-                            key={`heart-${i}`}
-                            className={cn(
-                                "w-10 h-10 transition-colors duration-300",
-                                isActive ? "text-red-500 fill-red-500" : "text-muted-foreground/50",
-                                isAnimatingNow && "animate-heart-lost text-red-500 fill-red-500"
-                            )}
-                            />
+                            <div key={`heart-container-${i}`} className="relative flex items-center justify-center">
+                                <Heart
+                                    className={cn(
+                                        "w-10 h-10 transition-colors duration-300",
+                                        isActive ? "text-red-500 fill-red-500" : "text-muted-foreground/50",
+                                        isAnimatingNow && "animate-heart-lost"
+                                    )}
+                                />
+                                <div className={cn(
+                                    "particle-burst heart-burst",
+                                    isAnimatingNow && "is-active"
+                                )}>
+                                    {Array.from({ length: 20 }).map((_, particleIndex) => (
+                                        <div key={particleIndex} className="particle" style={{'--i': particleIndex} as React.CSSProperties} />
+                                    ))}
+                                </div>
+                            </div>
                         );
                     })}
                 </div>

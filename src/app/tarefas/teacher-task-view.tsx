@@ -581,7 +581,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         <FormLabel>Palavra Secreta</FormLabel>
                         <FormControl><Input {...field} onFocus={() => setFocusedInput('answer')} placeholder='Ex: BORBOLETA'/></FormControl>
                         <FormDescription>
-                           A palavra que o aluno deve adivinhar. Use apenas letras, sem espaços ou acentos.
+                           Atenção: Use apenas letras de A a Z, sem espaços, números ou acentos (ex: Ç, Ã, É).
                         </FormDescription>
                         <FormMessage />
                     </FormItem>
@@ -1794,5 +1794,6 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
 
 
