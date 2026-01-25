@@ -203,9 +203,11 @@
   }
 
   /* Specific styles for heart burst */
+  .particle-burst.heart-burst .particle {
+    background-color: hsl(var(--destructive));
+  }
   .particle-burst.heart-burst.is-active .particle {
     animation-name: burst; /* reuse the same keyframes */
-    background-color: hsl(var(--destructive));
     --radius: 70px;
     --size: 10px;
   }
@@ -234,6 +236,24 @@
     30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
     40%, 60% { transform: translate3d(4px, 0, 0); }
   }
+  
+  /* For beating hearts */
+  .animate-heart-beat {
+    animation: heart-beat 2s ease-in-out infinite;
+  }
+  @keyframes heart-beat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  
+  .animate-heart-beat-intense {
+    animation: heart-beat-intense 1s ease-in-out infinite;
+  }
+  @keyframes heart-beat-intense {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+
 
   /* For guess the word heart lost */
   .animate-heart-lost {

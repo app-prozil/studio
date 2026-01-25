@@ -749,12 +749,15 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                     {Array.from({ length: 6 }).map((_, i) => {
                         const isAnimatingNow = i === animatingHeartIndex;
                         const isActive = i < chancesLeft;
+                        const isLastChance = isActive && i === chancesLeft - 1;
                         return (
                             <div key={`heart-container-${i}`} className="relative flex items-center justify-center">
                                 <Heart
                                     className={cn(
                                         "w-10 h-10 transition-colors duration-300",
                                         isActive ? "text-red-500 fill-red-500" : "text-muted-foreground/50",
+                                        isActive && !isLastChance && !isAnimatingNow && "animate-heart-beat",
+                                        isLastChance && !isAnimatingNow && "animate-heart-beat-intense",
                                         isAnimatingNow && "animate-heart-lost"
                                     )}
                                 />
