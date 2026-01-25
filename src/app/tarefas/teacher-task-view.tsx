@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -604,7 +605,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                             <FormItem>
                               <div className="flex items-center gap-2">
                                 <FormControl>
-                                  <Input {...field} placeholder={`Nome da Categoria ${index + 1}`} />
+                                  <Input {...field} placeholder={`Nome da Categoria ${index + 1}`} onFocus={() => setFocusedInput(`categories.${index}`)} />
                                 </FormControl>
                                 <Button type="button" variant="ghost" size="icon" onClick={() => removeCategory(index)} disabled={categoriesFields.length <= 2}>
                                   <Trash2 className="w-4 h-4 text-destructive" />
@@ -635,7 +636,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Item {index + 1}</FormLabel>
-                                <FormControl><Input {...field} placeholder="Ex: Maçã, Cachorro..." /></FormControl>
+                                <FormControl><Input {...field} placeholder="Ex: Maçã, Cachorro..." onFocus={() => setFocusedInput(`categoryItems.${index}.item`)} /></FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -1941,6 +1942,7 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
 
 
 
