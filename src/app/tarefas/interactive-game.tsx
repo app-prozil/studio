@@ -614,14 +614,27 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                             onClick={() => handleCardClick(index)}
                             disabled={isChecking || isFlipped}
                             className={cn(
-                                "h-32 rounded-lg text-3xl font-bold flex items-center justify-center transition-colors duration-300",
-                                "focus:ring-4 focus:ring-ring focus:ring-offset-2 focus:outline-none",
-                                isFlipped ? 'bg-secondary text-secondary-foreground' : 'bg-primary text-primary-foreground',
-                                isMatched && 'border-4 border-success !bg-success/20',
-                                !isFlipped && 'hover:bg-primary/90'
+                                "flip-card h-32 rounded-lg text-3xl font-bold",
+                                isFlipped && "flipped"
                             )}
                         >
-                            {isFlipped ? option : <Bot className="w-16 h-16 text-primary-foreground/70" />}
+                            <div className="flip-card-inner">
+                                <div className={cn(
+                                    "flip-card-front",
+                                    "bg-primary text-primary-foreground",
+                                    "focus:ring-4 focus:ring-ring focus:ring-offset-2 focus:outline-none",
+                                    "hover:bg-primary/90"
+                                )}>
+                                    <Bot className="w-16 h-16 text-primary-foreground/70" />
+                                </div>
+                                <div className={cn(
+                                    "flip-card-back",
+                                    "bg-secondary text-secondary-foreground",
+                                    isMatched && "border-4 border-success !bg-success/20"
+                                )}>
+                                    {option}
+                                </div>
+                            </div>
                         </button>
                     );
                 })}
