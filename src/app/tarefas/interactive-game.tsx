@@ -89,6 +89,11 @@ type InteractiveGameProps = {
   subject: 'math' | 'portuguese' | 'memoria';
 };
 
+interface SentenceWord {
+  word: string;
+  id: number;
+}
+
 
 export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const router = useRouter();
@@ -133,8 +138,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   }>({ unplacedItems: [], placedItems: {}, selectedItem: null, incorrectCategory: null });
 
   // State for organize_sentence
-  const [constructedSentence, setConstructedSentence] = useState<string[]>([]);
-  const [availableSentenceWords, setAvailableSentenceWords] = useState<string[]>([]);
+  const [constructedSentence, setConstructedSentence] = useState<SentenceWord[]>([]);
+  const [availableSentenceWords, setAvailableSentenceWords] = useState<SentenceWord[]>([]);
   const [isWrongSentenceShake, setIsWrongSentenceShake] = useState(false);
 
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
@@ -273,7 +278,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           setAvailableSyllables(options);
           setConstructedSyllables([]);
       } else if (currentQ.questionType === 'organize_sentence') {
-          setAvailableSentenceWords(options);
+          setAvailableSentenceWords(options.map((word, index) => ({ word, id: index })));
           setConstructedSentence([]);
       } else {
           setShuffledOptions(options);
@@ -590,16 +595,16 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   };
 
   // Handlers for "Organize Sentence" game
-  const handleSelectSentenceWord = (word: string) => {
+  const handleSelectSentenceWord = (word: SentenceWord) => {
     if (gameState !== 'playing') return;
     setConstructedSentence(prev => [...prev, word]);
-    setAvailableSentenceWords(prev => prev.filter(w => w !== word));
+    setAvailableSentenceWords(prev => prev.filter(w => w.id !== word.id));
   };
 
-  const handleDeselectSentenceWord = (word: string, index: number) => {
+  const handleDeselectSentenceWord = (wordToRemove: SentenceWord) => {
     if (gameState !== 'playing') return;
-    setAvailableSentenceWords(prev => [...prev, word]);
-    setConstructedSentence(prev => prev.filter((_, i) => i !== index));
+    setAvailableSentenceWords(prev => [...prev, wordToRemove]);
+    setConstructedSentence(prev => prev.filter(w => w.id !== wordToRemove.id));
   };
 
   const handleClearSentence = () => {
@@ -611,7 +616,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const handleCheckSentence = () => {
     if (gameState !== 'playing' || constructedSentence.length === 0) return;
     
-    const userAnswer = constructedSentence.join(' ');
+    const userAnswer = constructedSentence.map(sw => sw.word).join(' ');
     const isAnswerCorrect = userAnswer.toUpperCase() === currentQuestion.answer.toUpperCase();
 
     if (isAnswerCorrect) {
@@ -1005,15 +1010,15 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                         {constructedSentence.length === 0 && (
                             <p className="text-muted-foreground text-center">Clique nas palavras abaixo para montar a frase aqui.</p>
                         )}
-                        {constructedSentence.map((word, index) => (
+                        {constructedSentence.map((sentenceWord, index) => (
                             <Button
-                                key={`${word}-${index}`}
+                                key={sentenceWord.id}
                                 variant="secondary"
                                 className="h-auto p-3 sm:p-4 text-3xl sm:text-4xl font-bold shadow-lg animate-item-pop-in cursor-pointer"
                                 style={{'--animation-delay': `${index * 50}ms`} as React.CSSProperties}
-                                onClick={() => handleDeselectSentenceWord(word, index)}
+                                onClick={() => handleDeselectSentenceWord(sentenceWord)}
                             >
-                                {word}
+                                {sentenceWord.word}
                             </Button>
                         ))}
                         {constructedSentence.length > 0 && gameState === 'playing' && (
@@ -1023,15 +1028,15 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                         )}
                     </div>
                     <div className="p-4 border rounded-lg min-h-40 bg-muted/50 flex flex-wrap items-center justify-center gap-3">
-                        {availableSentenceWords.map((word, index) => (
+                        {availableSentenceWords.map((sentenceWord) => (
                             <Button
-                                key={`${word}-${index}`}
+                                key={sentenceWord.id}
                                 variant="default"
                                 className="h-auto p-3 sm:p-4 text-3xl sm:text-4xl font-bold shadow-md hover:scale-105 transition-transform"
-                                onClick={() => handleSelectSentenceWord(word)}
+                                onClick={() => handleSelectSentenceWord(sentenceWord)}
                                 disabled={gameState !== 'playing'}
                             >
-                                {word}
+                                {sentenceWord.word}
                             </Button>
                         ))}
                     </div>
