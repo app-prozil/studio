@@ -764,18 +764,21 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
                 {/* Word Display */}
                 <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
-                    {secretWord.split('').map((letter, index) => (
-                    <div
-                        key={`${letter}-${index}`}
-                        className="flex h-20 w-16 items-center justify-center rounded-lg bg-muted text-4xl font-bold uppercase"
-                    >
-                        {guessedLetters[letter] === 'correct' ? (
-                        <span className="animate-letter-reveal">{letter}</span>
-                        ) : (
-                        ''
+                  {secretWord.split('').map((letter, index) => (
+                    <div key={`${letter}-${index}`} className="flip-card h-20 w-16">
+                      <div
+                        className={cn(
+                          'flip-card-inner',
+                          guessedLetters[letter] === 'correct' && 'flipped'
                         )}
+                      >
+                        <div className="flip-card-front bg-muted rounded-lg" />
+                        <div className="flip-card-back bg-card rounded-lg flex items-center justify-center text-4xl font-bold uppercase text-primary">
+                          {letter}
+                        </div>
+                      </div>
                     </div>
-                    ))}
+                  ))}
                 </div>
 
                 {/* Keyboard */}
