@@ -6,7 +6,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift, RotateCcw, Bot } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift, RotateCcw, Bot, Heart } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,7 +18,7 @@ type Question = {
   text2?: string;
   options: string[];
   answer: string;
-  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word';
   // Performance fields
   studentAnswer?: string;
   attempts?: number;
@@ -116,6 +116,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [matchedPairs, setMatchedPairs] = useState<string[]>([]);
   const [isChecking, setIsChecking] = useState(false);
 
+  // State for guess_the_word
+  const [guessedLetters, setGuessedLetters] = useState<Record<string, 'correct' | 'incorrect'>>({});
+  const [chancesLeft, setChancesLeft] = useState(6);
+  const [isWrongGuessShake, setIsWrongGuessShake] = useState(false);
 
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const taskStartTime = useMemo(() => Date.now(), []);
@@ -220,6 +224,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setMatchedPairs([]);
     setIsChecking(false);
     setConstructedSyllables([]);
+    setGuessedLetters({});
+    setChancesLeft(6);
   }, [currentQuestionIndex]);
   
   // This useEffect handles shuffling options for all game types
@@ -411,19 +417,81 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
     setFlippedCards(prev => [...prev, index]);
   };
+  
+  const handleLetterGuess = (letter: string) => {
+    if (chancesLeft <= 0 || guessedLetters[letter] || gameState !== 'playing') return;
 
+    const secretWord = currentQuestion.answer.toUpperCase();
+    const isCorrectGuess = secretWord.includes(letter);
+
+    if (isCorrectGuess) {
+        setGuessedLetters(prev => ({ ...prev, [letter]: 'correct' }));
+    } else {
+        setGuessedLetters(prev => ({ ...prev, [letter]: 'incorrect' }));
+        setChancesLeft(prev => prev - 1);
+        setIsWrongGuessShake(true);
+        setTimeout(() => setIsWrongGuessShake(false), 500);
+    }
+  };
+
+  useEffect(() => {
+    if (questionType !== 'guess_the_word' || gameState !== 'playing') return;
+
+    const secretWord = (currentQuestion?.answer || '').toUpperCase();
+    if (!secretWord) return;
+
+    // Check for win
+    const uniqueLetters = [...new Set(secretWord.split(''))];
+    const allLettersGuessed = uniqueLetters.every(letter => guessedLetters[letter] === 'correct');
+    if (allLettersGuessed) {
+      setGameState('showingAnswer'); // Prevent further guesses
+      setTimeout(() => handleAnswer(secretWord), 500); // Trigger correct answer flow
+      return; // Stop further checks
+    }
+
+    // Check for loss
+    if (chancesLeft <= 0) {
+      setGameState('showingAnswer'); // Prevent further guesses
+      setIsCorrect(false); // To show general failure feedback if needed
+
+      const timeTaken = Date.now() - questionStartTime;
+      const updatedQuestions = questions.map((q, index) =>
+        index === currentQuestionIndex
+          ? {
+              ...q,
+              studentAnswer: Object.keys(guessedLetters).filter(k => guessedLetters[k] === 'correct').join(''),
+              attempts: 1, // The whole game is one attempt
+              status: 'incorrect',
+              timeTaken,
+            }
+          : q
+      );
+      setQuestions(updatedQuestions);
+
+      // Show a "You Lost" message and then move on
+      toast({
+        variant: 'destructive',
+        title: 'Fim de Jogo!',
+        description: `A palavra era: ${secretWord}`,
+        duration: 3000,
+      });
+      setTimeout(() => {
+        handleNextQuestion(updatedQuestions);
+      }, 3500);
+    }
+  }, [guessedLetters, chancesLeft, questionType, currentQuestion, gameState, handleAnswer, questionStartTime, questions, handleNextQuestion, toast]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (questionType !== 'multiple_choice') return;
-      if (gameState !== 'playing' || shuffledOptions.length === 0) return;
-
-      if (event.key === '1' && shuffledOptions[0]) {
-        handleAnswer(shuffledOptions[0]);
-      } else if (event.key === '2' && shuffledOptions[1]) {
-        handleAnswer(shuffledOptions[1]);
-      } else if (event.key === '3' && shuffledOptions[2]) {
-        handleAnswer(shuffledOptions[2]);
+      if (questionType === 'multiple_choice' && gameState === 'playing' && shuffledOptions.length > 0) {
+        if (event.key === '1' && shuffledOptions[0]) handleAnswer(shuffledOptions[0]);
+        else if (event.key === '2' && shuffledOptions[1]) handleAnswer(shuffledOptions[1]);
+        else if (event.key === '3' && shuffledOptions[2]) handleAnswer(shuffledOptions[2]);
+      } else if (questionType === 'guess_the_word' && gameState === 'playing') {
+        const key = event.key.toUpperCase();
+        if (key.length === 1 && key >= 'A' && key <= 'Z') {
+          handleLetterGuess(key);
+        }
       }
     };
 
@@ -431,7 +499,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [gameState, handleAnswer, shuffledOptions, questionType]);
+  }, [gameState, handleAnswer, shuffledOptions, questionType, handleLetterGuess]);
 
   if (gameState === 'loading' || isAuthLoading || !currentQuestion) {
     return (
@@ -661,7 +729,74 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             </div>
         )}
 
-        {gameState === 'showingAnswer' && isCorrect === false && (
+        {questionType === 'guess_the_word' && (() => {
+            const secretWord = (currentQuestion.answer || '').toUpperCase();
+            const keyboardRows = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+
+            return (
+                <div className={cn("space-y-8", isWrongGuessShake && "animate-shake")}>
+                {/* Chances */}
+                <div className="flex justify-center gap-2">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                    <Heart
+                        key={`heart-${i}`}
+                        className={cn(
+                        "w-10 h-10 transition-all",
+                        i < chancesLeft ? "text-red-500 fill-red-500" : "text-muted-foreground/50",
+                        )}
+                    />
+                    ))}
+                </div>
+
+                {/* Word Display */}
+                <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
+                    {secretWord.split('').map((letter, index) => (
+                    <div
+                        key={`${letter}-${index}`}
+                        className="flex h-20 w-16 items-center justify-center rounded-lg bg-muted text-4xl font-bold uppercase"
+                    >
+                        {guessedLetters[letter] === 'correct' ? (
+                        <span className="animate-letter-reveal">{letter}</span>
+                        ) : (
+                        ''
+                        )}
+                    </div>
+                    ))}
+                </div>
+
+                {/* Keyboard */}
+                <div className="flex flex-col items-center gap-2 pt-6">
+                    {keyboardRows.map((row, rowIndex) => (
+                    <div key={rowIndex} className="flex justify-center gap-2 flex-wrap">
+                        {row.split('').map((key) => {
+                        const guessStatus = guessedLetters[key];
+                        return (
+                            <Button
+                            key={key}
+                            variant={
+                                guessStatus === 'correct'
+                                ? 'success'
+                                : guessStatus === 'incorrect'
+                                ? 'destructive'
+                                : 'outline'
+                            }
+                            size="icon"
+                            className="h-12 w-12 text-xl font-bold sm:h-14 sm:w-14"
+                            onClick={() => handleLetterGuess(key)}
+                            disabled={!!guessStatus || gameState !== 'playing'}
+                            >
+                            {key}
+                            </Button>
+                        );
+                        })}
+                    </div>
+                    ))}
+                </div>
+                </div>
+            );
+        })()}
+
+        {gameState === 'showingAnswer' && isCorrect === false && questionType !== 'guess_the_word' && (
           <div className="flex items-center justify-center text-4xl font-bold text-destructive mt-6">
               <XCircle className="w-16 h-16 text-destructive mr-4"/>
               TENTE DE NOVO!
