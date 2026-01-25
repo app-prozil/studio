@@ -77,7 +77,7 @@ const performanceQuestionSchema = z.object({
   text2: z.string().optional(),
   options: z.array(z.string()),
   answer: z.string(),
-  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game', 'guess_the_word', 'organize_categories']).optional(),
+  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game', 'guess_the_word', 'organize_categories', 'organize_sentence']).optional(),
   studentAnswer: z.string().optional(),
   attempts: z.number().optional(),
   status: z.enum(['correct', 'incorrect', 'unanswered']).optional(),
@@ -108,7 +108,7 @@ const taskSchema = z.object({
 const exerciseObjectSchema = z.object({
   id: z.string().optional(),
   teacherId: z.string(),
-  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game', 'guess_the_word', 'organize_categories']),
+  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game', 'guess_the_word', 'organize_categories', 'organize_sentence']),
   text: z.string().min(3, 'A pergunta ou dica deve ter pelo menos 3 caracteres.'),
   text2: z.string().optional(),
   options: z.array(z.string()).min(0),
@@ -167,6 +167,14 @@ const exerciseSchema = exerciseObjectSchema.refine(
         return true;
     },
     { message: "Deve haver pelo menos 2 itens a serem categorizados.", path: ["categoryItems"] }
+).refine(
+    (data) => {
+        if (data.questionType === 'organize_sentence') {
+            return data.answer && data.answer.trim().split(/\s+/).length >= 2;
+        }
+        return true;
+    },
+    { message: "A frase deve conter pelo menos duas palavras.", path: ["answer"] }
 );
 
 
@@ -177,7 +185,7 @@ type PerformanceQuestion = {
   text2?: string;
   options: string[];
   answer: string;
-  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence';
   studentAnswer?: string;
   attempts?: number;
   status?: 'correct' | 'incorrect' | 'unanswered';
@@ -220,7 +228,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues' | 'memoria'>('all');
-  const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories'>('all');
+  const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence'>('all');
   const [focusedInput, setFocusedInput] = useState<string | null>('text');
 
   const specialCharsCategories = {
@@ -252,13 +260,13 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const questionType = watch('questionType');
   const watchedCategories = watch('categories');
 
-  const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories') => {
+  const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence') => {
     setValue('questionType', value);
     if (value === 'organize_syllables') {
       replace(['', '']);
     } else if (value === 'memory_game') {
       replace(['', '', '', '']); // Start with 2 pairs
-    } else if (value === 'guess_the_word') {
+    } else if (value === 'guess_the_word' || value === 'organize_sentence') {
       replace([]);
     } else if (value === 'organize_categories') {
       replace([]); // Clear options
@@ -392,6 +400,10 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         finalValues.categories = values.categories?.filter(c => c.trim() !== '');
         finalValues.categoryItems = values.categoryItems?.filter(i => i.item.trim() !== '');
         break;
+      case 'organize_sentence':
+        answerValue = values.answer.toUpperCase();
+        optionsValue = values.answer.split(' ').filter(word => word.trim() !== '');
+        break;
       default: // 'multiple_choice'
         answerValue = values.answer.toUpperCase();
     }
@@ -475,6 +487,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         <SelectItem value="multiple_choice">Múltipla Escolha</SelectItem>
                         <SelectItem value="fill_in_the_blank">Complete a Lacuna</SelectItem>
                         <SelectItem value="organize_syllables">Organizar Sílabas</SelectItem>
+                        <SelectItem value="organize_sentence">Organizar Frase</SelectItem>
                         <SelectItem value="memory_game">Jogo da Memória</SelectItem>
                         <SelectItem value="guess_the_word">Adivinhe a Palavra</SelectItem>
                         <SelectItem value="organize_categories">Organize as Categorias</SelectItem>
@@ -496,6 +509,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                       placeholder={
                         questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use 3 underline ___ para a lacuna)" :
                         questionType === 'organize_syllables' ? "Ex: ORGANIZE AS SÍLABAS E FORME O NOME DO INSETO:" :
+                        questionType === 'organize_sentence' ? "Ex: ORDENE AS PALAVRAS PARA FORMAR UMA FRASE." :
                         questionType === 'memory_game' ? "Ex: ENCONTRE OS PARES CORRESPONDENTES" :
                         questionType === 'guess_the_word' ? "Ex: É um inseto que voa e tem asas coloridas." :
                         questionType === 'organize_categories' ? "Ex: Organize os itens em suas categorias." :
@@ -507,7 +521,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 </FormItem>
               )}/>
 
-              {questionType !== 'guess_the_word' && questionType !== 'organize_categories' && (
+              {(questionType !== 'guess_the_word' && questionType !== 'organize_categories' && questionType !== 'organize_sentence') && (
                 <FormField control={form.control} name="text2" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Imagem / Complemento (Opcional)</FormLabel>
@@ -564,7 +578,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 )}/>
               </div>
 
-              {questionType !== 'guess_the_word' && questionType !== 'organize_categories' && (
+              {(questionType !== 'guess_the_word' && questionType !== 'organize_categories' && questionType !== 'organize_sentence') && (
                 <div className="space-y-3">
                   {fields.map((field, index) => (
                       <FormField key={field.id} control={form.control} name={`options.${index}`} render={({ field }) => (
@@ -699,6 +713,18 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     </FormItem>
                   )}/>
               )}
+               {questionType === 'organize_sentence' && (
+                  <FormField control={form.control} name="answer" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Frase Completa</FormLabel>
+                        <FormControl><Input {...field} onFocus={() => setFocusedInput('answer')} placeholder='Ex: O GATO BEBE LEITE.'/></FormControl>
+                        <FormDescription>
+                           Digite a frase completa. O sistema irá embaralhar as palavras para o aluno.
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                  )}/>
+              )}
               {questionType === 'fill_in_the_blank' && (
                 <FormField control={form.control} name="answer" render={({ field }) => (
                   <FormItem className="hidden">
@@ -757,6 +783,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     <Button variant={questionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('multiple_choice')}>M. Escolha</Button>
                     <Button variant={questionTypeFilter === 'fill_in_the_blank' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('fill_in_the_blank')}>Completar</Button>
                     <Button variant={questionTypeFilter === 'organize_syllables' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('organize_syllables')}>Organizar Sílabas</Button>
+                    <Button variant={questionTypeFilter === 'organize_sentence' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('organize_sentence')}>Organizar Frase</Button>
                     <Button variant={questionTypeFilter === 'memory_game' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('memory_game')}>Memória</Button>
                     <Button variant={questionTypeFilter === 'guess_the_word' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('guess_the_word')}>Adivinhar</Button>
                     <Button variant={questionTypeFilter === 'organize_categories' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('organize_categories')}>Categorias</Button>
@@ -790,13 +817,15 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     <Badge variant={
                         (ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'secondary'
                         : (ex.questionType === 'organize_syllables') ? 'outline'
+                        : (ex.questionType === 'organize_sentence') ? 'destructive'
                         : (ex.questionType === 'memory_game') ? 'destructive'
                         : (ex.questionType === 'guess_the_word') ? 'default'
                         : (ex.questionType === 'organize_categories') ? 'default'
                         : 'secondary'
                     }>
                         {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
-                        : (ex.questionType === 'organize_syllables') ? 'Organizar Sílabas' 
+                        : (ex.questionType === 'organize_syllables') ? 'Organizar Sílabas'
+                        : (ex.questionType === 'organize_sentence') ? 'Organizar Frase'
                         : (ex.questionType === 'memory_game') ? 'Memória' 
                         : (ex.questionType === 'guess_the_word') ? 'Adivinhar' 
                         : (ex.questionType === 'organize_categories') ? 'Categorias'
@@ -849,7 +878,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues' | 'memoria'>('all');
-  const [bankQuestionTypeFilter, setBankQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories'>('all');
+  const [bankQuestionTypeFilter, setBankQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence'>('all');
   const [isStudentSelectorOpen, setIsStudentSelectorOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [selectableStudents, setSelectableStudents] = useState<Student[]>([]);
@@ -1323,6 +1352,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                     <Button variant={bankQuestionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('multiple_choice')}>M. Escolha</Button>
                     <Button variant={bankQuestionTypeFilter === 'fill_in_the_blank' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('fill_in_the_blank')}>Completar</Button>
                     <Button variant={bankQuestionTypeFilter === 'organize_syllables' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_syllables')}>Organizar Sílabas</Button>
+                    <Button variant={bankQuestionTypeFilter === 'organize_sentence' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_sentence')}>Organizar Frase</Button>
                     <Button variant={bankQuestionTypeFilter === 'memory_game' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('memory_game')}>Memória</Button>
                     <Button variant={bankQuestionTypeFilter === 'guess_the_word' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('guess_the_word')}>Adivinhar</Button>
                     <Button variant={bankQuestionTypeFilter === 'organize_categories' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_categories')}>Categorias</Button>
@@ -1353,13 +1383,15 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                                    <Badge variant={
                                         (ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'secondary'
                                         : (ex.questionType === 'organize_syllables') ? 'outline'
+                                        : (ex.questionType === 'organize_sentence') ? 'destructive'
                                         : (ex.questionType === 'memory_game') ? 'destructive'
                                         : (ex.questionType === 'guess_the_word') ? 'default'
                                         : (ex.questionType === 'organize_categories') ? 'default'
                                         : 'secondary'
                                     }>
                                         {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
-                                        : (ex.questionType === 'organize_syllables') ? 'Organizar Sílabas' 
+                                        : (ex.questionType === 'organize_syllables') ? 'Organizar Sílabas'
+                                        : (ex.questionType === 'organize_sentence') ? 'Organizar Frase'
                                         : (ex.questionType === 'memory_game') ? 'Memória' 
                                         : (ex.questionType === 'guess_the_word') ? 'Adivinhar' 
                                         : (ex.questionType === 'organize_categories') ? 'Categorias'
@@ -1942,8 +1974,3 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
-
-
-
-
-
