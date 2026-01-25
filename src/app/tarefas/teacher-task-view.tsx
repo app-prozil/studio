@@ -1048,8 +1048,8 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     if (editingTask?.id) {
         const taskData: { [key: string]: any } = {};
 
-        if (values.title) taskData.title = values.title;
-        taskData.description = values.description || '';
+        if (values.title) taskData.title = values.title.toUpperCase();
+        taskData.description = (values.description || '').toUpperCase();
         if (values.dueDate) taskData.dueDate = new Date(values.dueDate).toISOString();
         if (values.subject) taskData.subject = values.subject;
         if (values.taskType) taskData.taskType = values.taskType;
@@ -1080,9 +1080,9 @@ function TaskManager({ teacherId }: { teacherId: string }) {
         const newTaskId = doc(collection(firestore, 'teachers')).id;
         const taskData: Task = {
             id: newTaskId,
-            title: values.title,
+            title: values.title.toUpperCase(),
             studentProzilId: values.studentProzilId,
-            description: values.description || '',
+            description: (values.description || '').toUpperCase(),
             dueDate: new Date(values.dueDate).toISOString(),
             subject: values.subject,
             taskType: values.taskType,
