@@ -109,7 +109,8 @@
             "fill_in_the_blank",
             "organize_syllables",
             "memory_game",
-            "guess_the_word"
+            "guess_the_word",
+            "organize_categories"
           ]
         },
         "subject": {
@@ -146,6 +147,32 @@
         "answer": {
           "type": "string",
           "description": "The correct answer. For organize_syllables, this is the complete word. For guess_the_word, it's the word to be guessed. For memory_game, this field is not used."
+        },
+        "categories": {
+          "type": "array",
+          "description": "For 'organize_categories' questions, this holds the names of the categories.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "categoryItems": {
+          "type": "array",
+          "description": "For 'organize_categories' questions, this holds the items and their correct category.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "item",
+              "category"
+            ]
+          }
         }
       },
       "required": [
@@ -241,7 +268,8 @@
                   "fill_in_the_blank",
                   "organize_syllables",
                   "memory_game",
-                  "guess_the_word"
+                  "guess_the_word",
+                  "organize_categories"
                 ]
               },
               "text": {
@@ -279,6 +307,32 @@
               "timeTaken": {
                 "type": "number",
                 "description": "Time in milliseconds to answer this question."
+              },
+              "categories": {
+                "type": "array",
+                "description": "For 'organize_categories' questions, this holds the names of the categories.",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "categoryItems": {
+                "type": "array",
+                "description": "For 'organize_categories' questions, this holds the items and their correct category.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "item",
+                    "category"
+                  ]
+                }
               }
             },
             "required": [

@@ -18,7 +18,9 @@ type Question = {
   text2?: string;
   options: string[];
   answer: string;
-  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories';
+  categories?: string[];
+  categoryItems?: { item: string, category: string }[];
   // Performance fields
   studentAnswer?: string;
   attempts?: number;
@@ -234,7 +236,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   useEffect(() => {
     if (gameState === 'playing' && questions[currentQuestionIndex]) {
       const currentQ = questions[currentQuestionIndex];
-      const options = [...currentQ.options];
+      const options = [...(currentQ.options || [])];
       // Fisher-Yates shuffle
       for (let i = options.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -835,3 +837,4 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     </>
   );
 }
+
