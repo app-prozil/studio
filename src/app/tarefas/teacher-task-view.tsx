@@ -842,7 +842,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button variant="ghost" size="icon" asChild>
-                          <Link href={`/${ex.subject === 'memoria' ? 'portugues' : ex.subject}?mode=test_exercise&exerciseId=${ex.id}&teacherId=${teacherId}`}>
+                          <Link href={`/${ex.subject}?mode=test_exercise&exerciseId=${ex.id}&teacherId=${teacherId}`}>
                               <TestTube className="w-4 h-4 text-blue-500" />
                           </Link>
                         </Button>
@@ -1995,3 +1995,4 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
