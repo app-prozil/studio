@@ -68,7 +68,7 @@ function UserNav() {
   if (isLoading) {
     return (
         <div className="flex items-center gap-3">
-            <Skeleton className="h-5 w-24 hidden sm:block" />
+            <Skeleton className="h-5 w-24" />
             <Skeleton className="h-8 w-8 rounded-full" />
         </div>
     );
@@ -82,7 +82,7 @@ function UserNav() {
 
     return (
       <div className="flex items-center gap-3">
-        <span className="hidden text-sm font-medium text-right sm:block">{displayName}</span>
+        <span className="text-sm font-medium text-right">{displayName}</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
