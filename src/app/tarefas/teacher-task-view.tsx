@@ -70,6 +70,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 // Schemas
@@ -326,7 +327,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
         const subjectMatch = subjectFilter === 'all' || ex.subject === subjectFilter;
         const effectiveQuestionType = ex.questionType || 'multiple_choice';
-        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === questionTypeFilter;
+        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
         return subjectMatch && typeMatch;
     });
   }, [exercises, subjectFilter, questionTypeFilter, isLoading]);
@@ -836,7 +837,21 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     </Badge>
                   </div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex items-center">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" asChild>
+                          <Link href={`/${ex.subject === 'memoria' ? 'portugues' : ex.subject}?mode=test_exercise&exerciseId=${ex.id}&teacherId=${teacherId}`}>
+                              <TestTube className="w-4 h-4 text-blue-500" />
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Testar este exercício</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                    <Button variant="ghost" size="icon" onClick={() => setEditingExercise(ex)}><Edit className="w-4 h-4" /></Button>
                    <Button variant="ghost" size="icon" onClick={() => setDeletingExercise(ex)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
                 </div>
@@ -909,7 +924,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
-      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);

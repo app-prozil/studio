@@ -21,6 +21,7 @@ type Question = {
   questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence';
   categories?: string[];
   categoryItems?: { item: string, category: string }[];
+  subject: 'matematica' | 'portugues' | 'memoria';
   // Performance fields
   studentAnswer?: string;
   attempts?: number;
@@ -33,7 +34,7 @@ type Task = {
     teacherId: string;
     studentId: string;
     questions: Question[];
-    subject: 'math' | 'portuguese' | 'memoria';
+    subject: 'matematica' | 'portugues' | 'memoria';
     studentName?: string;
     isCompleted?: boolean;
     // Performance fields
@@ -42,38 +43,38 @@ type Task = {
 }
 
 const testDriveMathQuestions: Question[] = [
-    { text: 'QUANTO É 5 + 3?', options: ['7', '8', '9'], answer: '8', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: "ENCONTRE OS PARES: SOMA E RESULTADO", questionType: 'memory_game', options: ["2+2", "4", "5+3", "8", "1+1", "2"], answer: "N/A", status: 'unanswered', attempts: 0 },
-    { text: 'QUAL NÚMERO VEM DEPOIS DE 9?', options: ['8', '10', '11'], answer: '10', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: 'CONTE OS EMOJIS:', text2: '👍👍👍👍👍', options: ['4', '5', '6'], answer: '5', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: 'QUANTO É 4 - 2?', options: ['1', '2', '3'], answer: '2', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: '2 + 2 = ___', options: ['4', '3', '5'], answer: '4', status: 'unanswered', attempts: 0, questionType: 'fill_in_the_blank' },
-    { text: 'QUAL NÚMERO VEM ANTES DE 7?', options: ['5', '6', '8'], answer: '6', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: 'QUANTO É 10 + 0?', options: ['0', '1', '10'], answer: '10', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: 'CONTE OS EMOJIS:', text2: '🚗🚗🚗', options: ['2', '3', '4'], answer: '3', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: 'QUAL FORMA TEM 4 LADOS IGUAIS?', options: ['CÍRCULO', 'TRIÂNGULO', 'QUADRADO'], answer: 'QUADRADO', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: 'QUANTO É 3 + 3?', options: ['5', '6', '7'], answer: '6', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: 'QUAL NÚMERO É MAIOR: 8 OU 6?', options: ['8', '6', 'IGUAIS'], answer: '8', status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
+    { text: 'QUANTO É 5 + 3?', options: ['7', '8', '9'], answer: '8', status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'matematica' },
+    { text: "ENCONTRE OS PARES: SOMA E RESULTADO", questionType: 'memory_game', options: ["2+2", "4", "5+3", "8", "1+1", "2"], answer: "N/A", status: 'unanswered', attempts: 0, subject: 'matematica' },
+    { text: 'QUAL NÚMERO VEM DEPOIS DE 9?', options: ['8', '10', '11'], answer: '10', status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'matematica' },
+    { text: 'CONTE OS EMOJIS:', text2: '👍👍👍👍👍', options: ['4', '5', '6'], answer: '5', status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'matematica' },
+    { text: 'QUANTO É 4 - 2?', options: ['1', '2', '3'], answer: '2', status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'matematica' },
+    { text: '2 + 2 = ___', options: ['4', '3', '5'], answer: '4', status: 'unanswered', attempts: 0, questionType: 'fill_in_the_blank', subject: 'matematica' },
+    { text: 'QUAL NÚMERO VEM ANTES DE 7?', options: ['5', '6', '8'], answer: '6', status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'matematica' },
+    { text: 'QUANTO É 10 + 0?', options: ['0', '1', '10'], answer: '10', status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'matematica' },
+    { text: 'CONTE OS EMOJIS:', text2: '🚗🚗🚗', options: ['2', '3', '4'], answer: '3', status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'matematica' },
+    { text: 'QUAL FORMA TEM 4 LADOS IGUAIS?', options: ['CÍRCULO', 'TRIÂNGULO', 'QUADRADO'], answer: 'QUADRADO', status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'matematica' },
+    { text: 'QUANTO É 3 + 3?', options: ['5', '6', '7'], answer: '6', status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'matematica' },
+    { text: 'QUAL NÚMERO É MAIOR: 8 OU 6?', options: ['8', '6', 'IGUAIS'], answer: '8', status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'matematica' },
 ];
 
 const testDrivePortugueseQuestions: Question[] = [
-    { text: "QUAL O SINÔNIMO DE 'BONITO'?", options: ["FEIO", "BELO", "GRANDE"], answer: "BELO", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: "ENCONTRE OS PARES: ANIMAL E SOM", questionType: 'memory_game', options: ["GATO", "MIAU", "CÃO", "AU AU", "VACA", "MUUU"], answer: "N/A", status: 'unanswered', attempts: 0 },
-    { text: "COMPLETE COM O VERBO CORRETO: EU ___ PÃO.", options: ["COMO", "COME", "COMEMOS"], answer: "COMO", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: "O PLURAL DE 'MENINO' É ___.", options: ["MENINA", "MENINOS", "MENINAS"], answer: "MENINOS", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: "O CONTRÁRIO DE 'ABRIR' É ___.", options: ["FECHAR", "CORRER", "PULAR"], answer: "FECHAR", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: "A ___ é azul.", text2: "🌊", options: ["ÁGUA", "BOLA", "CASA"], answer: "ÁGUA", status: 'unanswered', attempts: 0, questionType: 'fill_in_the_blank' },
-    { text: "QUAL ANIMAL FAZ 'MIAU'?", options: ["CACHORRO", "GATO", "PÁSSARO"], answer: "GATO", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: "A COR DO SOL É ___.", options: ["AZUL", "VERDE", "AMARELO"], answer: "AMARELO", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: "O QUE USAMOS PARA ESCREVER?", options: ["LÁPIS", "GARFO", "CAMA"], answer: "LÁPIS", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: "A PRIMEIRA LETRA DO ALFABETO É ___.", options: ["B", "C", "A"], answer: "A", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: "O PLURAL DE 'CÃO' É ___.", options: ["CÃOS", "CÃES", "CÃS"], answer: "CÃES", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
-    { text: "QUAL O FEMININO DE 'PAI'?", options: ["TIA", "MÃE", "AVÓ"], answer: "MÃE", status: 'unanswered', attempts: 0, questionType: 'multiple_choice' },
+    { text: "QUAL O SINÔNIMO DE 'BONITO'?", options: ["FEIO", "BELO", "GRANDE"], answer: "BELO", status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'portugues' },
+    { text: "ENCONTRE OS PARES: ANIMAL E SOM", questionType: 'memory_game', options: ["GATO", "MIAU", "CÃO", "AU AU", "VACA", "MUUU"], answer: "N/A", status: 'unanswered', attempts: 0, subject: 'portugues' },
+    { text: "COMPLETE COM O VERBO CORRETO: EU ___ PÃO.", options: ["COMO", "COME", "COMEMOS"], answer: "COMO", status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'portugues' },
+    { text: "O PLURAL DE 'MENINO' É ___.", options: ["MENINA", "MENINOS", "MENINAS"], answer: "MENINOS", status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'portugues' },
+    { text: "O CONTRÁRIO DE 'ABRIR' É ___.", options: ["FECHAR", "CORRER", "PULAR"], answer: "FECHAR", status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'portugues' },
+    { text: "A ___ é azul.", text2: "🌊", options: ["ÁGUA", "BOLA", "CASA"], answer: "ÁGUA", status: 'unanswered', attempts: 0, questionType: 'fill_in_the_blank', subject: 'portugues' },
+    { text: "QUAL ANIMAL FAZ 'MIAU'?", options: ["CACHORRO", "GATO", "PÁSSARO"], answer: "GATO", status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'portugues' },
+    { text: "A COR DO SOL É ___.", options: ["AZUL", "VERDE", "AMARELO"], answer: "AMARELO", status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'portugues' },
+    { text: "O QUE USAMOS PARA ESCREVER?", options: ["LÁPIS", "GARFO", "CAMA"], answer: "LÁPIS", status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'portugues' },
+    { text: "A PRIMEIRA LETRA DO ALFABETO É ___.", options: ["B", "C", "A"], answer: "A", status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'portugues' },
+    { text: "O PLURAL DE 'CÃO' É ___.", options: ["CÃOS", "CÃES", "CÃS"], answer: "CÃES", status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'portugues' },
+    { text: "QUAL O FEMININO DE 'PAI'?", options: ["TIA", "MÃE", "AVÓ"], answer: "MÃE", status: 'unanswered', attempts: 0, questionType: 'multiple_choice', subject: 'portugues' },
 ];
 
 const testDriveMemoryQuestions: Question[] = [
-    { text: "ENCONTRE OS PARES: ANIMAL E SOM", questionType: 'memory_game', options: ["GATO", "MIAU", "CÃO", "AU AU", "VACA", "MUUU"], answer: "N/A", status: 'unanswered', attempts: 0 },
-    { text: "ENCONTRE OS PARES: SOMA E RESULTADO", questionType: 'memory_game', options: ["2+2", "4", "5+3", "8", "1+1", "2"], answer: "N/A", status: 'unanswered', attempts: 0 },
+    { text: "ENCONTRE OS PARES: ANIMAL E SOM", questionType: 'memory_game', options: ["GATO", "MIAU", "CÃO", "AU AU", "VACA", "MUUU"], answer: "N/A", status: 'unanswered', attempts: 0, subject: 'memoria' },
+    { text: "ENCONTRE OS PARES: SOMA E RESULTADO", questionType: 'memory_game', options: ["2+2", "4", "5+3", "8", "1+1", "2"], answer: "N/A", status: 'unanswered', attempts: 0, subject: 'memoria' },
 ];
 
 const testDriveTaskBase = {
@@ -147,7 +148,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
 
   const taskId = searchParams.get('taskId');
-  const studentId = searchParams.get('studentId'); 
+  const studentId = searchParams.get('studentId');
+  const mode = searchParams.get('mode');
+  const exerciseId = searchParams.get('exerciseId');
+  const teacherIdForTest = searchParams.get('teacherId');
   
   const currentQuestion = questions[currentQuestionIndex];
   const questionType = currentQuestion?.questionType || 'multiple_choice';
@@ -170,7 +174,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   
   useEffect(() => {
     const isTestDrive = taskId === 'test-drive';
-    const isTestMode = isTestDrive || searchParams.get('mode') === 'test';
+    const isTaskTestMode = isTestDrive || mode === 'test';
+    const isExerciseTestMode = mode === 'test_exercise' && exerciseId && teacherIdForTest;
+
     const taskSource = searchParams.get('source') || 'student';
     const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
 
@@ -179,11 +185,41 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       return;
     }
 
+    if (isExerciseTestMode) {
+        setGameState('loading');
+        const exerciseDocRef = doc(firestore, 'teachers', teacherIdForTest, 'exercises', exerciseId);
+        getDoc(exerciseDocRef).then(docSnap => {
+            if (docSnap.exists()) {
+                const exerciseData = docSnap.data() as Question; // An Exercise is basically a Question
+                const mockTask: Task = {
+                    id: `test-exercise-${exerciseId}`,
+                    teacherId: teacherIdForTest,
+                    studentId: user?.uid || 'test-user',
+                    studentName: 'Professor (Modo Teste)',
+                    subject: exerciseData.subject,
+                    isCompleted: false,
+                    questions: [{ ...exerciseData, status: 'unanswered', attempts: 0 }],
+                };
+                setTask(mockTask);
+                setQuestions(mockTask.questions);
+                setGameState('playing');
+            } else {
+                toast({ variant: 'destructive', title: 'Exercício não encontrado' });
+                setGameState('finished');
+            }
+        }).catch(e => {
+            console.error("Error loading exercise for test:", e);
+            toast({ variant: 'destructive', title: 'Erro ao carregar exercício' });
+            setGameState('finished');
+        });
+        return; // End execution here for this mode
+    }
+
     if (isTestDrive) {
       setGameState('loading');
       const questionsForTest = 
         subject === 'math' ? testDriveMathQuestions 
-        : subject === 'portuguese' ? testDrivePortugueseQuestions
+        : subject === 'portugues' ? testDrivePortugueseQuestions
         : testDriveMemoryQuestions;
       const mockTask: Task = { ...testDriveTaskBase, questions: questionsForTest, subject };
       setTask(mockTask);
@@ -211,7 +247,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       if (docSnap.exists()) {
         const taskData = docSnap.data() as Task;
         
-        if (taskData.isCompleted && !isTestMode) {
+        if (taskData.isCompleted && !isTaskTestMode) {
           toast({ title: 'Tarefa já concluída', description: 'Você já finalizou esta atividade.' });
           router.push('/tarefas');
           return;
@@ -235,7 +271,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       setGameState('finished');
     });
 
-  }, [isAuthLoading, user, taskId, studentId, subject, firestore, router, toast, searchParams]);
+  }, [isAuthLoading, user, taskId, studentId, subject, firestore, router, toast, searchParams, mode, exerciseId, teacherIdForTest]);
 
 
   useEffect(() => {
@@ -288,9 +324,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   
   const completeTask = useCallback((finalQuestions: Question[]) => {
     const isTestDrive = taskId === 'test-drive';
-    const isTestMode = isTestDrive || searchParams.get('mode') === 'test';
+    const isTaskTestMode = isTestDrive || mode === 'test';
+    const isExerciseTestMode = mode === 'test_exercise';
     
-    if (isTestMode) return;
+    if (isTaskTestMode || isExerciseTestMode) return;
 
     if (!firestore || !user || !task?.teacherId || !task.id || !task.studentId) {
         console.error("Aborting task completion: missing critical data.", { task, user: !!user });
@@ -315,7 +352,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           console.error("Erro ao finalizar tarefa (professor): ", e);
           toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível sincronizar o resultado da tarefa com o professor.' });
       });
-  }, [firestore, user, task, taskStartTime, toast, taskId, searchParams]);
+  }, [firestore, user, task, taskStartTime, toast, taskId, mode]);
 
   const handleNextQuestion = useCallback((updatedQuestions: Question[]) => {
     const isLastQuestion = currentQuestionIndex >= updatedQuestions.length - 1;
@@ -340,7 +377,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     if (gameState !== 'playing') return;
 
     const isTestDrive = taskId === 'test-drive';
-    const isTestMode = isTestDrive || searchParams.get('mode') === 'test';
+    const isTaskTestMode = isTestDrive || mode === 'test';
+    const isExerciseTestMode = mode === 'test_exercise';
+    const isTestMode = isTestDrive || isTaskTestMode || isExerciseTestMode;
+
     const taskSource = searchParams.get('source') || 'student';
     const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
     const timeTaken = Date.now() - questionStartTime;
@@ -400,7 +440,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         }
       }, 2500);
     }
-  }, [gameState, questionStartTime, questions, currentQuestion, handleNextQuestion, firestore, user, studentId, taskId, searchParams, questionType, constructedSyllables, availableSyllables]);
+  }, [gameState, questionStartTime, questions, currentQuestion, handleNextQuestion, firestore, user, studentId, taskId, searchParams, questionType, constructedSyllables, availableSyllables, mode]);
   
   useEffect(() => {
     if (questionType === 'organize_syllables' && availableSyllables.length === 0 && constructedSyllables.length > 0) {
@@ -603,13 +643,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   const handleDeselectSentenceWord = (wordToRemove: SentenceWord) => {
     if (gameState !== 'playing') return;
-    setAvailableSentenceWords(prev => [...prev, wordToRemove]);
+    setAvailableSentenceWords(prev => [...prev, wordToRemove].sort((a,b) => a.id - b.id));
     setConstructedSentence(prev => prev.filter(w => w.id !== wordToRemove.id));
   };
 
   const handleClearSentence = () => {
     if (gameState !== 'playing') return;
-    setAvailableSentenceWords(prev => [...prev, ...constructedSentence].sort(() => Math.random() - 0.5));
+    setAvailableSentenceWords(prev => [...prev, ...constructedSentence].sort((a,b) => a.id - b.id));
     setConstructedSentence([]);
   };
 
