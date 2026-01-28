@@ -64,7 +64,7 @@ function PrintableWorksheetGenerator() {
     });
   }, [exercises, bankSubjectFilter]);
   
-  const exercisesPerPage = 3;
+  const exercisesPerPage = 1;
   const pageChunks = useMemo(() => {
     const chunks = [];
     for (let i = 0; i < selectedExercises.length; i += exercisesPerPage) {
@@ -93,11 +93,10 @@ function PrintableWorksheetGenerator() {
           scale: 2,
           useCORS: true,
           logging: false,
-          backgroundColor: null,
+          backgroundColor: '#ffffff',
         });
   
         const imgData = canvas.toDataURL('image/png');
-        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
   
         if (i > 0) {
           pdf.addPage();
@@ -225,32 +224,31 @@ function PrintableWorksheetGenerator() {
               </div>
               <div id="printable-worksheet-container" className="bg-gray-200 dark:bg-gray-800 p-4 rounded-md">
                 {pageChunks.map((chunk, pageIndex) => (
-                  <div key={`page-${pageIndex}`} className="printable-page flex flex-col">
+                  <div key={`page-${pageIndex}`} className="printable-page">
                       <header className="mb-12 space-y-4 page-header">
                           <h1 className="text-4xl font-bold text-center font-headline">Folha de Atividades</h1>
                           <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-lg py-4">
                               <div className="flex items-center gap-2 header-info-item">
                                   <GraduationCap className="w-6 h-6 text-muted-foreground" />
                                   <strong className="mr-2">Aluno(a):</strong>
-                                  <span>{studentName || ''}</span>
+                                  <span>{studentName || '________________________'}</span>
                               </div>
                               <div className="flex items-center gap-2 header-info-item">
                                   <User className="w-6 h-6 text-muted-foreground" />
                                   <strong className="mr-2">Professor(a):</strong>
-                                  <span>{teacherName || ''}</span>
+                                  <span>{teacherName || '________________________'}</span>
                               </div>
                           </div>
                       </header>
 
-                        <section className="space-y-10 flex-grow">
+                        <section className="flex flex-col flex-grow">
                             {chunk.map((exercise, exerciseIndex) => {
-                                const questionNumber = (pageIndex * exercisesPerPage) + exerciseIndex + 1;
                                 const questionType = exercise.questionType || 'multiple_choice';
 
                                 return (
-                                    <div key={exercise.id} className="space-y-4 exercise-item">
+                                    <div key={exercise.id} className="space-y-4 exercise-item flex flex-col flex-grow">
                                     <p className="text-2xl font-bold">
-                                        {questionNumber}. {`${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
+                                        {`${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
                                     </p>
 
                                     {(() => {
@@ -259,7 +257,7 @@ function PrintableWorksheetGenerator() {
                                         case 'organize_sentence':
                                             const shuffledItems = shuffleArray(exercise.options || []);
                                             return (
-                                            <div className="space-y-4">
+                                            <div className="flex flex-col flex-grow h-full pt-4">
                                                 <div className="flex flex-wrap gap-4 items-center justify-center p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800">
                                                 {shuffledItems.map((item, i) => (
                                                     <div key={i} className="printable-syllable-item">
@@ -267,18 +265,22 @@ function PrintableWorksheetGenerator() {
                                                     </div>
                                                 ))}
                                                 </div>
-                                                <p className="text-2xl pl-8 mt-4">R: ___________________________________</p>
+                                                <div className="printable-paste-area">
+                                                  <span className="printable-paste-area-text">Cole as peças na ordem correta aqui</span>
+                                                </div>
                                             </div>
                                             );
                                         case 'guess_the_word':
                                             const shuffledLetters = shuffleArray(exercise.answer.split('')).join(' ');
                                             return (
-                                            <div className="space-y-4">
+                                            <div className="flex flex-col flex-grow h-full pt-4">
                                                 <div className="p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800 text-center">
-                                                <p className="text-lg text-muted-foreground">Letras disponíveis (embaralhadas):</p>
+                                                <p className="text-lg text-muted-foreground">Recorte e cole as letras para formar a palavra:</p>
                                                 <p className="printable-shuffled-letters">{shuffledLetters}</p>
                                                 </div>
-                                                <p className="text-2xl pl-8 mt-4">R: ___________________________________</p>
+                                                <div className="printable-paste-area">
+                                                  <span className="printable-paste-area-text">Cole as letras para formar a palavra secreta aqui</span>
+                                                </div>
                                             </div>
                                             );
                                         case 'multiple_choice':

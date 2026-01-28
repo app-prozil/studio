@@ -348,12 +348,14 @@
     background-color: white !important;
     color: black !important;
     width: 210mm;
-    min-height: 297mm;
+    height: 297mm;
     padding: 15mm;
     margin: 1rem auto;
     border: 1px solid #d4d4d4;
     box-shadow: 0 0 0.5cm rgba(0, 0, 0, 0.2);
     font-family: 'PT Sans', sans-serif;
+    display: flex;
+    flex-direction: column;
   }
 
   .printable-page * {
@@ -367,17 +369,21 @@
   }
 
   .printable-page .page-header h1 {
-    font-size: 28px;
+    font-size: 36px;
     font-weight: 700;
   }
 
   .printable-page .header-info-item {
-    font-size: 16px;
+    font-size: 18px;
   }
   
+  .printable-page .exercise-item {
+    flex-shrink: 0;
+  }
+
   .printable-page .exercise-item > p, .printable-page .option-text {
-    font-size: 48px;
-    line-height: 1.6;
+    font-size: 54px;
+    line-height: 1.5;
     letter-spacing: 2px;
     word-spacing: 8px;
   }
@@ -415,7 +421,7 @@
     border: 3px solid #000;
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
-    font-size: 48px;
+    font-size: 54px;
     line-height: 1.5;
     text-align: center;
     font-weight: 700;
@@ -423,13 +429,31 @@
 
   /* For Printable Shuffled Letters */
   .printable-page .printable-shuffled-letters {
-    font-size: 40px; /* A bit smaller to fit more letters, but still large */
+    font-size: 48px;
     line-height: 1.6;
     letter-spacing: 12px;
     word-spacing: 12px;
     font-weight: 700;
     text-align: center;
     padding-top: 1rem;
+  }
+
+  .printable-paste-area {
+    margin-top: 2rem;
+    padding: 1rem;
+    border: 4px dashed #999;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex-grow: 1;
+  }
+
+  .printable-paste-area-text {
+    font-size: 24px;
+    font-weight: bold;
+    color: #999 !important;
   }
   
   /* PDF Export Specific Styles */
