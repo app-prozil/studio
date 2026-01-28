@@ -15,6 +15,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 const shuffleArray = <T,>(array: T[]): T[] => [...array].sort(() => Math.random() - 0.5);
 
@@ -117,17 +118,28 @@ function PrintableWorksheetGenerator() {
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
-          windowWidth: page.scrollWidth,
-          windowHeight: page.scrollHeight,
+          width: page.offsetWidth,
+          height: page.offsetHeight,
         });
   
         const imgData = canvas.toDataURL('image/png');
-  
+        const canvasAspectRatio = canvas.width / canvas.height;
+        const pageAspectRatio = pdfWidth / pdfHeight;
+        let finalWidth, finalHeight;
+
+        if (canvasAspectRatio > pageAspectRatio) {
+            finalWidth = pdfWidth;
+            finalHeight = pdfWidth / canvasAspectRatio;
+        } else {
+            finalHeight = pdfHeight;
+            finalWidth = pdfHeight * canvasAspectRatio;
+        }
+
         if (i > 0) {
           pdf.addPage();
         }
   
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight);
       }
   
       pdf.save('folha-de-atividades-prozil.pdf');
@@ -139,6 +151,7 @@ function PrintableWorksheetGenerator() {
     }
   };
 
+  let exerciseCounter = 0;
 
   if (isUserLoading) {
     return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin" /></div>;
@@ -267,13 +280,15 @@ function PrintableWorksheetGenerator() {
                       </header>
 
                         <section className="flex flex-col flex-grow gap-8">
-                            {chunk.map((exercise, exerciseIndex) => {
+                            {chunk.map((exercise) => {
+                                exerciseCounter++;
                                 const questionType = exercise.questionType || 'multiple_choice';
+                                const isSpecialLayout = ['organize_syllables', 'organize_sentence', 'guess_the_word'].includes(questionType);
 
                                 return (
-                                    <div key={exercise.id} className="space-y-4 exercise-item flex flex-col flex-grow">
+                                    <div key={exercise.id} className={cn("space-y-4 exercise-item flex flex-col", isSpecialLayout && "flex-grow")}>
                                         <p className="text-2xl font-bold">
-                                            {`${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
+                                            {`${exerciseCounter}. ${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
                                         </p>
 
                                         {(() => {
