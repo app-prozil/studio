@@ -374,12 +374,12 @@
   }
 
   .printable-page .page-header h1 {
-    font-size: 32px;
+    font-size: 36px;
     font-weight: 700;
   }
 
   .printable-page .header-info-item {
-    font-size: 18px;
+    font-size: 20px;
   }
 
   .printable-page .page-content-section {
@@ -387,7 +387,6 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;
   }
   
   .printable-page .exercise-item {
@@ -402,26 +401,27 @@
   }
 
   .printable-page .exercise-item > p, .printable-page .option-text {
-    font-size: 28px;
-    line-height: 1.5;
+    font-size: 35px;
+    line-height: 1.6;
+    margin-bottom: 2rem;
   }
 
   .printable-page .options-list {
     padding-left: 20px;
-    margin-top: 25px;
+    margin-top: 40px;
     list-style: none;
   }
   .printable-page .option-item {
     display: flex;
     align-items: center;
-    margin-bottom: 25px;
+    margin-bottom: 35px;
   }
   .printable-page .option-checkbox {
-    width: 25px;
-    height: 25px;
+    width: 30px;
+    height: 30px;
     border: 3px solid #000;
     border-radius: 4px;
-    margin-right: 20px;
+    margin-right: 25px;
     flex-shrink: 0;
   }
 
