@@ -66,34 +66,10 @@ function PrintableWorksheetGenerator() {
   }, [exercises, bankSubjectFilter]);
   
   const pageChunks = useMemo(() => {
-    const specialTypes: Exercise['questionType'][] = ['organize_syllables', 'organize_sentence', 'guess_the_word'];
-    const maxNormalPerPage = 2;
-
     const chunks: Exercise[][] = [];
-    let currentPage: Exercise[] = [];
-
     selectedExercises.forEach(exercise => {
-      const questionType = exercise.questionType || 'multiple_choice';
-
-      if (specialTypes.includes(questionType)) {
-        if (currentPage.length > 0) {
-          chunks.push(currentPage);
-          currentPage = [];
-        }
-        chunks.push([exercise]);
-      } else {
-        currentPage.push(exercise);
-        if (currentPage.length === maxNormalPerPage) {
-          chunks.push(currentPage);
-          currentPage = [];
-        }
-      }
+      chunks.push([exercise]);
     });
-
-    if (currentPage.length > 0) {
-      chunks.push(currentPage);
-    }
-
     return chunks;
   }, [selectedExercises]);
 
@@ -283,10 +259,9 @@ function PrintableWorksheetGenerator() {
                             {chunk.map((exercise) => {
                                 exerciseCounter++;
                                 const questionType = exercise.questionType || 'multiple_choice';
-                                const isSpecialLayout = ['organize_syllables', 'organize_sentence', 'guess_the_word'].includes(questionType);
 
                                 return (
-                                    <div key={exercise.id} className={cn("space-y-4 exercise-item flex flex-col", isSpecialLayout && "flex-grow")}>
+                                    <div key={exercise.id} className="space-y-4 exercise-item flex flex-col flex-grow">
                                         <p className="text-2xl font-bold">
                                             {`${exerciseCounter}. ${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
                                         </p>
@@ -297,31 +272,41 @@ function PrintableWorksheetGenerator() {
                                             case 'organize_sentence':
                                                 const shuffledItems = shuffleArray(exercise.options || []);
                                                 return (
-                                                <>
-                                                    <div className="printable-cutout-area flex flex-wrap gap-4 items-center justify-center p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800">
-                                                    {shuffledItems.map((item, i) => (
-                                                        <div key={i} className="printable-syllable-item">
-                                                        {item}
-                                                        </div>
-                                                    ))}
-                                                    </div>
-                                                    <div className="printable-paste-area">
-                                                    <span className="printable-paste-area-text">Cole as peças na ordem correta aqui</span>
-                                                    </div>
-                                                </>
+                                                  <div className="flex flex-col gap-8 flex-grow">
+                                                      <div className="printable-cutout-area flex flex-wrap gap-4 items-center justify-center p-4 border-2 border-solid rounded-lg bg-gray-100 dark:bg-gray-800">
+                                                      {shuffledItems.map((item, i) => (
+                                                          <div key={i} className="printable-syllable-item">
+                                                          {item}
+                                                          </div>
+                                                      ))}
+                                                      </div>
+                                                      <div className="printable-cutout-area border-dashed border-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center relative">
+                                                          <span className="printable-paste-area-text">Cole as peças na ordem correta aqui</span>
+                                                          <div className="absolute inset-0 flex flex-wrap gap-4 items-center justify-center p-4 opacity-0 pointer-events-none">
+                                                              {shuffledItems.map((item, i) => (
+                                                              <div key={`placeholder-${i}`} className="printable-syllable-item">
+                                                                  {item}
+                                                              </div>
+                                                              ))}
+                                                          </div>
+                                                      </div>
+                                                  </div>
                                                 );
                                             case 'guess_the_word':
                                                 const shuffledLetters = shuffleArray(exercise.answer.split('')).join(' ');
                                                 return (
-                                                <>
-                                                    <div className="printable-cutout-area p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800 text-center">
-                                                    <p className="text-lg text-muted-foreground">Recorte e cole as letras para formar a palavra:</p>
-                                                    <p className="printable-shuffled-letters">{shuffledLetters}</p>
-                                                    </div>
-                                                    <div className="printable-paste-area">
-                                                    <span className="printable-paste-area-text">Cole as letras para formar a palavra secreta aqui</span>
-                                                    </div>
-                                                </>
+                                                  <div className="flex flex-col gap-8 flex-grow">
+                                                      <div className="printable-cutout-area p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800 text-center">
+                                                          <p className="text-lg text-muted-foreground">Recorte e cole as letras para formar a palavra:</p>
+                                                          <p className="printable-shuffled-letters">{shuffledLetters}</p>
+                                                      </div>
+                                                      <div className="printable-cutout-area border-dashed border-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center relative">
+                                                          <span className="printable-paste-area-text">Cole as letras para formar a palavra secreta aqui</span>
+                                                           <div className="absolute inset-0 flex flex-wrap gap-4 items-center justify-center p-4 opacity-0 pointer-events-none">
+                                                              <p className="printable-shuffled-letters">{shuffledLetters}</p>
+                                                          </div>
+                                                      </div>
+                                                  </div>
                                                 );
                                             case 'multiple_choice':
                                             case 'fill_in_the_blank':

@@ -369,12 +369,12 @@
   }
 
   .printable-page .page-header h1 {
-    font-size: 36px;
+    font-size: 42px;
     font-weight: 700;
   }
 
   .printable-page .header-info-item {
-    font-size: 18px;
+    font-size: 22px;
   }
   
   .printable-page .exercise-item {
@@ -418,7 +418,6 @@
   /* For Printable Syllables/Words to be cut */
   .printable-cutout-area {
     flex-shrink: 0;
-    margin-bottom: 2rem;
   }
 
   .printable-page .printable-syllable-item {
@@ -441,18 +440,6 @@
     font-weight: 700;
     text-align: center;
     padding-top: 1rem;
-  }
-
-  .printable-paste-area {
-    margin-top: 2rem;
-    padding: 1rem;
-    border: 4px dashed #999;
-    border-radius: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    flex-grow: 1;
   }
 
   .printable-paste-area-text {
