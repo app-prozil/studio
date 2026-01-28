@@ -44,7 +44,7 @@ function PrintableWorksheetGenerator() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   const [isBankOpen, setIsBankOpen] = useState(false);
-  const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues' | 'memoria'>('all');
+  const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
 
   const exercisesQuery = useMemoFirebase(
     () => (user ? collection(firestore, 'teachers', user.uid, 'exercises') : null),
@@ -260,9 +260,9 @@ function PrintableWorksheetGenerator() {
                                             const shuffledItems = shuffleArray(exercise.options || []);
                                             return (
                                             <div className="space-y-4">
-                                                <div className="flex flex-wrap gap-4 items-center p-4 border border-dashed rounded-lg bg-muted/50">
+                                                <div className="flex flex-wrap gap-4 items-center justify-center p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800">
                                                 {shuffledItems.map((item, i) => (
-                                                    <div key={i} className="bg-card border shadow-sm px-4 py-2 rounded-md font-mono text-xl">
+                                                    <div key={i} className="printable-syllable-item">
                                                     {item}
                                                     </div>
                                                 ))}
@@ -271,12 +271,12 @@ function PrintableWorksheetGenerator() {
                                             </div>
                                             );
                                         case 'guess_the_word':
-                                            const shuffledLetters = shuffleArray(exercise.answer.split('')).join(', ');
+                                            const shuffledLetters = shuffleArray(exercise.answer.split('')).join(' ');
                                             return (
                                             <div className="space-y-4">
-                                                <div className="p-4 border border-dashed rounded-lg bg-muted/50">
-                                                <p className="text-base text-muted-foreground">Letras disponíveis (embaralhadas):</p>
-                                                <p className="font-mono text-xl tracking-widest">{shuffledLetters}</p>
+                                                <div className="p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800 text-center">
+                                                <p className="text-lg text-muted-foreground">Letras disponíveis (embaralhadas):</p>
+                                                <p className="printable-shuffled-letters">{shuffledLetters}</p>
                                                 </div>
                                                 <p className="text-2xl pl-8 mt-4">R: ___________________________________</p>
                                             </div>
@@ -332,7 +332,6 @@ function PrintableWorksheetGenerator() {
                 <Button variant={bankSubjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('all')}>Todos</Button>
                 <Button variant={bankSubjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('matematica')}>Matemática</Button>
                 <Button variant={bankSubjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('portugues')}>Português</Button>
-                <Button variant={bankSubjectFilter === 'memoria' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('memoria')}>Memória</Button>
             </div>
             <div className="flex-1 overflow-y-auto pr-4">
                 {isLoadingExercises ? (
