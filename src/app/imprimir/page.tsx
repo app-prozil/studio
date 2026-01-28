@@ -264,7 +264,7 @@ function PrintableWorksheetGenerator() {
 
                                 return (
                                     <div key={exercise.id} className={cn("space-y-4 exercise-item", isCutAndPaste && 'cut-and-paste')}>
-                                        <p className="text-2xl font-bold">
+                                        <p>
                                             {`${exerciseCounter}. ${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
                                         </p>
 
@@ -274,7 +274,7 @@ function PrintableWorksheetGenerator() {
                                             case 'organize_sentence':
                                                 const itemsToCut = shuffleArray(exercise.options || []);
                                                 return (
-                                                  <div className="flex flex-col gap-8 h-full">
+                                                  <>
                                                       <div className="printable-cutout-area flex flex-wrap gap-4 items-center justify-center p-4 border-2 border-solid rounded-lg bg-gray-100 dark:bg-gray-800">
                                                       {itemsToCut.map((item, i) => (
                                                           <div key={i} className="printable-syllable-item">
@@ -294,12 +294,12 @@ function PrintableWorksheetGenerator() {
                                                               ))}
                                                           </div>
                                                       </div>
-                                                  </div>
+                                                  </>
                                                 );
                                             case 'guess_the_word':
                                                 const shuffledLetters = shuffleArray(exercise.answer.split(''));
                                                 return (
-                                                  <div className="flex flex-col gap-8 h-full">
+                                                  <>
                                                       <div className="printable-cutout-area flex flex-wrap gap-4 items-center justify-center p-4 border-2 border-solid rounded-lg bg-gray-100 dark:bg-gray-800">
                                                           <p className="text-lg text-muted-foreground w-full text-center">Recorte as letras para formar a palavra:</p>
                                                           {shuffledLetters.map((letter, i) => (
@@ -320,7 +320,7 @@ function PrintableWorksheetGenerator() {
                                                               ))}
                                                           </div>
                                                       </div>
-                                                  </div>
+                                                  </>
                                                 );
                                             case 'multiple_choice':
                                             case 'fill_in_the_blank':
