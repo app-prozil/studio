@@ -415,7 +415,12 @@
     padding-top: 2rem;
   }
 
-  /* For Printable Syllables/Words */
+  /* For Printable Syllables/Words to be cut */
+  .printable-cutout-area {
+    flex-shrink: 0;
+    margin-bottom: 2rem;
+  }
+
   .printable-page .printable-syllable-item {
     background-color: #ffffff;
     border: 3px solid #000;

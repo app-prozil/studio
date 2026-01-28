@@ -64,12 +64,35 @@ function PrintableWorksheetGenerator() {
     });
   }, [exercises, bankSubjectFilter]);
   
-  const exercisesPerPage = 1;
   const pageChunks = useMemo(() => {
-    const chunks = [];
-    for (let i = 0; i < selectedExercises.length; i += exercisesPerPage) {
-      chunks.push(selectedExercises.slice(i, i + exercisesPerPage));
+    const specialTypes: Exercise['questionType'][] = ['organize_syllables', 'organize_sentence', 'guess_the_word'];
+    const maxNormalPerPage = 2;
+
+    const chunks: Exercise[][] = [];
+    let currentPage: Exercise[] = [];
+
+    selectedExercises.forEach(exercise => {
+      const questionType = exercise.questionType || 'multiple_choice';
+
+      if (specialTypes.includes(questionType)) {
+        if (currentPage.length > 0) {
+          chunks.push(currentPage);
+          currentPage = [];
+        }
+        chunks.push([exercise]);
+      } else {
+        currentPage.push(exercise);
+        if (currentPage.length === maxNormalPerPage) {
+          chunks.push(currentPage);
+          currentPage = [];
+        }
+      }
+    });
+
+    if (currentPage.length > 0) {
+      chunks.push(currentPage);
     }
+
     return chunks;
   }, [selectedExercises]);
 
@@ -94,6 +117,8 @@ function PrintableWorksheetGenerator() {
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
+          windowWidth: page.scrollWidth,
+          windowHeight: page.scrollHeight,
         });
   
         const imgData = canvas.toDataURL('image/png');
@@ -241,71 +266,71 @@ function PrintableWorksheetGenerator() {
                           </div>
                       </header>
 
-                        <section className="flex flex-col flex-grow">
+                        <section className="flex flex-col flex-grow gap-8">
                             {chunk.map((exercise, exerciseIndex) => {
                                 const questionType = exercise.questionType || 'multiple_choice';
 
                                 return (
                                     <div key={exercise.id} className="space-y-4 exercise-item flex flex-col flex-grow">
-                                    <p className="text-2xl font-bold">
-                                        {`${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
-                                    </p>
+                                        <p className="text-2xl font-bold">
+                                            {`${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
+                                        </p>
 
-                                    {(() => {
-                                        switch (questionType) {
-                                        case 'organize_syllables':
-                                        case 'organize_sentence':
-                                            const shuffledItems = shuffleArray(exercise.options || []);
-                                            return (
-                                            <div className="flex flex-col flex-grow h-full pt-4">
-                                                <div className="flex flex-wrap gap-4 items-center justify-center p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800">
-                                                {shuffledItems.map((item, i) => (
-                                                    <div key={i} className="printable-syllable-item">
-                                                    {item}
+                                        {(() => {
+                                            switch (questionType) {
+                                            case 'organize_syllables':
+                                            case 'organize_sentence':
+                                                const shuffledItems = shuffleArray(exercise.options || []);
+                                                return (
+                                                <>
+                                                    <div className="printable-cutout-area flex flex-wrap gap-4 items-center justify-center p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800">
+                                                    {shuffledItems.map((item, i) => (
+                                                        <div key={i} className="printable-syllable-item">
+                                                        {item}
+                                                        </div>
+                                                    ))}
                                                     </div>
-                                                ))}
-                                                </div>
-                                                <div className="printable-paste-area">
-                                                  <span className="printable-paste-area-text">Cole as peças na ordem correta aqui</span>
-                                                </div>
-                                            </div>
-                                            );
-                                        case 'guess_the_word':
-                                            const shuffledLetters = shuffleArray(exercise.answer.split('')).join(' ');
-                                            return (
-                                            <div className="flex flex-col flex-grow h-full pt-4">
-                                                <div className="p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800 text-center">
-                                                <p className="text-lg text-muted-foreground">Recorte e cole as letras para formar a palavra:</p>
-                                                <p className="printable-shuffled-letters">{shuffledLetters}</p>
-                                                </div>
-                                                <div className="printable-paste-area">
-                                                  <span className="printable-paste-area-text">Cole as letras para formar a palavra secreta aqui</span>
-                                                </div>
-                                            </div>
-                                            );
-                                        case 'multiple_choice':
-                                        case 'fill_in_the_blank':
-                                            if (exercise.options?.length > 0) {
-                                            return (
-                                                <ul className="options-list">
-                                                {exercise.options.map((option, optIndex) => (
-                                                    <li key={optIndex} className="option-item">
-                                                    <div className="option-checkbox"></div>
-                                                    <span className="option-text">{option}</span>
-                                                    </li>
-                                                ))}
-                                                </ul>
-                                            );
-                                            }
-                                            return <p className="text-2xl pl-8 mt-8">R: ___________________________________</p>;
+                                                    <div className="printable-paste-area">
+                                                    <span className="printable-paste-area-text">Cole as peças na ordem correta aqui</span>
+                                                    </div>
+                                                </>
+                                                );
+                                            case 'guess_the_word':
+                                                const shuffledLetters = shuffleArray(exercise.answer.split('')).join(' ');
+                                                return (
+                                                <>
+                                                    <div className="printable-cutout-area p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800 text-center">
+                                                    <p className="text-lg text-muted-foreground">Recorte e cole as letras para formar a palavra:</p>
+                                                    <p className="printable-shuffled-letters">{shuffledLetters}</p>
+                                                    </div>
+                                                    <div className="printable-paste-area">
+                                                    <span className="printable-paste-area-text">Cole as letras para formar a palavra secreta aqui</span>
+                                                    </div>
+                                                </>
+                                                );
+                                            case 'multiple_choice':
+                                            case 'fill_in_the_blank':
+                                                if (exercise.options?.length > 0) {
+                                                return (
+                                                    <ul className="options-list">
+                                                    {exercise.options.map((option, optIndex) => (
+                                                        <li key={optIndex} className="option-item">
+                                                        <div className="option-checkbox"></div>
+                                                        <span className="option-text">{option}</span>
+                                                        </li>
+                                                    ))}
+                                                    </ul>
+                                                );
+                                                }
+                                                return <p className="text-2xl pl-8 mt-8">R: ___________________________________</p>;
 
-                                        default:
-                                            return <p className="text-2xl pl-8 mt-8">R: ___________________________________</p>;
-                                        }
-                                    })()}
+                                            default:
+                                                return <p className="text-2xl pl-8 mt-8">R: ___________________________________</p>;
+                                            }
+                                        })()}
                                     </div>
                                 );
-                                })}
+                            })}
                         </section>
 
                       <footer className="page-footer">
