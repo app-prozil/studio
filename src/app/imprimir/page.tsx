@@ -261,7 +261,7 @@ function PrintableWorksheetGenerator() {
                                 const questionType = exercise.questionType || 'multiple_choice';
 
                                 return (
-                                    <div key={exercise.id} className="space-y-4 exercise-item flex flex-col flex-grow">
+                                    <div key={exercise.id} className={cn("space-y-4 exercise-item", ['organize_syllables', 'organize_sentence', 'guess_the_word'].includes(questionType) && 'flex flex-col flex-grow')}>
                                         <p className="text-2xl font-bold">
                                             {`${exerciseCounter}. ${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
                                         </p>
@@ -280,9 +280,11 @@ function PrintableWorksheetGenerator() {
                                                           </div>
                                                       ))}
                                                       </div>
-                                                      <div className="printable-cutout-area border-dashed border-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center relative">
-                                                          <span className="printable-paste-area-text">Cole as peças na ordem correta aqui</span>
-                                                          <div className="absolute inset-0 flex flex-wrap gap-4 items-center justify-center p-4 opacity-0 pointer-events-none">
+                                                      <div className="printable-cutout-area border-dashed border-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 relative">
+                                                          <div className="absolute inset-0 flex items-center justify-center">
+                                                              <span className="printable-paste-area-text">Cole as peças na ordem correta aqui</span>
+                                                          </div>
+                                                          <div className="flex flex-wrap gap-4 items-center justify-center opacity-0">
                                                               {shuffledItems.map((item, i) => (
                                                               <div key={`placeholder-${i}`} className="printable-syllable-item">
                                                                   {item}
@@ -293,17 +295,27 @@ function PrintableWorksheetGenerator() {
                                                   </div>
                                                 );
                                             case 'guess_the_word':
-                                                const shuffledLetters = shuffleArray(exercise.answer.split('')).join(' ');
+                                                const shuffledLetters = shuffleArray(exercise.answer.split(''));
                                                 return (
                                                   <div className="flex flex-col gap-8 flex-grow">
-                                                      <div className="printable-cutout-area p-4 border-2 border-dashed rounded-lg bg-gray-100 dark:bg-gray-800 text-center">
-                                                          <p className="text-lg text-muted-foreground">Recorte e cole as letras para formar a palavra:</p>
-                                                          <p className="printable-shuffled-letters">{shuffledLetters}</p>
+                                                      <div className="printable-cutout-area flex flex-wrap gap-4 items-center justify-center p-4 border-2 border-solid rounded-lg bg-gray-100 dark:bg-gray-800">
+                                                          <p className="text-lg text-muted-foreground w-full text-center">Recorte as letras para formar a palavra:</p>
+                                                          {shuffledLetters.map((letter, i) => (
+                                                              <div key={i} className="printable-syllable-item">
+                                                              {letter.toUpperCase()}
+                                                              </div>
+                                                          ))}
                                                       </div>
-                                                      <div className="printable-cutout-area border-dashed border-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center relative">
-                                                          <span className="printable-paste-area-text">Cole as letras para formar a palavra secreta aqui</span>
-                                                           <div className="absolute inset-0 flex flex-wrap gap-4 items-center justify-center p-4 opacity-0 pointer-events-none">
-                                                              <p className="printable-shuffled-letters">{shuffledLetters}</p>
+                                                      <div className="printable-cutout-area border-dashed border-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 relative">
+                                                          <div className="absolute inset-0 flex items-center justify-center">
+                                                              <span className="printable-paste-area-text">Cole as letras para formar a palavra secreta aqui</span>
+                                                          </div>
+                                                          <div className="flex flex-wrap gap-4 items-center justify-center opacity-0">
+                                                              {shuffledLetters.map((letter, i) => (
+                                                                  <div key={`placeholder-${i}`} className="printable-syllable-item">
+                                                                      {letter.toUpperCase()}
+                                                                  </div>
+                                                              ))}
                                                           </div>
                                                       </div>
                                                   </div>
