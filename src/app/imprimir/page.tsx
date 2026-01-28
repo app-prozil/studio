@@ -16,6 +16,8 @@ import html2canvas from 'html2canvas';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
+const shuffleArray = <T,>(array: T[]): T[] => [...array].sort(() => Math.random() - 0.5);
+
 type Exercise = {
   id: string;
   teacherId: string;
@@ -23,8 +25,9 @@ type Exercise = {
   text2?: string;
   options: string[];
   answer: string;
-  subject: 'matematica' | 'portugues';
+  subject: 'matematica' | 'portugues' | 'memoria';
   difficulty: 'easy' | 'medium' | 'hard';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence';
 };
 
 function PrintableWorksheetGenerator() {
@@ -41,7 +44,7 @@ function PrintableWorksheetGenerator() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   const [isBankOpen, setIsBankOpen] = useState(false);
-  const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues'>('all');
+  const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues' | 'memoria'>('all');
 
   const exercisesQuery = useMemoFirebase(
     () => (user ? collection(firestore, 'teachers', user.uid, 'exercises') : null),
@@ -51,8 +54,14 @@ function PrintableWorksheetGenerator() {
 
   const filteredBankExercises = useMemo(() => {
     if (!exercises) return [];
-    if (bankSubjectFilter === 'all') return exercises;
-    return exercises.filter(ex => ex.subject === bankSubjectFilter);
+    const unsuitableForPrint: (Exercise['questionType'])[] = ['memory_game', 'organize_categories'];
+    
+    return exercises.filter(ex => {
+        const questionType = ex.questionType || 'multiple_choice';
+        const isSuitable = !unsuitableForPrint.includes(questionType);
+        const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
+        return isSuitable && subjectMatch;
+    });
   }, [exercises, bankSubjectFilter]);
   
   const exercisesPerPage = 3;
@@ -233,27 +242,70 @@ function PrintableWorksheetGenerator() {
                           </div>
                       </header>
 
-                      <section className="space-y-10 flex-grow">
-                          {chunk.map((exercise, exerciseIndex) => (
-                              <div key={exercise.id} className="space-y-4 exercise-item">
-                                  <p className="text-2xl font-bold">
-                                      {(pageIndex * exercisesPerPage) + exerciseIndex + 1}. {`${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
-                                  </p>
-                                  {exercise.options?.length > 0 ? (
-                                      <ul className="options-list">
-                                          {exercise.options.map((option, optIndex) => (
-                                              <li key={optIndex} className="option-item">
-                                                  <div className="option-checkbox"></div>
-                                                  <span className="option-text">{option}</span>
-                                              </li>
-                                          ))}
-                                      </ul>
-                                  ) : (
-                                      <p className="text-2xl pl-8 mt-8">R: ___________________________________</p>
-                                  )}
-                              </div>
-                          ))}
-                      </section>
+                        <section className="space-y-10 flex-grow">
+                            {chunk.map((exercise, exerciseIndex) => {
+                                const questionNumber = (pageIndex * exercisesPerPage) + exerciseIndex + 1;
+                                const questionType = exercise.questionType || 'multiple_choice';
+
+                                return (
+                                    <div key={exercise.id} className="space-y-4 exercise-item">
+                                    <p className="text-2xl font-bold">
+                                        {questionNumber}. {`${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
+                                    </p>
+
+                                    {(() => {
+                                        switch (questionType) {
+                                        case 'organize_syllables':
+                                        case 'organize_sentence':
+                                            const shuffledItems = shuffleArray(exercise.options || []);
+                                            return (
+                                            <div className="space-y-4">
+                                                <div className="flex flex-wrap gap-4 items-center p-4 border border-dashed rounded-lg bg-muted/50">
+                                                {shuffledItems.map((item, i) => (
+                                                    <div key={i} className="bg-card border shadow-sm px-4 py-2 rounded-md font-mono text-xl">
+                                                    {item}
+                                                    </div>
+                                                ))}
+                                                </div>
+                                                <p className="text-2xl pl-8 mt-4">R: ___________________________________</p>
+                                            </div>
+                                            );
+                                        case 'guess_the_word':
+                                            const shuffledLetters = shuffleArray(exercise.answer.split('')).join(', ');
+                                            return (
+                                            <div className="space-y-4">
+                                                <div className="p-4 border border-dashed rounded-lg bg-muted/50">
+                                                <p className="text-base text-muted-foreground">Letras disponíveis (embaralhadas):</p>
+                                                <p className="font-mono text-xl tracking-widest">{shuffledLetters}</p>
+                                                </div>
+                                                <p className="text-2xl pl-8 mt-4">R: ___________________________________</p>
+                                            </div>
+                                            );
+                                        case 'multiple_choice':
+                                        case 'fill_in_the_blank':
+                                            if (exercise.options?.length > 0) {
+                                            return (
+                                                <ul className="options-list">
+                                                {exercise.options.map((option, optIndex) => (
+                                                    <li key={optIndex} className="option-item">
+                                                    <div className="option-checkbox"></div>
+                                                    <span className="option-text">{option}</span>
+                                                    </li>
+                                                ))}
+                                                </ul>
+                                            );
+                                            }
+                                            return <p className="text-2xl pl-8 mt-8">R: ___________________________________</p>;
+
+                                        default:
+                                            return <p className="text-2xl pl-8 mt-8">R: ___________________________________</p>;
+                                        }
+                                    })()}
+                                    </div>
+                                );
+                                })}
+                        </section>
+
                       <footer className="page-footer">
                         Página {pageIndex + 1} de {pageChunks.length}
                       </footer>
@@ -280,6 +332,7 @@ function PrintableWorksheetGenerator() {
                 <Button variant={bankSubjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('all')}>Todos</Button>
                 <Button variant={bankSubjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('matematica')}>Matemática</Button>
                 <Button variant={bankSubjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('portugues')}>Português</Button>
+                <Button variant={bankSubjectFilter === 'memoria' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('memoria')}>Memória</Button>
             </div>
             <div className="flex-1 overflow-y-auto pr-4">
                 {isLoadingExercises ? (
@@ -301,7 +354,7 @@ function PrintableWorksheetGenerator() {
                         <label htmlFor={`bank-${ex.id}`} className="flex-1 cursor-pointer">
                             <p className="font-semibold">{ex.text}{ex.text2 && ` ${ex.text2}`}</p>
                             <div className="flex gap-2 mt-1">
-                                <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : 'Português'}</Badge>
+                                <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : ex.subject === 'portugues' ? 'Português' : 'Memória'}</Badge>
                                 <Badge variant="outline">{ex.difficulty}</Badge>
                             </div>
                         </label>
@@ -309,7 +362,7 @@ function PrintableWorksheetGenerator() {
                   ))
                 ) : (
                   <div className="text-center text-muted-foreground py-8">
-                    Nenhum exercício encontrado. Crie alguns no Banco de Exercícios primeiro.
+                    Nenhum exercício para impressão encontrado. Crie alguns no Banco de Exercícios primeiro.
                   </div>
                 )}
             </div>
