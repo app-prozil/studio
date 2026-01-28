@@ -66,11 +66,7 @@ function PrintableWorksheetGenerator() {
   }, [exercises, bankSubjectFilter]);
   
   const pageChunks = useMemo(() => {
-    const chunks: Exercise[][] = [];
-    selectedExercises.forEach(exercise => {
-      chunks.push([exercise]);
-    });
-    return chunks;
+    return selectedExercises.map(exercise => [exercise]);
   }, [selectedExercises]);
 
   const handleGeneratePdf = async () => {
@@ -99,23 +95,28 @@ function PrintableWorksheetGenerator() {
         });
   
         const imgData = canvas.toDataURL('image/png');
-        const canvasAspectRatio = canvas.width / canvas.height;
-        const pageAspectRatio = pdfWidth / pdfHeight;
+        
+        // Use A4 aspect ratio to ensure no distortion
+        const a4AspectRatio = pdfWidth / pdfHeight;
         let finalWidth, finalHeight;
 
-        if (canvasAspectRatio > pageAspectRatio) {
+        if (canvas.width / canvas.height > a4AspectRatio) {
             finalWidth = pdfWidth;
-            finalHeight = pdfWidth / canvasAspectRatio;
+            finalHeight = pdfWidth / (canvas.width / canvas.height);
         } else {
             finalHeight = pdfHeight;
-            finalWidth = pdfHeight * canvasAspectRatio;
+            finalWidth = pdfHeight * (canvas.width / canvas.height);
         }
+        
+        // Center the image on the page
+        const xOffset = (pdfWidth - finalWidth) / 2;
+        const yOffset = (pdfHeight - finalHeight) / 2;
 
         if (i > 0) {
           pdf.addPage();
         }
   
-        pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight);
+        pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight);
       }
   
       pdf.save('folha-de-atividades-prozil.pdf');
@@ -239,29 +240,30 @@ function PrintableWorksheetGenerator() {
               <div id="printable-worksheet-container" className="bg-gray-200 dark:bg-gray-800 p-4 rounded-md">
                 {pageChunks.map((chunk, pageIndex) => (
                   <div key={`page-${pageIndex}`} className="printable-page">
-                      <header className="mb-12 space-y-4 page-header">
+                      <header className="mb-8 space-y-4 page-header">
                           <h1 className="text-4xl font-bold text-center font-headline">Folha de Atividades</h1>
-                          <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-lg py-4">
+                          <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-lg py-4 border-y-2 border-black">
                               <div className="flex items-center gap-2 header-info-item">
-                                  <GraduationCap className="w-6 h-6 text-muted-foreground" />
+                                  <GraduationCap className="w-8 h-8 text-muted-foreground" />
                                   <strong className="mr-2">Aluno(a):</strong>
                                   <span>{studentName || '________________________'}</span>
                               </div>
                               <div className="flex items-center gap-2 header-info-item">
-                                  <User className="w-6 h-6 text-muted-foreground" />
+                                  <User className="w-8 h-8 text-muted-foreground" />
                                   <strong className="mr-2">Professor(a):</strong>
                                   <span>{teacherName || '________________________'}</span>
                               </div>
                           </div>
                       </header>
 
-                        <section className="flex flex-col flex-grow gap-8">
+                        <section className="page-content-section">
                             {chunk.map((exercise) => {
                                 exerciseCounter++;
                                 const questionType = exercise.questionType || 'multiple_choice';
+                                const isCutAndPaste = ['organize_syllables', 'organize_sentence', 'guess_the_word'].includes(questionType);
 
                                 return (
-                                    <div key={exercise.id} className={cn("space-y-4 exercise-item", ['organize_syllables', 'organize_sentence', 'guess_the_word'].includes(questionType) && 'flex flex-col flex-grow')}>
+                                    <div key={exercise.id} className={cn("space-y-4 exercise-item", isCutAndPaste && 'cut-and-paste')}>
                                         <p className="text-2xl font-bold">
                                             {`${exerciseCounter}. ${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
                                         </p>
@@ -270,11 +272,11 @@ function PrintableWorksheetGenerator() {
                                             switch (questionType) {
                                             case 'organize_syllables':
                                             case 'organize_sentence':
-                                                const shuffledItems = shuffleArray(exercise.options || []);
+                                                const itemsToCut = shuffleArray(exercise.options || []);
                                                 return (
-                                                  <div className="flex flex-col gap-8 flex-grow">
+                                                  <div className="flex flex-col gap-8 h-full">
                                                       <div className="printable-cutout-area flex flex-wrap gap-4 items-center justify-center p-4 border-2 border-solid rounded-lg bg-gray-100 dark:bg-gray-800">
-                                                      {shuffledItems.map((item, i) => (
+                                                      {itemsToCut.map((item, i) => (
                                                           <div key={i} className="printable-syllable-item">
                                                           {item}
                                                           </div>
@@ -285,7 +287,7 @@ function PrintableWorksheetGenerator() {
                                                               <span className="printable-paste-area-text">Cole as peças na ordem correta aqui</span>
                                                           </div>
                                                           <div className="flex flex-wrap gap-4 items-center justify-center opacity-0">
-                                                              {shuffledItems.map((item, i) => (
+                                                              {itemsToCut.map((item, i) => (
                                                               <div key={`placeholder-${i}`} className="printable-syllable-item">
                                                                   {item}
                                                               </div>
@@ -297,7 +299,7 @@ function PrintableWorksheetGenerator() {
                                             case 'guess_the_word':
                                                 const shuffledLetters = shuffleArray(exercise.answer.split(''));
                                                 return (
-                                                  <div className="flex flex-col gap-8 flex-grow">
+                                                  <div className="flex flex-col gap-8 h-full">
                                                       <div className="printable-cutout-area flex flex-wrap gap-4 items-center justify-center p-4 border-2 border-solid rounded-lg bg-gray-100 dark:bg-gray-800">
                                                           <p className="text-lg text-muted-foreground w-full text-center">Recorte as letras para formar a palavra:</p>
                                                           {shuffledLetters.map((letter, i) => (
@@ -310,7 +312,7 @@ function PrintableWorksheetGenerator() {
                                                           <div className="absolute inset-0 flex items-center justify-center">
                                                               <span className="printable-paste-area-text">Cole as letras para formar a palavra secreta aqui</span>
                                                           </div>
-                                                          <div className="flex flex-wrap gap-4 items-center justify-center opacity-0">
+                                                           <div className="flex flex-wrap gap-4 items-center justify-center opacity-0">
                                                               {shuffledLetters.map((letter, i) => (
                                                                   <div key={`placeholder-${i}`} className="printable-syllable-item">
                                                                       {letter.toUpperCase()}
