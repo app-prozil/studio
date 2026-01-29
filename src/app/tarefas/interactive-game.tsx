@@ -419,9 +419,11 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         if (index === currentQuestionIndex) {
             const newAttempts = (q.attempts || 0) + 1;
             
-            const newStatus = isAnswerCorrect
-              ? 'correct'
-              : q.status === 'correct' ? 'correct' : 'incorrect';
+            // Only set the status if it's currently 'unanswered'.
+            // This makes the FIRST attempt's result permanent for the score.
+            const newStatus = q.status === 'unanswered' 
+                ? (isAnswerCorrect ? 'correct' : 'incorrect')
+                : q.status;
 
             return {
                 ...q,
