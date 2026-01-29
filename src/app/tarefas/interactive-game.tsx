@@ -402,7 +402,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     let isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
     let isThisAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
     
-    // Determine if the game should advance
     const shouldAdvance = isPuzzle || isThisAnswerCorrect;
 
     let finalStatusForThisQuestion: 'correct' | 'incorrect';
@@ -414,7 +413,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
         }
     } else {
-        // If already answered, keep the original status
         finalStatusForThisQuestion = currentQuestion.status;
     }
     
@@ -434,7 +432,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     });
     setQuestions(updatedQuestions);
     
-    // Persist to Firestore (Non-blocking for UI)
     const isTestDrive = taskId === 'test-drive';
     const isTaskTestMode = isTestDrive || mode === 'test';
     const isExerciseTestMode = mode === 'test_exercise';
@@ -451,7 +448,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setSelectedAnswer(answer);
 
     if (shouldAdvance) {
-        setIsCorrect(true); // UI feedback for success
+        setIsCorrect(true);
         triggerConfettiExplosion();
         setShowCorrectAnswerModal(true);
         setTimeout(() => {
@@ -459,8 +456,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             handleNextQuestion(updatedQuestions);
         }, 1800);
     } else {
-        // This is for incorrect simple answers (e.g., multiple choice)
-        setIsCorrect(false); // UI feedback for failure
+        setIsCorrect(false);
+        if (currentQuestion.status === 'unanswered') {
+          setMistakeMade(true); 
+        }
         toast({ variant: 'destructive', title: 'Tente de novo!', duration: 2000 });
         setTimeout(() => {
             setGameState('playing');
@@ -911,7 +910,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                 </div>
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {availableSyllables.map((syllable, index) => (
-                        <Button key={index} onClick={() => handleSyllableClick(syllable, index)} className="h-24 text-4xl font-bold" disabled={gameState !== 'playing'}>
+                        <Button key={index} onClick={() => handleSyllableClick(syllable, index)} className="h-24 text-4xl font-bold shadow-lg hover:shadow-xl transition-all hover:-translate-y-1" disabled={gameState !== 'playing'}>
                             {syllable}
                         </Button>
                     ))}
@@ -934,7 +933,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                             onClick={() => handleCardClick(index)}
                             disabled={isChecking || isFlipped}
                             className={cn(
-                                "flip-card h-24 sm:h-32 rounded-lg text-2xl sm:text-3xl font-bold",
+                                "flip-card h-24 sm:h-32 rounded-lg text-2xl sm:text-3xl font-bold shadow-lg hover:shadow-xl transition-transform duration-300 hover:-translate-y-1",
                                 isFlipped && "flipped"
                             )}
                         >
@@ -1057,7 +1056,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                   onClick={() => handleAnswer(option)}
                   variant={selectedAnswer === option ? (isCorrect ? 'success' : 'destructive') : 'default'}
                   className={cn(
-                      'h-28 text-3xl sm:h-32 sm:text-4xl font-bold relative',
+                      'h-28 text-3xl sm:h-32 sm:text-4xl font-bold relative shadow-lg hover:shadow-xl transition-all hover:-translate-y-1',
                       selectedAnswer === option && 'animate-option-click',
                   )}
                   disabled={gameState !== 'playing'}
@@ -1141,7 +1140,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                                 : 'outline'
                             }
                             size="icon"
-                            className="h-12 w-12 text-xl font-bold sm:h-14 sm:w-14"
+                            className="h-12 w-12 text-xl font-bold sm:h-14 sm:w-14 shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
                             onClick={() => handleLetterGuess(key)}
                             disabled={!!guessStatus || gameState !== 'playing'}
                             >
@@ -1165,7 +1164,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                   <Button
                     key={item.item}
                     variant={organizeCategoryState.selectedItem?.item === item.item ? 'default' : 'secondary'}
-                    className="h-auto p-3 sm:p-4 text-4xl sm:text-5xl font-bold shadow-lg"
+                    className="h-auto p-3 sm:p-4 text-4xl sm:text-5xl font-bold shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
                     onClick={() => handleOrganizeItemSelect(item)}
                     disabled={gameState !== 'playing'}
                   >
@@ -1213,7 +1212,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                             <Button
                                 key={sentenceWord.id}
                                 variant="secondary"
-                                className="h-auto p-3 sm:p-4 text-3xl sm:text-4xl font-bold shadow-lg animate-item-pop-in cursor-pointer"
+                                className="h-auto p-3 sm:p-4 text-3xl sm:text-4xl font-bold shadow-lg animate-item-pop-in cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1"
                                 style={{'--animation-delay': `${index * 50}ms`} as React.CSSProperties}
                                 onClick={() => handleDeselectSentenceWord(sentenceWord)}
                             >
@@ -1231,7 +1230,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                             <Button
                                 key={sentenceWord.id}
                                 variant="default"
-                                className="h-auto p-3 sm:p-4 text-3xl sm:text-4xl font-bold shadow-md hover:scale-105 transition-transform"
+                                className="h-auto p-3 sm:p-4 text-3xl sm:text-4xl font-bold shadow-lg hover:shadow-xl transition-transform hover:-translate-y-1"
                                 onClick={() => handleSelectSentenceWord(sentenceWord)}
                                 disabled={gameState !== 'playing'}
                             >
