@@ -419,9 +419,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         if (index === currentQuestionIndex) {
             const newAttempts = (q.attempts || 0) + 1;
             
-            const newStatus = (q.status === 'unanswered') 
-                ? (isAnswerCorrect ? 'correct' : 'incorrect')
-                : q.status;
+            const newStatus = isAnswerCorrect
+              ? 'correct'
+              : q.status === 'correct' ? 'correct' : 'incorrect';
 
             return {
                 ...q,
