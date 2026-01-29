@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -18,7 +18,7 @@ type Question = {
   text2?: string;
   options: string[];
   answer: string;
-  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs';
   categories?: string[];
   categoryItems?: { item: string, category: string }[];
   subject: 'matematica' | 'portugues' | 'memoria';
@@ -142,6 +142,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [constructedSentence, setConstructedSentence] = useState<SentenceWord[]>([]);
   const [availableSentenceWords, setAvailableSentenceWords] = useState<SentenceWord[]>([]);
   const [isWrongSentenceShake, setIsWrongSentenceShake] = useState(false);
+
+  // State for match_the_pairs
+  const [matchPairsColumns, setMatchPairsColumns] = useState<{ left: string[], right: string[] }>({ left: [], right: [] });
+  const [matchPairsSelectedItem, setMatchPairsSelectedItem] = useState<{ side: 'left' | 'right', index: number, value: string } | null>(null);
+  const [matchPairsMatched, setMatchPairsMatched] = useState<[string, string][]>([]);
+  const [matchPairsLines, setMatchPairsLines] = useState<{ start: string, end: string, correct: boolean }[]>([]);
+  const matchPairsItemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const taskStartTime = useMemo(() => Date.now(), []);
@@ -287,6 +294,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setConstructedSentence([]);
     setAvailableSentenceWords([]);
     setIsWrongSentenceShake(false);
+    setMatchPairsLines([]);
+    setMatchPairsSelectedItem(null);
+    setMatchPairsMatched([]);
     if (currentQuestion?.questionType === 'organize_categories') {
       const items = [...(currentQuestion.categoryItems || [])].sort(() => Math.random() - 0.5);
       const initialPlaced = currentQuestion.categories?.reduce((acc, cat) => ({...acc, [cat]: []}), {}) || {};
@@ -303,21 +313,34 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   useEffect(() => {
     if (gameState === 'playing' && questions[currentQuestionIndex]) {
       const currentQ = questions[currentQuestionIndex];
-      const options = [...(currentQ.options || [])];
-      // Fisher-Yates shuffle
-      for (let i = options.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [options[i], options[j]] = [options[j], options[i]];
-      }
+      let options = [...(currentQ.options || [])];
       
-      if (currentQ.questionType === 'organize_syllables') {
-          setAvailableSyllables(options);
-          setConstructedSyllables([]);
-      } else if (currentQ.questionType === 'organize_sentence') {
-          setAvailableSentenceWords(options.map((word, index) => ({ word, id: index })));
-          setConstructedSentence([]);
+      if (currentQ.questionType === 'match_the_pairs') {
+          const leftCol: string[] = [];
+          const rightCol: string[] = [];
+          for (let i = 0; i < currentQ.options.length; i += 2) {
+              leftCol.push(currentQ.options[i]);
+              rightCol.push(currentQ.options[i+1]);
+          }
+          setMatchPairsColumns({
+              left: leftCol.sort(() => Math.random() - 0.5),
+              right: rightCol.sort(() => Math.random() - 0.5),
+          });
       } else {
-          setShuffledOptions(options);
+        // Fisher-Yates shuffle for other types
+        for (let i = options.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [options[i], options[j]] = [options[j], options[i]];
+        }
+        if (currentQ.questionType === 'organize_syllables') {
+            setAvailableSyllables(options);
+            setConstructedSyllables([]);
+        } else if (currentQ.questionType === 'organize_sentence') {
+            setAvailableSentenceWords(options.map((word, index) => ({ word, id: index })));
+            setConstructedSentence([]);
+        } else {
+            setShuffledOptions(options);
+        }
       }
     }
   }, [currentQuestionIndex, questions, gameState]);
@@ -442,6 +465,57 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
   }, [gameState, questionStartTime, questions, currentQuestion, handleNextQuestion, firestore, user, studentId, taskId, searchParams, questionType, constructedSyllables, availableSyllables, mode]);
   
+  const handleMatchItemClick = (side: 'left' | 'right', index: number, value: string) => {
+    if (gameState !== 'playing' || !currentQuestion) return;
+
+    if (!matchPairsSelectedItem) {
+      setMatchPairsSelectedItem({ side, index, value });
+    } else {
+      if (matchPairsSelectedItem.side === side) {
+        setMatchPairsSelectedItem({ side, index, value });
+        return;
+      }
+
+      const originalOptions = currentQuestion.options;
+      let isCorrect = false;
+      for (let i = 0; i < originalOptions.length; i += 2) {
+        if (
+          (originalOptions[i] === matchPairsSelectedItem.value && originalOptions[i + 1] === value) ||
+          (originalOptions[i] === value && originalOptions[i + 1] === matchPairsSelectedItem.value)
+        ) {
+          isCorrect = true;
+          break;
+        }
+      }
+
+      const newLine = { start: matchPairsSelectedItem.value, end: value, correct: isCorrect };
+      setMatchPairsLines(prev => [...prev, newLine]);
+      setMatchPairsSelectedItem(null);
+
+      if (isCorrect) {
+        triggerConfettiExplosion();
+        const newMatched = [...matchPairsMatched, [matchPairsSelectedItem.value, value]] as [string, string][];
+        setMatchPairsMatched(newMatched);
+
+        if (newMatched.length === currentQuestion.options.length / 2) {
+          setTimeout(() => {
+            handleAnswer("N/A"); // Mark question as complete
+          }, 1000);
+        }
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Não corresponde!',
+          description: 'Tente outro par.',
+          duration: 2000,
+        });
+        setTimeout(() => {
+          setMatchPairsLines(prev => prev.filter(l => l !== newLine));
+        }, 1000);
+      }
+    }
+  };
+
   useEffect(() => {
     if (questionType === 'organize_syllables' && availableSyllables.length === 0 && constructedSyllables.length > 0) {
         handleAnswer(constructedSyllables.join(''));
@@ -889,6 +963,90 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                 })}
             </div>
         )}
+
+        {questionType === 'match_the_pairs' && (() => {
+            const getLineCoords = (startValue: string, endValue: string) => {
+                const startEl = matchPairsItemRefs.current[startValue];
+                const endEl = matchPairsItemRefs.current[endValue];
+                const container = startEl?.closest('[data-id="match-container"]');
+
+                if (!startEl || !endEl || !container) return null;
+
+                const containerRect = container.getBoundingClientRect();
+                const startRect = startEl.getBoundingClientRect();
+                const endRect = endEl.getBoundingClientRect();
+
+                const x1 = startRect.right - containerRect.left;
+                const y1 = startRect.top + startRect.height / 2 - containerRect.top;
+                const x2 = endRect.left - containerRect.left;
+                const y2 = endRect.top + endRect.height / 2 - containerRect.top;
+
+                return { x1, y1, x2, y2 };
+            };
+
+            return (
+                <div data-id="match-container" className="relative grid grid-cols-2 gap-x-8 sm:gap-x-16 gap-y-4 items-center justify-center">
+                    {/* Left Column */}
+                    <div className="flex flex-col gap-4">
+                        {matchPairsColumns.left.map((item, index) => {
+                            const isMatched = matchPairsMatched.some(p => p.includes(item));
+                            const isSelected = matchPairsSelectedItem?.side === 'left' && matchPairsSelectedItem?.index === index;
+                            return (
+                                <Button
+                                    key={`left-${index}`}
+                                    ref={el => matchPairsItemRefs.current[item] = el}
+                                    variant={isSelected ? 'default' : isMatched ? 'success' : 'secondary'}
+                                    className="w-full h-20 text-xl sm:text-2xl font-bold justify-center"
+                                    onClick={() => handleMatchItemClick('left', index, item)}
+                                    disabled={isMatched}
+                                >
+                                    {item}
+                                </Button>
+                            );
+                        })}
+                    </div>
+                    {/* Right Column */}
+                    <div className="flex flex-col gap-4">
+                        {matchPairsColumns.right.map((item, index) => {
+                            const isMatched = matchPairsMatched.some(p => p.includes(item));
+                            const isSelected = matchPairsSelectedItem?.side === 'right' && matchPairsSelectedItem?.index === index;
+                            return (
+                                <Button
+                                    key={`right-${index}`}
+                                    ref={el => matchPairsItemRefs.current[item] = el}
+                                    variant={isSelected ? 'default' : isMatched ? 'success' : 'secondary'}
+                                    className="w-full h-20 text-xl sm:text-2xl font-bold justify-center"
+                                    onClick={() => handleMatchItemClick('right', index, item)}
+                                    disabled={isMatched}
+                                >
+                                    {item}
+                                </Button>
+                            );
+                        })}
+                    </div>
+                    {/* SVG for lines */}
+                    <svg className="absolute top-0 left-0 w-full h-full pointer-events-none">
+                        {matchPairsLines.map((line, i) => {
+                            const coords = getLineCoords(line.start, line.end);
+                            if (!coords) return null;
+                            return (
+                                <line
+                                    key={i}
+                                    x1={coords.x1}
+                                    y1={coords.y1}
+                                    x2={coords.x2}
+                                    y2={coords.y2}
+                                    stroke={line.correct ? 'hsl(var(--success))' : 'hsl(var(--destructive))'}
+                                    strokeWidth="4"
+                                    strokeLinecap="round"
+                                    className="transition-all"
+                                />
+                            );
+                        })}
+                    </svg>
+                </div>
+            );
+        })()}
 
         {(questionType === 'multiple_choice' || questionType === 'fill_in_the_blank') && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">

@@ -79,7 +79,7 @@ const performanceQuestionSchema = z.object({
   text2: z.string().optional(),
   options: z.array(z.string()),
   answer: z.string(),
-  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game', 'guess_the_word', 'organize_categories', 'organize_sentence']).optional(),
+  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game', 'guess_the_word', 'organize_categories', 'organize_sentence', 'match_the_pairs']).optional(),
   studentAnswer: z.string().optional(),
   attempts: z.number().optional(),
   status: z.enum(['correct', 'incorrect', 'unanswered']).optional(),
@@ -110,7 +110,7 @@ const taskSchema = z.object({
 const exerciseObjectSchema = z.object({
   id: z.string().optional(),
   teacherId: z.string(),
-  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game', 'guess_the_word', 'organize_categories', 'organize_sentence']),
+  questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game', 'guess_the_word', 'organize_categories', 'organize_sentence', 'match_the_pairs']),
   text: z.string().min(3, 'A pergunta ou dica deve ter pelo menos 3 caracteres.'),
   text2: z.string().optional(),
   options: z.array(z.string()).min(0),
@@ -131,15 +131,15 @@ const exerciseSchema = exerciseObjectSchema.refine(
     { message: "Nenhuma opção pode estar vazia para este tipo de exercício.", path: ["options"] }
 ).refine(
     (data) => {
-        if (data.questionType === 'memory_game') {
+        if (data.questionType === 'memory_game' || data.questionType === 'match_the_pairs') {
              return data.options && data.options.length > 0 && data.options.length % 2 === 0;
         }
         return true;
     },
-    { message: "O Jogo da Memória deve ter um número par de itens para formar os pares.", path: ["options"] }
+    { message: "Este jogo deve ter um número par de itens para formar os pares.", path: ["options"] }
 ).refine(
     (data) => {
-        if (!['memory_game', 'organize_categories'].includes(data.questionType)) {
+        if (!['memory_game', 'organize_categories', 'match_the_pairs'].includes(data.questionType)) {
             return data.answer && data.answer.trim().length > 0;
         }
         return true;
@@ -187,7 +187,7 @@ type PerformanceQuestion = {
   text2?: string;
   options: string[];
   answer: string;
-  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs';
   studentAnswer?: string;
   attempts?: number;
   status?: 'correct' | 'incorrect' | 'unanswered';
@@ -230,7 +230,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues' | 'memoria'>('all');
-  const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence'>('all');
+  const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs'>('all');
   const [focusedInput, setFocusedInput] = useState<string | null>('text');
 
   const specialCharsCategories = {
@@ -262,11 +262,11 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const questionType = watch('questionType');
   const watchedCategories = watch('categories');
 
-  const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence') => {
+  const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs') => {
     setValue('questionType', value);
     if (value === 'organize_syllables') {
       replace(['', '']);
-    } else if (value === 'memory_game') {
+    } else if (value === 'memory_game' || value === 'match_the_pairs') {
       replace(['', '', '', '']); // Start with 2 pairs
     } else if (value === 'guess_the_word' || value === 'organize_sentence') {
       replace([]);
@@ -287,7 +287,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     if (questionType === 'organize_syllables') {
         return `Sílaba ${index + 1}`;
     }
-    if (questionType === 'memory_game') {
+    if (questionType === 'memory_game' || questionType === 'match_the_pairs') {
         const pair = Math.floor(index / 2) + 1;
         const item = index % 2 === 0 ? 'A' : 'B';
         return `Par ${pair} - Item ${item}`;
@@ -307,7 +307,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       const defaultPlaceholders = ['Ex: AZUL', 'Ex: VERDE'];
       return defaultPlaceholders[index - 1] || 'Opção';
     }
-    if (questionType === 'memory_game') {
+    if (questionType === 'memory_game' || questionType === 'match_the_pairs') {
         const mgPlaceholders = ['Ex: GATO', 'Ex: 🐱', 'Ex: 2+2', 'Ex: 4'];
         return mgPlaceholders[index] || 'Item';
     }
@@ -390,6 +390,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         answerValue = values.options.join('').toUpperCase();
         break;
       case 'memory_game':
+      case 'match_the_pairs':
         answerValue = "N/A";
         break;
       case 'guess_the_word':
@@ -495,6 +496,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         <SelectItem value="memory_game">Jogo da Memória</SelectItem>
                         <SelectItem value="guess_the_word">Adivinhe a Palavra</SelectItem>
                         <SelectItem value="organize_categories">Organize as Categorias</SelectItem>
+                        <SelectItem value="match_the_pairs">Ligar os Pares</SelectItem>
                       </SelectContent>
                     </Select>
                   <FormMessage /></FormItem>
@@ -504,7 +506,9 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 <FormItem>
                   <FormLabel>{
                     questionType === 'guess_the_word' ? 'Dica para a Palavra' : 
-                    questionType === 'organize_categories' ? 'Instrução do Jogo' : 'Pergunta / Dica'
+                    questionType === 'organize_categories' ? 'Instrução do Jogo' :
+                    questionType === 'match_the_pairs' ? 'Instrução do Jogo' :
+                    'Pergunta / Dica'
                   }</FormLabel>
                   <FormControl>
                     <Textarea 
@@ -517,6 +521,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         questionType === 'memory_game' ? "Ex: ENCONTRE OS PARES CORRESPONDENTES" :
                         questionType === 'guess_the_word' ? "Ex: É um inseto que voa e tem asas coloridas." :
                         questionType === 'organize_categories' ? "Ex: Organize os itens em suas categorias." :
+                        questionType === 'match_the_pairs' ? "Ex: LIGUE AS FIGURAS AOS SEUS NOMES" :
                         'Ex: QUAL É A COR DO SOL?'
                       }
                     />
@@ -525,7 +530,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 </FormItem>
               )}/>
 
-              {(questionType !== 'guess_the_word' && questionType !== 'organize_categories' && questionType !== 'organize_sentence') && (
+              {(questionType !== 'guess_the_word' && questionType !== 'organize_categories' && questionType !== 'organize_sentence' && questionType !== 'match_the_pairs') && (
                 <FormField control={form.control} name="text2" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Imagem / Complemento (Opcional)</FormLabel>
@@ -590,7 +595,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                               <FormLabel>{getOptionLabel(index)}</FormLabel>
                               <div className="flex items-center gap-2">
                                   <FormControl><Input {...field} onFocus={() => setFocusedInput(`options.${index}`)} placeholder={getOptionPlaceholder(index)} /></FormControl>
-                                  {(questionType === 'organize_syllables' || questionType === 'memory_game') && (
+                                  {(questionType === 'organize_syllables' || questionType === 'memory_game' || questionType === 'match_the_pairs') && (
                                       <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 2}>
                                           <Trash2 className="w-4 h-4 text-destructive" />
                                       </Button>
@@ -603,7 +608,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                    {questionType === 'organize_syllables' && fields.length < 6 && (
                       <Button type="button" variant="outline" size="sm" onClick={() => append('')}><PlusCircle className="mr-2" /> Adicionar Sílaba</Button>
                   )}
-                  {questionType === 'memory_game' && fields.length < 12 && (
+                  {(questionType === 'memory_game' || questionType === 'match_the_pairs') && fields.length < 12 && (
                       <Button type="button" variant="outline" size="sm" onClick={() => { append(""); append(""); }}><PlusCircle className="mr-2" /> Adicionar Par</Button>
                   )}
                 </div>
@@ -791,6 +796,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                     <Button variant={questionTypeFilter === 'memory_game' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('memory_game')}>Memória</Button>
                     <Button variant={questionTypeFilter === 'guess_the_word' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('guess_the_word')}>Adivinhar</Button>
                     <Button variant={questionTypeFilter === 'organize_categories' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('organize_categories')}>Categorias</Button>
+                    <Button variant={questionTypeFilter === 'match_the_pairs' ? 'default' : 'outline'} size="sm" onClick={() => setQuestionTypeFilter('match_the_pairs')}>Ligar Pares</Button>
                 </div>
             </div>
             <div className="pt-4">
@@ -823,6 +829,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         : (ex.questionType === 'organize_syllables') ? 'outline'
                         : (ex.questionType === 'organize_sentence') ? 'destructive'
                         : (ex.questionType === 'memory_game') ? 'destructive'
+                        : (ex.questionType === 'match_the_pairs') ? 'destructive'
                         : (ex.questionType === 'guess_the_word') ? 'default'
                         : (ex.questionType === 'organize_categories') ? 'default'
                         : 'secondary'
@@ -830,7 +837,8 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
                         : (ex.questionType === 'organize_syllables') ? 'Organizar Sílabas'
                         : (ex.questionType === 'organize_sentence') ? 'Organizar Frase'
-                        : (ex.questionType === 'memory_game') ? 'Memória' 
+                        : (ex.questionType === 'memory_game') ? 'Memória'
+                        : (ex.questionType === 'match_the_pairs') ? 'Ligar Pares'
                         : (ex.questionType === 'guess_the_word') ? 'Adivinhar' 
                         : (ex.questionType === 'organize_categories') ? 'Categorias'
                         : 'M. Escolha'}
@@ -896,7 +904,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues' | 'memoria'>('all');
-  const [bankQuestionTypeFilter, setBankQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence'>('all');
+  const [bankQuestionTypeFilter, setBankQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs'>('all');
   const [isStudentSelectorOpen, setIsStudentSelectorOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [selectableStudents, setSelectableStudents] = useState<Student[]>([]);
@@ -1290,7 +1298,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                                       </DropdownMenuItem>
                                        <DropdownMenuItem onClick={() => handleReuse(task as Task)} className="cursor-pointer">
                                           <BookCopy className="mr-2 h-4 w-4"/> Reutilizar
-                                      </DropdownMenuItem>
+                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => setDeletingTask(task as Task)} className="cursor-pointer text-destructive focus:text-destructive">
                                           <Trash2 className="mr-2 h-4 w-4"/> Excluir
                                       </DropdownMenuItem>
@@ -1374,6 +1382,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                     <Button variant={bankQuestionTypeFilter === 'memory_game' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('memory_game')}>Memória</Button>
                     <Button variant={bankQuestionTypeFilter === 'guess_the_word' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('guess_the_word')}>Adivinhar</Button>
                     <Button variant={bankQuestionTypeFilter === 'organize_categories' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_categories')}>Categorias</Button>
+                    <Button variant={bankQuestionTypeFilter === 'match_the_pairs' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('match_the_pairs')}>Ligar Pares</Button>
                   </div>
                </div>
               <div className="flex-1 overflow-y-auto pr-4">
@@ -1403,6 +1412,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                                         : (ex.questionType === 'organize_syllables') ? 'outline'
                                         : (ex.questionType === 'organize_sentence') ? 'destructive'
                                         : (ex.questionType === 'memory_game') ? 'destructive'
+                                        : (ex.questionType === 'match_the_pairs') ? 'destructive'
                                         : (ex.questionType === 'guess_the_word') ? 'default'
                                         : (ex.questionType === 'organize_categories') ? 'default'
                                         : 'secondary'
@@ -1411,6 +1421,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                                         : (ex.questionType === 'organize_syllables') ? 'Organizar Sílabas'
                                         : (ex.questionType === 'organize_sentence') ? 'Organizar Frase'
                                         : (ex.questionType === 'memory_game') ? 'Memória' 
+                                        : (ex.questionType === 'match_the_pairs') ? 'Ligar Pares'
                                         : (ex.questionType === 'guess_the_word') ? 'Adivinhar' 
                                         : (ex.questionType === 'organize_categories') ? 'Categorias'
                                         : 'M. Escolha'}
@@ -1995,5 +2006,6 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
 
 
