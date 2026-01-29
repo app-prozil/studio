@@ -283,8 +283,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
 
   useEffect(() => {
-    setQuestionStartTime(Date.now());
+    // This is the crucial fix: reset the mistake tracker for every new question.
     setMistakeMade(false);
+
+    setQuestionStartTime(Date.now());
     // Reset game-specific state when question changes
     setFlippedCards([]);
     setMatchedPairs([]);
@@ -397,35 +399,37 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const handleAnswer = useCallback((answer: string) => {
     if (gameState !== 'playing') return;
 
-    // Determine if the answer is correct for the current state.
-    const isThisAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
-    const isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
+    let isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
+    let isThisAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
     
-    // For puzzles, correctness depends on whether a mistake was made during solving.
-    const isPuzzleCorrect = isPuzzle && !mistakeMade;
-    
+    // Determine if the game should advance
     const shouldAdvance = isPuzzle || isThisAnswerCorrect;
 
-    // Only update status if the question is still unanswered.
-    let finalStatusForThisQuestion: 'correct' | 'incorrect' = 'incorrect';
-    if (currentQuestion.status === 'unanswered') {
-      if (isPuzzle) {
-        finalStatusForThisQuestion = isPuzzleCorrect ? 'correct' : 'incorrect';
-      } else {
-        finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
-      }
-    }
+    let finalStatusForThisQuestion: 'correct' | 'incorrect';
 
+    if (currentQuestion.status === 'unanswered') {
+        if (isPuzzle) {
+            finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
+        } else {
+            finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
+        }
+    } else {
+        // If already answered, keep the original status
+        finalStatusForThisQuestion = currentQuestion.status;
+    }
+    
     const timeTaken = Date.now() - questionStartTime;
     const updatedQuestions = questions.map((q, index) => {
       if (index !== currentQuestionIndex) return q;
+      
+      const newAttempts = (q.attempts || 0) + 1;
+      
       return {
         ...q,
         studentAnswer: answer,
-        attempts: (q.attempts || 0) + 1,
+        attempts: newAttempts,
         timeTaken: (q.timeTaken || 0) + timeTaken,
-        // Only set status if it's currently unanswered
-        status: q.status === 'unanswered' ? finalStatusForThisQuestion : q.status,
+        status: finalStatusForThisQuestion,
       };
     });
     setQuestions(updatedQuestions);
@@ -993,7 +997,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                                     key={`left-${index}`}
                                     ref={el => matchPairsItemRefs.current[item] = el}
                                     variant={isSelected ? 'default' : isMatched ? 'success' : 'secondary'}
-                                    className="w-full h-20 text-xl sm:text-2xl font-bold justify-center"
+                                    className="w-full h-20 text-xl sm:text-2xl font-bold justify-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
                                     onClick={() => handleMatchItemClick('left', index, item)}
                                     disabled={isMatched}
                                 >
@@ -1012,7 +1016,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                                     key={`right-${index}`}
                                     ref={el => matchPairsItemRefs.current[item] = el}
                                     variant={isSelected ? 'default' : isMatched ? 'success' : 'secondary'}
-                                    className="w-full h-20 text-xl sm:text-2xl font-bold justify-center"
+                                    className="w-full h-20 text-xl sm:text-2xl font-bold justify-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
                                     onClick={() => handleMatchItemClick('right', index, item)}
                                     disabled={isMatched}
                                 >
