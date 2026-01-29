@@ -344,6 +344,18 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       }
     }
   }, [currentQuestionIndex, questions, gameState]);
+
+  const markQuestionAsIncorrect = useCallback(() => {
+    if (questions[currentQuestionIndex]?.status === 'unanswered') {
+        const updatedQuestions = questions.map((q, index) => {
+            if (index === currentQuestionIndex) {
+                return { ...q, status: 'incorrect' };
+            }
+            return q;
+        });
+        setQuestions(updatedQuestions);
+    }
+  }, [questions, currentQuestionIndex]);
   
   const completeTask = useCallback((finalQuestions: Question[]) => {
     const isTestDrive = taskId === 'test-drive';
@@ -419,8 +431,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         if (index === currentQuestionIndex) {
             const newAttempts = (q.attempts || 0) + 1;
             
-            // Only set the status if it's currently 'unanswered'.
-            // This makes the FIRST attempt's result permanent for the score.
             const newStatus = q.status === 'unanswered' 
                 ? (isAnswerCorrect ? 'correct' : 'incorrect')
                 : q.status;
@@ -505,6 +515,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           }, 1000);
         }
       } else {
+        markQuestionAsIncorrect();
         toast({
           variant: 'destructive',
           title: 'Não corresponde!',
@@ -558,12 +569,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             }, 500);
         }
     } else {
+        markQuestionAsIncorrect();
         setTimeout(() => {
             setFlippedCards([]);
             setIsChecking(false);
         }, 1200);
     }
-  }, [flippedCards, currentQuestion, matchedPairs, shuffledOptions, handleAnswer, questionType]);
+  }, [flippedCards, currentQuestion, matchedPairs, shuffledOptions, handleAnswer, questionType, markQuestionAsIncorrect]);
 
   const handleCardClick = (index: number) => {
     if (isChecking || flippedCards.length >= 2 || flippedCards.includes(index) || matchedPairs.includes(shuffledOptions[index])) {
@@ -693,6 +705,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         setTimeout(() => handleAnswer(currentQuestion.answer), 500);
       }
     } else {
+      markQuestionAsIncorrect();
       toast({
         variant: 'destructive',
         title: 'Categoria Incorreta!',
@@ -746,6 +759,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       }
       handleAnswer(userAnswer);
     } else {
+      markQuestionAsIncorrect();
       setIsWrongSentenceShake(true);
       setTimeout(() => setIsWrongSentenceShake(false), 600);
       toast({
@@ -975,13 +989,17 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                 if (!startEl || !endEl || !container) return null;
 
                 const containerRect = container.getBoundingClientRect();
-                const startRect = startEl.getBoundingClientRect();
-                const endRect = endEl.getBoundingClientRect();
-
-                const x1 = startRect.right - containerRect.left;
-                const y1 = startRect.top + startRect.height / 2 - containerRect.top;
-                const x2 = endRect.left - containerRect.left;
-                const y2 = endRect.top + endRect.height / 2 - containerRect.top;
+                
+                const startIsLeftColumn = matchPairsColumns.left.includes(startValue);
+                
+                const leftItemRect = startIsLeftColumn ? startEl.getBoundingClientRect() : endEl.getBoundingClientRect();
+                const rightItemRect = startIsLeftColumn ? endEl.getBoundingClientRect() : startEl.getBoundingClientRect();
+            
+                const x1 = leftItemRect.right - containerRect.left;
+                const y1 = leftItemRect.top + leftItemRect.height / 2 - containerRect.top;
+                
+                const x2 = rightItemRect.left - containerRect.left;
+                const y2 = rightItemRect.top + rightItemRect.height / 2 - containerRect.top;
 
                 return { x1, y1, x2, y2 };
             };
