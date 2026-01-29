@@ -397,23 +397,24 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   }, [currentQuestionIndex, firestore, user, task, taskStartTime, toast, taskId, mode, exerciseId]);
 
   const handleAnswer = useCallback((answer: string) => {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing' || !currentQuestion) return;
 
     let isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
     let isThisAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
     
+    // For puzzles, completing it is always a "correct" action to advance the game.
+    // The scoring is handled by `mistakeMade`.
     const shouldAdvance = isPuzzle || isThisAnswerCorrect;
 
-    let finalStatusForThisQuestion: 'correct' | 'incorrect';
-
+    // This logic determines the final status for scoring purposes.
+    // It's only set once, on the first attempt that resolves the question.
+    let finalStatusForThisQuestion: 'correct' | 'incorrect' | undefined = undefined;
     if (currentQuestion.status === 'unanswered') {
         if (isPuzzle) {
             finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
         } else {
             finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
         }
-    } else {
-        finalStatusForThisQuestion = currentQuestion.status;
     }
     
     const timeTaken = Date.now() - questionStartTime;
@@ -427,7 +428,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         studentAnswer: answer,
         attempts: newAttempts,
         timeTaken: (q.timeTaken || 0) + timeTaken,
-        status: finalStatusForThisQuestion,
+        // Only update status if it's currently 'unanswered'
+        status: finalStatusForThisQuestion !== undefined ? finalStatusForThisQuestion : q.status,
       };
     });
     setQuestions(updatedQuestions);
@@ -457,9 +459,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         }, 1800);
     } else {
         setIsCorrect(false);
-        if (currentQuestion.status === 'unanswered') {
-          setMistakeMade(true); 
-        }
+        setMistakeMade(true); 
         toast({ variant: 'destructive', title: 'Tente de novo!', duration: 2000 });
         setTimeout(() => {
             setGameState('playing');
@@ -996,7 +996,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                                     key={`left-${index}`}
                                     ref={el => matchPairsItemRefs.current[item] = el}
                                     variant={isSelected ? 'default' : isMatched ? 'success' : 'secondary'}
-                                    className="w-full h-20 text-xl sm:text-2xl font-bold justify-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
+                                    className="w-full h-28 text-4xl sm:text-5xl font-bold justify-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
                                     onClick={() => handleMatchItemClick('left', index, item)}
                                     disabled={isMatched}
                                 >
@@ -1015,7 +1015,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                                     key={`right-${index}`}
                                     ref={el => matchPairsItemRefs.current[item] = el}
                                     variant={isSelected ? 'default' : isMatched ? 'success' : 'secondary'}
-                                    className="w-full h-20 text-xl sm:text-2xl font-bold justify-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
+                                    className="w-full h-28 text-4xl sm:text-5xl font-bold justify-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
                                     onClick={() => handleMatchItemClick('right', index, item)}
                                     disabled={isMatched}
                                 >
