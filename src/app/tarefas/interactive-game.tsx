@@ -347,40 +347,12 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
   }, [currentQuestionIndex, questions, gameState]);
 
-  const completeTask = useCallback((finalQuestions: Question[]) => {
+  const handleNextQuestion = useCallback((updatedQuestions: Question[]) => {
+    const isLastQuestion = currentQuestionIndex >= updatedQuestions.length - 1;
+    
     const isTestDrive = taskId === 'test-drive';
     const isTaskTestMode = isTestDrive || mode === 'test';
     const isExerciseTestMode = mode === 'test_exercise';
-    
-    if (isTaskTestMode || isExerciseTestMode) return;
-
-    if (!firestore || !user || !task?.teacherId || !task.id || !task.studentId) {
-        console.error("Aborting task completion: missing critical data.", { task, user: !!user });
-        return;
-    }
-        
-      const totalTime = Math.round((Date.now() - taskStartTime) / 1000);
-      const performanceData = {
-        isCompleted: true,
-        completedAt: new Date().toISOString(),
-        totalTime: totalTime,
-        questions: finalQuestions,
-      };
-      
-      const studentTaskRef = doc(firestore, 'students', task.studentId, 'tasks', task.id);
-      updateDoc(studentTaskRef, performanceData).catch(e => {
-        console.error("Erro ao finalizar tarefa (aluno): ", e);
-      });
-      
-      const teacherTaskRef = doc(firestore, 'teachers', task.teacherId, 'tasks', task.id);
-      updateDoc(teacherTaskRef, performanceData).catch(e => {
-          console.error("Erro ao finalizar tarefa (professor): ", e);
-          toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível sincronizar o resultado da tarefa com o professor.' });
-      });
-  }, [firestore, user, task, taskStartTime, toast, taskId, mode]);
-
-  const handleNextQuestion = useCallback((updatedQuestions: Question[]) => {
-    const isLastQuestion = currentQuestionIndex >= updatedQuestions.length - 1;
 
     if (isLastQuestion) {
         setGameState('finished');
@@ -389,116 +361,109 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         const score = Math.round((correctCount / updatedQuestions.length) * 100);
         setFinalScore(score);
         
-        completeTask(updatedQuestions);
+        if (!isTaskTestMode && !isExerciseTestMode) {
+          if (!firestore || !user || !task?.teacherId || !task.id || !task.studentId) {
+            console.error("Aborting task completion: missing critical data.", { task, user: !!user });
+            return;
+          }
+          const totalTime = Math.round((Date.now() - taskStartTime) / 1000);
+          const performanceData = {
+            isCompleted: true,
+            completedAt: new Date().toISOString(),
+            totalTime: totalTime,
+            questions: updatedQuestions,
+          };
+          
+          const studentTaskRef = doc(firestore, 'students', task.studentId, 'tasks', task.id);
+          updateDoc(studentTaskRef, performanceData).catch(e => {
+            console.error("Erro ao finalizar tarefa (aluno): ", e);
+          });
+          
+          const teacherTaskRef = doc(firestore, 'teachers', task.teacherId, 'tasks', task.id);
+          updateDoc(teacherTaskRef, performanceData).catch(e => {
+              console.error("Erro ao finalizar tarefa (professor): ", e);
+              toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível sincronizar o resultado da tarefa com o professor.' });
+          });
+        }
+
     } else {
         setCurrentQuestionIndex(prev => prev + 1);
         setSelectedAnswer(null);
         setIsCorrect(null);
         setGameState('playing');
     }
-  }, [currentQuestionIndex, completeTask]);
+  }, [currentQuestionIndex, firestore, user, task, taskStartTime, toast, taskId, mode, exerciseId]);
 
   const handleAnswer = useCallback((answer: string) => {
-    if (gameState !== 'playing' && gameState !== 'showingAnswer') return;
-  
+    if (gameState !== 'playing') return;
+
+    // 1. DETERMINE THE SCORE AND UPDATE THE DATA MODEL
+    const timeTaken = Date.now() - questionStartTime;
+    let finalStatusForThisQuestion: 'correct' | 'incorrect' | 'unanswered' | undefined = currentQuestion.status;
+
+    if (currentQuestion.status === 'unanswered') {
+        const isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
+        if (isPuzzle) {
+            finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
+        } else {
+            const isThisAnswerCorrect = (answer.toUpperCase() === currentQuestion.answer.toUpperCase());
+            finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
+        }
+    }
+
+    const updatedQuestions = questions.map((q, index) => {
+        if (index !== currentQuestionIndex) return q;
+        return {
+            ...q,
+            studentAnswer: answer,
+            attempts: (q.attempts || 0) + 1,
+            timeTaken: (q.timeTaken || 0) + timeTaken,
+            status: finalStatusForThisQuestion,
+        };
+    });
+    setQuestions(updatedQuestions);
+    
+    // Persist to Firestore (Non-blocking for UI)
     const isTestDrive = taskId === 'test-drive';
     const isTaskTestMode = isTestDrive || mode === 'test';
     const isExerciseTestMode = mode === 'test_exercise';
-    const isTestMode = isTestDrive || isTaskTestMode || isExerciseTestMode;
-  
-    const taskSource = searchParams.get('source') || 'student';
-    const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
-    
-    if (!currentQuestion) return;
-
-    const isActionCorrectForAdvancement = (
-      questionType === 'multiple_choice' || questionType === 'fill_in_the_blank'
-    ) ? (answer.toUpperCase() === currentQuestion.answer.toUpperCase())
-      : true;
-
-    if (gameState === 'playing') {
-      setGameState('showingAnswer');
-    }
-
-    setSelectedAnswer(answer);
-    setIsCorrect(isActionCorrectForAdvancement);
-    
-    const timeTaken = Date.now() - questionStartTime;
-    
-    const updatedQuestions = questions.map((q, index) => {
-      if (index === currentQuestionIndex) {
-        const newAttempts = (q.attempts || 0) + 1;
-  
-        if (q.status === 'unanswered') {
-          let isCorrectForScoring;
-          const isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
-
-          if (isPuzzle) {
-            isCorrectForScoring = !mistakeMade;
-          } else { // multiple_choice or fill_in_the_blank
-            isCorrectForScoring = (answer.toUpperCase() === currentQuestion.answer.toUpperCase());
-          }
-          
-          return {
-            ...q,
-            studentAnswer: answer,
-            attempts: newAttempts,
-            status: isCorrectForScoring ? 'correct' : 'incorrect',
-            timeTaken: (q.timeTaken || 0) + timeTaken,
-          };
-        }
-        
-        return {
-          ...q,
-          studentAnswer: answer,
-          attempts: newAttempts,
-          timeTaken: (q.timeTaken || 0) + timeTaken,
-        };
-      }
-      return q;
-    });
-
-    setQuestions(updatedQuestions);
-  
-    if (!isTestMode && firestore && user && studentId && taskId) {
+    if (!isTaskTestMode && !isExerciseTestMode && firestore && user && studentId && taskId) {
+      const taskSource = searchParams.get('source') || 'student';
+      const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
       const taskDocRef = doc(firestore, collectionPath, studentId, 'tasks', taskId);
       updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
         console.error("Failed to update question performance", e);
       });
     }
-  
-    if (isActionCorrectForAdvancement) {
-      triggerConfettiExplosion();
-      const delay = questionType === 'fill_in_the_blank' ? 800 : 100;
-      setTimeout(() => {
+
+    // 2. DETERMINE GAME FLOW (UI FEEDBACK AND ADVANCEMENT)
+    const isPuzzleFinished = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
+    const isSimpleAnswerCorrect = !isPuzzleFinished && (answer.toUpperCase() === currentQuestion.answer.toUpperCase());
+
+    const shouldAdvance = isPuzzleFinished || isSimpleAnswerCorrect;
+
+    setGameState('showingAnswer');
+    setSelectedAnswer(answer);
+
+    if (shouldAdvance) {
+        setIsCorrect(true); // UI feedback for success
+        triggerConfettiExplosion();
         setShowCorrectAnswerModal(true);
-      }, delay);
-      setTimeout(() => {
-        setShowCorrectAnswerModal(false);
-        handleNextQuestion(updatedQuestions);
-      }, delay + 1700);
+        setTimeout(() => {
+            setShowCorrectAnswerModal(false);
+            handleNextQuestion(updatedQuestions);
+        }, 1800);
     } else {
-      setTimeout(() => {
-        setGameState('playing');
-        setSelectedAnswer(null);
-        setIsCorrect(null);
-      }, 2500);
+        // This is for incorrect simple answers
+        setIsCorrect(false); // UI feedback for failure
+        toast({ variant: 'destructive', title: 'Tente de novo!', duration: 2000 });
+        setTimeout(() => {
+            setGameState('playing');
+            setSelectedAnswer(null);
+            setIsCorrect(null);
+        }, 2500);
     }
-  }, [
-    gameState,
-    questionStartTime,
-    questions,
-    currentQuestion,
-    handleNextQuestion,
-    firestore,
-    user,
-    studentId,
-    taskId,
-    searchParams,
-    questionType,
-    mode,
-    mistakeMade,
-  ]);
+  }, [gameState, currentQuestion, questions, mistakeMade, questionStartTime, handleNextQuestion, toast, questionType, taskId, studentId, user, firestore, mode, exerciseId, searchParams]);
   
   const handleMatchItemClick = (side: 'left' | 'right', index: number, value: string) => {
     if (gameState !== 'playing' || !currentQuestion) return;
@@ -653,21 +618,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     // Check for loss
     if (chancesLeft <= 0) {
       setGameState('showingAnswer'); // Prevent further guesses
-      setIsCorrect(false);
-
-      const timeTaken = Date.now() - questionStartTime;
-      const updatedQuestions = questions.map((q, index) =>
-        index === currentQuestionIndex
-          ? {
-              ...q,
-              studentAnswer: Object.keys(guessedLetters).filter(k => guessedLetters[k] === 'correct').join(''),
-              attempts: 1, // The whole game is one attempt
-              status: 'incorrect',
-              timeTaken,
-            }
-          : q
-      );
-      setQuestions(updatedQuestions);
+      handleAnswer(Object.keys(guessedLetters).filter(k => guessedLetters[k] === 'correct').join(''));
 
       // Show a "You Lost" message and then move on
       toast({
@@ -676,11 +627,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         description: `A palavra era: ${secretWord}`,
         duration: 3000,
       });
-      setTimeout(() => {
-        handleNextQuestion(updatedQuestions);
-      }, 3500);
     }
-  }, [guessedLetters, chancesLeft, questionType, currentQuestion, gameState, handleAnswer, questionStartTime, questions, handleNextQuestion, toast]);
+  }, [guessedLetters, chancesLeft, questionType, currentQuestion, gameState, handleAnswer, toast]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
