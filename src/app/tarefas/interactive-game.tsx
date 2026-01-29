@@ -411,55 +411,53 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     
     if (!currentQuestion) return;
 
-    // This variable determines if the game should advance.
-    // For puzzles, solving it is always a "correct" action to advance.
-    // For MCQs, it's about picking the right option.
     const isActionCorrectForAdvancement = (
       questionType === 'multiple_choice' || questionType === 'fill_in_the_blank'
     ) ? (answer.toUpperCase() === currentQuestion.answer.toUpperCase())
-      : true; // For all puzzle types, solving it means we should advance.
-
-    // This variable determines the score. It's based on the FIRST real attempt.
-    const isAttemptCorrectForScoring = (
-      questionType === 'multiple_choice' || questionType === 'fill_in_the_blank'
-    ) 
-      // For MCQs, it's correct if this is the first try AND the answer is right.
-      ? (currentQuestion.status === 'unanswered' && answer.toUpperCase() === currentQuestion.answer.toUpperCase())
-      // For puzzles, it's correct if no mistake was made during the whole process.
-      : !mistakeMade;
+      : true;
 
     if (gameState === 'playing') {
       setGameState('showingAnswer');
     }
 
     setSelectedAnswer(answer);
-    setIsCorrect(isActionCorrectForAdvancement); // Visual feedback is based on the action to advance.
+    setIsCorrect(isActionCorrectForAdvancement);
     
     const timeTaken = Date.now() - questionStartTime;
+    
     const updatedQuestions = questions.map((q, index) => {
       if (index === currentQuestionIndex) {
         const newAttempts = (q.attempts || 0) + 1;
   
-        // Only set the score status on the first attempt.
         if (q.status === 'unanswered') {
+          let isCorrectForScoring;
+          const isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
+
+          if (isPuzzle) {
+            isCorrectForScoring = !mistakeMade;
+          } else { // multiple_choice or fill_in_the_blank
+            isCorrectForScoring = (answer.toUpperCase() === currentQuestion.answer.toUpperCase());
+          }
+          
           return {
             ...q,
             studentAnswer: answer,
             attempts: newAttempts,
-            status: isAttemptCorrectForScoring ? 'correct' : 'incorrect',
+            status: isCorrectForScoring ? 'correct' : 'incorrect',
             timeTaken: (q.timeTaken || 0) + timeTaken,
           };
         }
-        // If already answered, just update other stats but preserve the original status.
+        
         return {
           ...q,
-          studentAnswer: answer, // update answer in case it's a puzzle
+          studentAnswer: answer,
           attempts: newAttempts,
           timeTaken: (q.timeTaken || 0) + timeTaken,
         };
       }
       return q;
     });
+
     setQuestions(updatedQuestions);
   
     if (!isTestMode && firestore && user && studentId && taskId) {
@@ -480,13 +478,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         handleNextQuestion(updatedQuestions);
       }, delay + 1700);
     } else {
-      // This block now only runs for incorrect MCQ/fill-in-the-blank answers
-      setMistakeMade(true);
       setTimeout(() => {
         setGameState('playing');
         setSelectedAnswer(null);
         setIsCorrect(null);
-        // No need to reset puzzle states here as this path is not for puzzles
       }, 2500);
     }
   }, [
