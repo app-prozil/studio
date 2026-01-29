@@ -114,6 +114,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [isGiftOpened, setIsGiftOpened] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [showCorrectAnswerModal, setShowCorrectAnswerModal] = useState(false);
+  const [mistakeMade, setMistakeMade] = useState(false);
 
   // State for organize_syllables game
   const [constructedSyllables, setConstructedSyllables] = useState<string[]>([]);
@@ -283,6 +284,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   useEffect(() => {
     setQuestionStartTime(Date.now());
+    setMistakeMade(false);
     // Reset game-specific state when question changes
     setFlippedCards([]);
     setMatchedPairs([]);
@@ -345,18 +347,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
   }, [currentQuestionIndex, questions, gameState]);
 
-  const markQuestionAsIncorrect = useCallback(() => {
-    if (questions[currentQuestionIndex]?.status === 'unanswered') {
-        const updatedQuestions = questions.map((q, index) => {
-            if (index === currentQuestionIndex) {
-                return { ...q, status: 'incorrect' };
-            }
-            return q;
-        });
-        setQuestions(updatedQuestions);
-    }
-  }, [questions, currentQuestionIndex]);
-  
   const completeTask = useCallback((finalQuestions: Question[]) => {
     const isTestDrive = taskId === 'test-drive';
     const isTaskTestMode = isTestDrive || mode === 'test';
@@ -409,73 +399,88 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   }, [currentQuestionIndex, completeTask]);
 
   const handleAnswer = useCallback((answer: string) => {
-    if (gameState !== 'playing') return;
-
+    if (gameState !== 'playing' && gameState !== 'showingAnswer') return;
+  
     const isTestDrive = taskId === 'test-drive';
     const isTaskTestMode = isTestDrive || mode === 'test';
     const isExerciseTestMode = mode === 'test_exercise';
     const isTestMode = isTestDrive || isTaskTestMode || isExerciseTestMode;
-
+  
     const taskSource = searchParams.get('source') || 'student';
     const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
     const timeTaken = Date.now() - questionStartTime;
-    
+  
     if (!currentQuestion) return;
-    const isAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
-    
-    setGameState('showingAnswer'); 
+  
+    const isPuzzleType = ['memory_game', 'match_the_pairs', 'organize_categories', 'organize_sentence', 'organize_syllables', 'guess_the_word'].includes(questionType);
+    let isAnswerCorrect: boolean;
+  
+    if (isPuzzleType) {
+      // For puzzles, correctness is determined by whether a mistake was made, not the final answer provided.
+      isAnswerCorrect = !mistakeMade;
+    } else {
+      isAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
+    }
+  
+    if (gameState === 'playing') {
+      setGameState('showingAnswer');
+    }
     setSelectedAnswer(answer);
     setIsCorrect(isAnswerCorrect);
-    
+  
     const updatedQuestions = questions.map((q, index) => {
-        if (index === currentQuestionIndex) {
-            const newAttempts = (q.attempts || 0) + 1;
-            
-            const newStatus = q.status === 'unanswered' 
-                ? (isAnswerCorrect ? 'correct' : 'incorrect')
-                : q.status;
-
-            return {
-                ...q,
-                studentAnswer: answer,
-                attempts: newAttempts,
-                status: newStatus,
-                timeTaken: (q.timeTaken || 0) + timeTaken,
-            };
+      if (index === currentQuestionIndex) {
+        const newAttempts = (q.attempts || 0) + 1;
+  
+        let finalStatus = q.status;
+        if (q.status === 'unanswered') {
+          finalStatus = isAnswerCorrect ? 'correct' : 'incorrect';
         }
-        return q;
+  
+        return {
+          ...q,
+          studentAnswer: answer,
+          attempts: newAttempts,
+          status: finalStatus,
+          timeTaken: (q.timeTaken || 0) + timeTaken,
+        };
+      }
+      return q;
     });
     setQuestions(updatedQuestions);
-
+  
     if (!isTestMode && firestore && user && studentId && taskId) {
-        const taskDocRef = doc(firestore, collectionPath, studentId, 'tasks', taskId);
-        updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
-            console.error("Failed to update question performance", e)
-        });
+      const taskDocRef = doc(firestore, collectionPath, studentId, 'tasks', taskId);
+      updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
+        console.error("Failed to update question performance", e);
+      });
     }
-
+  
     if (isAnswerCorrect) {
       triggerConfettiExplosion();
       const delay = questionType === 'fill_in_the_blank' ? 800 : 100;
       setTimeout(() => {
-          setShowCorrectAnswerModal(true);
+        setShowCorrectAnswerModal(true);
       }, delay);
       setTimeout(() => {
         setShowCorrectAnswerModal(false);
         handleNextQuestion(updatedQuestions);
       }, delay + 1700);
     } else {
+      if (!isPuzzleType) {
+        setMistakeMade(true); // Also log mistake for non-puzzles on first error
+      }
       setTimeout(() => {
         setGameState('playing');
         setSelectedAnswer(null);
         setIsCorrect(null);
-         if (questionType === 'organize_syllables') {
-            setAvailableSyllables([...constructedSyllables, ...availableSyllables]);
-            setConstructedSyllables([]);
+        if (questionType === 'organize_syllables') {
+          setAvailableSyllables([...constructedSyllables, ...availableSyllables]);
+          setConstructedSyllables([]);
         }
       }, 2500);
     }
-  }, [gameState, questionStartTime, questions, currentQuestion, handleNextQuestion, firestore, user, studentId, taskId, searchParams, questionType, constructedSyllables, availableSyllables, mode]);
+  }, [gameState, questionStartTime, questions, currentQuestion, handleNextQuestion, firestore, user, studentId, taskId, searchParams, questionType, constructedSyllables, availableSyllables, mode, mistakeMade]);
   
   const handleMatchItemClick = (side: 'left' | 'right', index: number, value: string) => {
     if (gameState !== 'playing' || !currentQuestion) return;
@@ -489,22 +494,22 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       }
 
       const originalOptions = currentQuestion.options;
-      let isCorrect = false;
+      let isCorrectMatch = false;
       for (let i = 0; i < originalOptions.length; i += 2) {
         if (
           (originalOptions[i] === matchPairsSelectedItem.value && originalOptions[i + 1] === value) ||
           (originalOptions[i] === value && originalOptions[i + 1] === matchPairsSelectedItem.value)
         ) {
-          isCorrect = true;
+          isCorrectMatch = true;
           break;
         }
       }
 
-      const newLine = { start: matchPairsSelectedItem.value, end: value, correct: isCorrect };
+      const newLine = { start: matchPairsSelectedItem.value, end: value, correct: isCorrectMatch };
       setMatchPairsLines(prev => [...prev, newLine]);
       setMatchPairsSelectedItem(null);
 
-      if (isCorrect) {
+      if (isCorrectMatch) {
         triggerConfettiExplosion();
         const newMatched = [...matchPairsMatched, [matchPairsSelectedItem.value, value]] as [string, string][];
         setMatchPairsMatched(newMatched);
@@ -515,7 +520,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           }, 1000);
         }
       } else {
-        markQuestionAsIncorrect();
+        setMistakeMade(true);
         toast({
           variant: 'destructive',
           title: 'Não corresponde!',
@@ -531,9 +536,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   useEffect(() => {
     if (questionType === 'organize_syllables' && availableSyllables.length === 0 && constructedSyllables.length > 0) {
-        handleAnswer(constructedSyllables.join(''));
+        const finalAnswer = constructedSyllables.join('');
+        if (finalAnswer.toUpperCase() !== currentQuestion.answer.toUpperCase()) {
+            setMistakeMade(true);
+        }
+        handleAnswer(finalAnswer);
     }
-  }, [availableSyllables, constructedSyllables, questionType, handleAnswer]);
+  }, [availableSyllables, constructedSyllables, questionType, handleAnswer, currentQuestion]);
 
   // Memory Game: check for matches
   useEffect(() => {
@@ -569,13 +578,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             }, 500);
         }
     } else {
-        markQuestionAsIncorrect();
+        setMistakeMade(true);
         setTimeout(() => {
             setFlippedCards([]);
             setIsChecking(false);
         }, 1200);
     }
-  }, [flippedCards, currentQuestion, matchedPairs, shuffledOptions, handleAnswer, questionType, markQuestionAsIncorrect]);
+  }, [flippedCards, currentQuestion, matchedPairs, shuffledOptions, handleAnswer, questionType]);
 
   const handleCardClick = (index: number) => {
     if (isChecking || flippedCards.length >= 2 || flippedCards.includes(index) || matchedPairs.includes(shuffledOptions[index])) {
@@ -593,6 +602,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     if (isCorrectGuess) {
         setGuessedLetters(prev => ({ ...prev, [letter]: 'correct' }));
     } else {
+        setMistakeMade(true);
         setAnimatingHeartIndex(chancesLeft - 1);
         toast({
             variant: 'destructive',
@@ -625,7 +635,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     // Check for loss
     if (chancesLeft <= 0) {
       setGameState('showingAnswer'); // Prevent further guesses
-      setIsCorrect(false); // To show general failure feedback if needed
+      setIsCorrect(false);
 
       const timeTaken = Date.now() - questionStartTime;
       const updatedQuestions = questions.map((q, index) =>
@@ -705,7 +715,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         setTimeout(() => handleAnswer(currentQuestion.answer), 500);
       }
     } else {
-      markQuestionAsIncorrect();
+      setMistakeMade(true);
       toast({
         variant: 'destructive',
         title: 'Categoria Incorreta!',
@@ -748,18 +758,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const userAnswer = constructedSentence.map(sw => sw.word).join(' ');
     const isAnswerCorrect = userAnswer.toUpperCase() === currentQuestion.answer.toUpperCase();
 
-    if (isAnswerCorrect) {
-      try {
-        const utterance = new SpeechSynthesisUtterance(currentQuestion.answer);
-        utterance.lang = 'pt-BR';
-        utterance.rate = 0.9;
-        window.speechSynthesis.speak(utterance);
-      } catch (e) {
-        console.error("Speech synthesis failed.", e);
-      }
-      handleAnswer(userAnswer);
-    } else {
-      markQuestionAsIncorrect();
+    if (!isAnswerCorrect) {
+      setMistakeMade(true);
       setIsWrongSentenceShake(true);
       setTimeout(() => setIsWrongSentenceShake(false), 600);
       toast({
@@ -768,7 +768,17 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         description: 'A ordem das palavras não parece correta. Tente de novo!',
         duration: 2500,
       });
+    } else {
+        try {
+            const utterance = new SpeechSynthesisUtterance(currentQuestion.answer);
+            utterance.lang = 'pt-BR';
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        } catch (e) {
+            console.error("Speech synthesis failed.", e);
+        }
     }
+    handleAnswer(userAnswer);
   };
 
 
