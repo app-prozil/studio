@@ -28,7 +28,7 @@ type Exercise = {
   answer: string;
   subject: 'matematica' | 'portugues' | 'memoria';
   difficulty: 'easy' | 'medium' | 'hard';
-  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence';
+  questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs';
 };
 
 function PrintableWorksheetGenerator() {
@@ -55,7 +55,7 @@ function PrintableWorksheetGenerator() {
 
   const filteredBankExercises = useMemo(() => {
     if (!exercises) return [];
-    const unsuitableForPrint: (Exercise['questionType'])[] = ['memory_game', 'organize_categories'];
+    const unsuitableForPrint: (Exercise['questionType'])[] = ['memory_game', 'organize_categories', 'match_the_pairs'];
     
     return exercises.filter(ex => {
         const questionType = ex.questionType || 'multiple_choice';
