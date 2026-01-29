@@ -397,29 +397,36 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const handleAnswer = useCallback((answer: string) => {
     if (gameState !== 'playing') return;
 
-    // 1. DETERMINE THE SCORE AND UPDATE THE DATA MODEL
-    const timeTaken = Date.now() - questionStartTime;
-    let finalStatusForThisQuestion: 'correct' | 'incorrect' | 'unanswered' | undefined = currentQuestion.status;
+    // Determine if the answer is correct for the current state.
+    const isThisAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
+    const isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
+    
+    // For puzzles, correctness depends on whether a mistake was made during solving.
+    const isPuzzleCorrect = isPuzzle && !mistakeMade;
+    
+    const shouldAdvance = isPuzzle || isThisAnswerCorrect;
 
+    // Only update status if the question is still unanswered.
+    let finalStatusForThisQuestion: 'correct' | 'incorrect' = 'incorrect';
     if (currentQuestion.status === 'unanswered') {
-        const isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
-        if (isPuzzle) {
-            finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
-        } else {
-            const isThisAnswerCorrect = (answer.toUpperCase() === currentQuestion.answer.toUpperCase());
-            finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
-        }
+      if (isPuzzle) {
+        finalStatusForThisQuestion = isPuzzleCorrect ? 'correct' : 'incorrect';
+      } else {
+        finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
+      }
     }
 
+    const timeTaken = Date.now() - questionStartTime;
     const updatedQuestions = questions.map((q, index) => {
-        if (index !== currentQuestionIndex) return q;
-        return {
-            ...q,
-            studentAnswer: answer,
-            attempts: (q.attempts || 0) + 1,
-            timeTaken: (q.timeTaken || 0) + timeTaken,
-            status: finalStatusForThisQuestion,
-        };
+      if (index !== currentQuestionIndex) return q;
+      return {
+        ...q,
+        studentAnswer: answer,
+        attempts: (q.attempts || 0) + 1,
+        timeTaken: (q.timeTaken || 0) + timeTaken,
+        // Only set status if it's currently unanswered
+        status: q.status === 'unanswered' ? finalStatusForThisQuestion : q.status,
+      };
     });
     setQuestions(updatedQuestions);
     
@@ -436,12 +443,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       });
     }
 
-    // 2. DETERMINE GAME FLOW (UI FEEDBACK AND ADVANCEMENT)
-    const isPuzzleFinished = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
-    const isSimpleAnswerCorrect = !isPuzzleFinished && (answer.toUpperCase() === currentQuestion.answer.toUpperCase());
-
-    const shouldAdvance = isPuzzleFinished || isSimpleAnswerCorrect;
-
     setGameState('showingAnswer');
     setSelectedAnswer(answer);
 
@@ -454,7 +455,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             handleNextQuestion(updatedQuestions);
         }, 1800);
     } else {
-        // This is for incorrect simple answers
+        // This is for incorrect simple answers (e.g., multiple choice)
         setIsCorrect(false); // UI feedback for failure
         toast({ variant: 'destructive', title: 'Tente de novo!', duration: 2000 });
         setTimeout(() => {
