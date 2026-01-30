@@ -6,7 +6,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, Gift, RotateCcw, Bot, Heart } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Volume2, ArrowRight, RotateCcw, Bot, Heart } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -405,10 +405,14 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const shouldAdvance = isPuzzle || isThisAnswerCorrect;
 
     let finalStatusForThisQuestion: 'correct' | 'incorrect' | undefined = undefined;
+
+    // The status is only set on the first attempt for a question.
     if (currentQuestion.status === 'unanswered') {
       if (isPuzzle) {
+        // For puzzles, the final status depends on if any mistakes were made during the process.
         finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
       } else {
+        // For direct answer questions, it's based on this single answer.
         finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
       }
     }
@@ -419,6 +423,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       
       const newAttempts = (q.attempts || 0) + 1;
       
+      // Update the question with performance data.
+      // Crucially, only change the 'status' if it's still 'unanswered'.
       return {
         ...q,
         studentAnswer: answer,
@@ -429,6 +435,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     });
     setQuestions(updatedQuestions);
     
+    // Save progress to Firestore without blocking the UI
     const isTestDrive = taskId === 'test-drive';
     const isTaskTestMode = isTestDrive || mode === 'test';
     const isExerciseTestMode = mode === 'test_exercise';
@@ -444,6 +451,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setGameState('showingAnswer');
     setSelectedAnswer(answer);
 
+    // Provide UI feedback and advance the game
     if (shouldAdvance) {
         setIsCorrect(true);
         triggerConfettiExplosion();
@@ -454,8 +462,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         }, 1800);
     } else {
         setIsCorrect(false);
+        // This is where we ensure the question is marked as incorrect if it hasn't been already.
         if (currentQuestion.status === 'unanswered') {
-          setMistakeMade(true); 
+          setMistakeMade(true); // This will ensure puzzles are marked incorrect, though this branch is for direct-answer questions.
         }
         toast({ variant: 'destructive', title: 'Tente de novo!', duration: 2000 });
         setTimeout(() => {
@@ -787,7 +796,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                     });
                   }, 100);
                 }} className="animate-gift-bounce focus:outline-none relative z-10 flex flex-col items-center">
-                <Gift className="w-40 h-40 text-primary" />
+                <span className="text-9xl">🎁</span>
                 <span className="mt-4 block text-lg font-semibold">CLIQUE NO SEU PRÊMIO!</span>
               </button>
             </>
