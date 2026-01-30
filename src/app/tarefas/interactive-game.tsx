@@ -402,19 +402,15 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     let isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
     let isThisAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
     
-    // For puzzles, completing it is always a "correct" action to advance the game.
-    // The scoring is handled by `mistakeMade`.
     const shouldAdvance = isPuzzle || isThisAnswerCorrect;
 
-    // This logic determines the final status for scoring purposes.
-    // It's only set once, on the first attempt that resolves the question.
     let finalStatusForThisQuestion: 'correct' | 'incorrect' | undefined = undefined;
     if (currentQuestion.status === 'unanswered') {
-        if (isPuzzle) {
-            finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
-        } else {
-            finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
-        }
+      if (isPuzzle) {
+        finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
+      } else {
+        finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
+      }
     }
     
     const timeTaken = Date.now() - questionStartTime;
@@ -428,7 +424,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         studentAnswer: answer,
         attempts: newAttempts,
         timeTaken: (q.timeTaken || 0) + timeTaken,
-        // Only update status if it's currently 'unanswered'
         status: finalStatusForThisQuestion !== undefined ? finalStatusForThisQuestion : q.status,
       };
     });
@@ -459,7 +454,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         }, 1800);
     } else {
         setIsCorrect(false);
-        setMistakeMade(true); 
+        if (currentQuestion.status === 'unanswered') {
+          setMistakeMade(true); 
+        }
         toast({ variant: 'destructive', title: 'Tente de novo!', duration: 2000 });
         setTimeout(() => {
             setGameState('playing');
@@ -789,7 +786,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                         gravity: 0.08,
                     });
                   }, 100);
-                }} className="animate-gift-bounce focus:outline-none relative z-10">
+                }} className="animate-gift-bounce focus:outline-none relative z-10 flex flex-col items-center">
                 <Gift className="w-40 h-40 text-primary" />
                 <span className="mt-4 block text-lg font-semibold">CLIQUE NO SEU PRÊMIO!</span>
               </button>
