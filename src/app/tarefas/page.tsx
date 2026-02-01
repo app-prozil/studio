@@ -16,26 +16,21 @@ export default function TarefasPage() {
   const firestore = useFirestore();
   const isAdmin = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
-  const teacherDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'teachers', user.uid) : null),
-    [firestore, user]
-  );
+  // Sequentially check for user profile
+  const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
 
-  const studentDocRef = useMemoFirebase(
-    () => (user && !isAdmin ? doc(firestore, 'students', user.uid) : null),
-    [firestore, user, isAdmin]
-  );
+  const shouldCheckStudent = !isAdmin && !isTeacherLoading && !teacherProfile;
+  const studentDocRef = useMemoFirebase(() => (shouldCheckStudent && user ? doc(firestore, 'students', user.uid) : null), [shouldCheckStudent, user]);
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
-  const directorDocRef = useMemoFirebase(
-    () => (user && !isAdmin ? doc(firestore, 'directors', user.uid) : null),
-    [firestore, user, isAdmin]
-  );
+  const shouldCheckDirector = !isAdmin && !isTeacherLoading && !teacherProfile && !isStudentLoading && !studentProfile;
+  const directorDocRef = useMemoFirebase(() => (shouldCheckDirector && user ? doc(firestore, 'directors', user.uid) : null), [shouldCheckDirector, user]);
   const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
 
+  const isLoading = isUserLoading || isTeacherLoading || (shouldCheckStudent && isStudentLoading) || (shouldCheckDirector && isDirectorLoading);
 
-  if (isUserLoading || isTeacherLoading || isStudentLoading || isDirectorLoading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-1/4" />
@@ -80,7 +75,7 @@ export default function TarefasPage() {
     return <DirectorDashboard />;
   }
 
-  if (teacherProfile) {
+  if (teacherProfile || isAdmin) {
     return <TeacherTaskView teacherId={user.uid} />;
   }
 
