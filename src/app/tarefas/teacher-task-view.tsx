@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -559,7 +560,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                       {...field} 
                       className={cn("font-libras font-black py-4", "libras-input-text")}
                       onFocus={() => setFocusedInput('librasText')} 
-                      placeholder="Insira aqui o conteúdo em Libras"
+                      placeholder="Libras"
                     />
                   </FormControl>
                   <FormMessage />
