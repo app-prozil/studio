@@ -3,6 +3,7 @@
 
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -560,32 +561,11 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormControl>
                     <Textarea 
                       {...field} 
-                      className="font-libras text-2xl"
+                      className="font-libras text-5xl min-h-[120px]"
                       onFocus={() => setFocusedInput('librasText')} 
                       placeholder="Insira aqui o conteúdo em Libras"
                     />
                   </FormControl>
-                  <div className="mt-2 space-y-2 rounded-md border bg-muted p-3">
-                    <Label className="text-xs">Inserir Caractere Libras</Label>
-                    <div className="flex flex-wrap gap-1">
-                      {specialCharsCategories['Libras (Regular)'].map((char) => (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          key={`libras-char-${char}`}
-                          className="h-9 w-9 font-libras text-2xl"
-                          onClick={() => {
-                            form.setValue('librasText', (field.value || '') + char, {
-                              shouldValidate: true,
-                            });
-                          }}
-                        >
-                          {char}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
                   <FormMessage />
                 </FormItem>
               )}/>
