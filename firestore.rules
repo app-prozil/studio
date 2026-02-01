@@ -3,17 +3,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isDirector() {
-      return exists(/databases/$(database)/documents/directors/$(request.auth.uid));
+    function isDirector(userId) {
+      return exists(/databases/$(database)/documents/directors/$(userId));
     }
 
-    function isTeacher() {
-      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+    function isTeacher(userId) {
+      return exists(/databases/$(database)/documents/teachers/$(userId));
     }
 
     // --- Collection Group Query for Tasks ---
     match /{path=**}/tasks/{taskId} {
-      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isDirector();
+      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isDirector(request.auth.uid);
     }
 
     // --- Teacher Profiles and Data ---
@@ -21,14 +21,14 @@ service cloud.firestore {
       // Admin pode ler qualquer perfil; outros usuários logados também.
       allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth != null;
       // Admin e diretores podem listar professores.
-      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isDirector();
+      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isDirector(request.auth.uid);
       // Admin ou o próprio professor podem escrever.
       allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId;
 
       // Subcollection: Teacher's Exercise Bank
       match /exercises/{exerciseId} {
         // Admin, o dono, ou um diretor podem ler.
-        allow read: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId || isDirector();
+        allow read: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId || isDirector(request.auth.uid);
         // Admin ou o dono podem escrever.
         allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId;
       }
@@ -36,7 +36,7 @@ service cloud.firestore {
       // Subcollection: Master copy of tasks created by the teacher.
       match /tasks/{taskId} {
         // Admin, o dono, ou um diretor podem ler.
-        allow read: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId || isDirector();
+        allow read: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId || isDirector(request.auth.uid);
         // Admin ou o dono podem criar/deletar.
         allow create, delete: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId;
         // Admin, o dono, ou o aluno podem atualizar.
@@ -47,20 +47,20 @@ service cloud.firestore {
     // --- Student Profiles and Data ---
     match /students/{studentId} {
       // Admin, o dono, ou um professor vinculado podem ler.
-      allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId || (isTeacher() && resource.data.teacherIds.hasAny([request.auth.uid]));
+      allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId || (isTeacher(request.auth.uid) && resource.data.teacherIds.hasAny([request.auth.uid]));
       // Admin, um professor ou um diretor podem listar alunos.
-      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isTeacher() || isDirector();
+      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isTeacher(request.auth.uid) || isDirector(request.auth.uid);
       // Admin ou o dono podem escrever.
       allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId;
 
       // Subcollection: Copy of tasks assigned to the student.
       match /tasks/{taskId} {
         // Admin, o dono, o autor, ou um diretor podem ler.
-        allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId || request.auth.uid == resource.data.teacherId || isDirector();
+        allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId || request.auth.uid == resource.data.teacherId || isDirector(request.auth.uid);
         // Admin ou o dono podem listar suas próprias tarefas.
         allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId;
         // Admin ou um professor podem criar tarefas.
-        allow create: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isTeacher();
+        allow create: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isTeacher(request.auth.uid);
         // Admin, o dono, ou o autor podem atualizar.
         allow update: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId || request.auth.uid == resource.data.teacherId;
         // Admin ou o autor podem deletar.
