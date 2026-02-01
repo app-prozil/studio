@@ -849,12 +849,12 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
               <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
                   {renderTextWithBlank(currentQuestion.text, selectedAnswer || '')}
-                  {currentQuestion.text2 && (
-                      <span className="font-libras">
-                          {' '}{renderTextWithBlank(currentQuestion.text2, selectedAnswer || '')}
-                      </span>
-                  )}
               </p>
+              {currentQuestion.text2 && (
+                  <p className="font-libras text-5xl flex items-center justify-center flex-wrap gap-2">
+                      {renderTextWithBlank(currentQuestion.text2, selectedAnswer || '')}
+                  </p>
+              )}
           </div>
         );
     }
@@ -863,10 +863,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
         <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl'}`}>
             {currentQuestion.text}
-            {currentQuestion.text2 && (
-              <span className="font-libras">{' '}{currentQuestion.text2}</span>
-            )}
         </p>
+        {currentQuestion.text2 && (
+          <p className="font-libras text-5xl">{currentQuestion.text2}</p>
+        )}
       </div>
     );
   }
