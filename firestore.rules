@@ -145,8 +145,8 @@ service cloud.firestore {
       // for other rules that call isDirector().
       allow get: if isSignedIn();
       
-      // LIST: Only Admins can list all directors. This is inlined to prevent function call issues.
-      allow list: if request.auth.token.email == 'admin@prozil.com';
+      // LIST: Only Admins can list all directors.
+      allow list: if isAdmin();
       
       // WRITE: A user can manage their OWN director profile. Admin can manage any.
       allow write: if isOwner(directorId) || isAdmin();
