@@ -89,6 +89,37 @@
         "email"
       ]
     },
+    "Director": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Director",
+      "type": "object",
+      "description": "Represents a director user with read-only access to school data.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Director entity (Firebase Auth UID)."
+        },
+        "prozilId": {
+          "type": "string",
+          "description": "Public, user-friendly identifier for the director, in the format <name>-<6_digits>."
+        },
+        "name": {
+          "type": "string",
+          "description": "The director's full name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The director's email address.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "prozilId",
+        "name",
+        "email"
+      ]
+    },
     "Exercise": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Exercise",
@@ -406,6 +437,22 @@
             {
               "name": "studentId",
               "description": "The Firebase Auth UID of the student."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/directors/{directorId}",
+        "definition": {
+          "entityName": "Director",
+          "schema": {
+            "$ref": "#/backend/entities/Director"
+          },
+          "description": "Stores director profiles. DirectorId is the Firebase Auth UID.",
+          "params": [
+            {
+              "name": "directorId",
+              "description": "The Firebase Auth UID of the director."
             }
           ]
         }

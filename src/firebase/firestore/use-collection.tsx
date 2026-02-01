@@ -8,6 +8,7 @@ import {
   FirestoreError,
   QuerySnapshot,
   CollectionReference,
+  collectionGroup,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -85,11 +86,18 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        // This logic extracts the path from either a ref or a query
-        const path: string =
-          memoizedTargetRefOrQuery.type === 'collection'
-            ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
+        let path = 'unknown/path';
+        try {
+          if ('_query' in memoizedTargetRefOrQuery && (memoizedTargetRefOrQuery as any)._query.path) {
+            path = (memoizedTargetRefOrQuery as any)._query.path.canonicalString();
+          } else if ('path' in memoizedTargetRefOrQuery) {
+            path = (memoizedTargetRefOrQuery as CollectionReference).path;
+          } else if ((memoizedTargetRefOrQuery as any)._query.collectionGroup) {
+             path = `(collectionGroup)/${(memoizedTargetRefOrQuery as any)._query.collectionGroup}`;
+          }
+        } catch (e) {
+            console.warn("Could not determine path for Firestore permission error.", e);
+        }
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',

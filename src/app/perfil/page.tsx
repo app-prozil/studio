@@ -164,8 +164,14 @@ export default function ProfilePage() {
   );
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc<StudentProfileData>(studentDocRef);
 
-  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading;
-  const profile = teacherProfile || studentProfile;
+  const directorDocRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'directors', user.uid) : null),
+    [firestore, user]
+  );
+  const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
+
+  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || isDirectorLoading;
+  const profile = teacherProfile || studentProfile || directorProfile;
   
   const idToDisplay = profile?.prozilId;
 
@@ -271,10 +277,17 @@ export default function ProfilePage() {
   }
 
   const displayName = profile?.name || user.displayName || 'Usuário';
-  const userRole = teacherProfile ? 'Professor' : studentProfile ? 'Aluno' : 'Não definido';
-  const descriptionText = teacherProfile
-    ? 'Compartilhe este ID ProZil com seus alunos para que eles possam se conectar à sua turma.'
-    : 'Este é o seu ID ProZil de aluno.';
+  const userRole = teacherProfile ? 'Professor' : studentProfile ? 'Aluno' : directorProfile ? 'Diretoria' : 'Não definido';
+  
+  let descriptionText = '';
+  if (teacherProfile) {
+    descriptionText = 'Compartilhe este ID ProZil com seus alunos para que eles possam se conectar à sua turma.';
+  } else if (studentProfile) {
+    descriptionText = 'Este é o seu ID ProZil de aluno.';
+  } else if (directorProfile) {
+    descriptionText = 'Este é o seu ID ProZil de diretoria.';
+  }
+
 
   return (
     <div className="max-w-xl mx-auto space-y-6">

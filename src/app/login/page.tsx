@@ -24,7 +24,7 @@ const signUpSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
   email: z.string().email('Email inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
-  role: z.enum(['teacher', 'student'], { required_error: 'Por favor, selecione um perfil.' }),
+  role: z.enum(['teacher', 'student', 'director'], { required_error: 'Por favor, selecione um perfil.' }),
 });
 
 const loginSchema = z.object({
@@ -84,7 +84,15 @@ export default function LoginPage() {
       const randomDigits = Math.floor(100000 + Math.random() * 900000);
       const prozilId = `${firstName}-${randomDigits}`;
 
-      const roleCollection = values.role === 'teacher' ? 'teachers' : 'students';
+      let roleCollection;
+      if (values.role === 'teacher') {
+        roleCollection = 'teachers';
+      } else if (values.role === 'student') {
+        roleCollection = 'students';
+      } else {
+        roleCollection = 'directors';
+      }
+
       const userDocRef = doc(firestore, roleCollection, createdUser.uid);
       
       const userData: { [key: string]: any } = {
@@ -250,7 +258,7 @@ export default function LoginPage() {
                           <RadioGroup
                             onValueChange={field.onChange}
                             defaultValue={field.value}
-                            className="flex space-x-4"
+                            className="flex flex-wrap space-x-4"
                           >
                             <FormItem className="flex items-center space-x-2 space-y-0">
                               <FormControl>
@@ -263,6 +271,12 @@ export default function LoginPage() {
                                 <RadioGroupItem value="student" />
                               </FormControl>
                               <FormLabel className="font-normal">Aluno</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="director" />
+                              </FormControl>
+                              <FormLabel className="font-normal">Diretoria</FormLabel>
                             </FormItem>
                           </RadioGroup>
                         </FormControl>

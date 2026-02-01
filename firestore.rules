@@ -26,6 +26,11 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
 
+    function isDirector() {
+      // Check if the requesting user has a profile in the /directors collection.
+      return isSignedIn() && exists(/databases/$(database)/documents/directors/$(request.auth.uid));
+    }
+
     function isTaskAuthor(task) {
       // Check if the requesting user is the teacher who created the task.
       return request.auth.uid == task.teacherId;
@@ -71,8 +76,8 @@ service cloud.firestore {
     match /teachers/{teacherId} {
       // READ: Any signed-in user can read teacher profiles. This is necessary for
       // students to find their teacher's ProZil ID during signup.
-      // Admins can also read thanks to this rule.
-      allow read: if isSignedIn();
+      // Admins and directors can also read.
+      allow read: if isSignedIn() || isDirector();
       
       // WRITE: A user can create/update/delete their OWN teacher profile. 
       // An admin can write to ANY teacher profile.
@@ -80,35 +85,38 @@ service cloud.firestore {
 
       // --- Nested Teacher Collections ---
       match /exercises/{exerciseId} {
-        // Teachers can manage their own exercise bank. Admins have full access.
-        allow read, write: if isOwner(teacherId) || isAdmin();
+        // Teachers can manage their own exercise bank. Admins have full access. Directors can read.
+        allow read: if isOwner(teacherId) || isAdmin() || isDirector();
+        allow write: if isOwner(teacherId) || isAdmin();
       }
 
       match /tasks/{taskId} {
         // Teachers can manage tasks they have created. Admins have full access.
         // Students can update their own performance data on the teacher's copy of the task.
-        allow read, create, delete: if isOwner(teacherId) || isAdmin();
+        // Directors can read all tasks.
+        allow read: if isOwner(teacherId) || isAdmin() || isDirector();
+        allow create, delete: if isOwner(teacherId) || isAdmin();
         allow update: if isOwner(teacherId) || isAdmin() || isStudentUpdatingPerformance();
       }
     }
 
     match /students/{studentId} {
-      // GET: A student can read their own profile. A teacher can read their own students' profiles. Admins can read all.
-      allow get: if isOwner(studentId) || (isTeacher() && request.auth.uid in resource.data.teacherIds) || isAdmin();
+      // GET: A student can read their own profile. A teacher can read their own students' profiles. Admins and directors can read all.
+      allow get: if isOwner(studentId) || (isTeacher() && request.auth.uid in resource.data.teacherIds) || isAdmin() || isDirector();
       
-      // LIST: Only teachers and admins can list/query for students.
-      allow list: if isTeacher() || isAdmin();
+      // LIST: Teachers, admins, and directors can list/query for students.
+      allow list: if isTeacher() || isAdmin() || isDirector();
       
       // WRITE: A user can create/update/delete their OWN student profile. Admins can do anything.
       allow write: if isOwner(studentId) || isAdmin();
 
       // --- Nested Student Collections ---
       match /tasks/{taskId} {
-        // GET: A student can get their own task. The authoring teacher can get the task. Admins can get any.
-        allow get: if isOwner(studentId) || isTaskAuthor(resource.data) || isAdmin();
+        // GET: A student can get their own task. The authoring teacher can get the task. Admins and directors can get any.
+        allow get: if isOwner(studentId) || isTaskAuthor(resource.data) || isAdmin() || isDirector();
         
-        // LIST: A student can list their own tasks. Admins can list tasks for any student.
-        allow list: if isOwner(studentId) || isAdmin();
+        // LIST: A student can list their own tasks. Admins and directors can list tasks for any student.
+        allow list: if isOwner(studentId) || isAdmin() || isDirector();
         
         // CREATE: A teacher or admin can create a task for a student.
         allow create: if isTeacher() || isAdmin();
@@ -119,6 +127,13 @@ service cloud.firestore {
         // DELETE: The authoring teacher or an admin can delete a task.
         allow delete: if isTaskAuthor(resource.data) || isAdmin();
       }
+    }
+
+    match /directors/{directorId} {
+      // READ: Any signed-in user can read director profiles for transparency.
+      allow read: if isSignedIn();
+      // WRITE: A user can manage their OWN director profile. Admin can manage any.
+      allow write: if isOwner(directorId) || isAdmin();
     }
   }
 }

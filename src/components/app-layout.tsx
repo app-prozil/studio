@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User as UserIcon, LogIn, ClipboardCheck, Shield, Puzzle } from 'lucide-react';
+import { Home, Calculator, Book, Printer, BarChart, Settings, Bot, LogOut, User as UserIcon, LogIn, ClipboardCheck, Shield, Puzzle, Briefcase } from 'lucide-react';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -34,13 +34,14 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from './ui/skeleton';
 
 const menuItems = [
-  { href: '/', label: 'Início', icon: Home },
-  { href: '/matematica', label: 'Matemática', icon: Calculator },
-  { href: '/portugues', label: 'Português', icon: Book },
-  { href: '/memoria', label: 'Memória', icon: Puzzle },
-  { href: '/tarefas', label: 'Tarefas', icon: ClipboardCheck },
-  { href: '/imprimir', label: 'Imprimir', icon: Printer },
-  { href: '/progresso', label: 'Progresso', icon: BarChart },
+  { href: '/', label: 'Início', icon: Home, roles: ['student', 'teacher', 'director', 'admin'] },
+  { href: '/diretoria', label: 'Painel Diretoria', icon: Briefcase, roles: ['director', 'admin'] },
+  { href: '/matematica', label: 'Matemática', icon: Calculator, roles: ['student', 'teacher'] },
+  { href: '/portugues', label: 'Português', icon: Book, roles: ['student', 'teacher'] },
+  { href: '/memoria', label: 'Memória', icon: Puzzle, roles: ['student', 'teacher'] },
+  { href: '/tarefas', label: 'Tarefas', icon: ClipboardCheck, roles: ['student', 'teacher'] },
+  { href: '/imprimir', label: 'Imprimir', icon: Printer, roles: ['teacher', 'admin'] },
+  { href: '/progresso', label: 'Progresso', icon: BarChart, roles: ['student', 'teacher'] },
 ];
 
 const settingsMenuItem = { href: '/configuracoes', label: 'Configurações', icon: Settings };
@@ -62,8 +63,14 @@ function UserNav() {
     [firestore, user]
   );
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
+
+  const directorDocRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'directors', user.uid) : null),
+    [firestore, user]
+  );
+  const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
   
-  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading;
+  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || isDirectorLoading;
 
   if (isLoading) {
     return (
@@ -75,9 +82,8 @@ function UserNav() {
   }
 
   if (user) {
-    const profile = teacherProfile || studentProfile;
+    const profile = teacherProfile || studentProfile || directorProfile;
     const isAdmin = user.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
-    // For the admin user, if their profile was deleted, we can default their name.
     const displayName = profile?.name || (isAdmin ? 'Administrador' : (user.displayName || 'Usuário'));
 
     return (
@@ -136,24 +142,40 @@ function UserNav() {
 
 function AppSidebar() {
   const pathname = usePathname();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { setOpen } = useSidebar();
   
-  const teacherDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'teachers', user.uid) : null),
-    [firestore, user]
-  );
+  const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
   
+  const studentDocRef = useMemoFirebase(() => (user ? doc(firestore, 'students', user.uid) : null), [firestore, user]);
+  const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
+
+  const directorDocRef = useMemoFirebase(() => (user ? doc(firestore, 'directors', user.uid) : null), [firestore, user]);
+  const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
+
   const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   const isAdmin = user?.uid === ADMIN_UID;
   
-  const canShowImprimir = !isTeacherLoading && (!!teacherProfile || isAdmin);
+  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || isDirectorLoading;
+
+  let userRole = 'guest';
+  if (user) {
+    if (isAdmin) userRole = 'admin';
+    else if (directorProfile) userRole = 'director';
+    else if (teacherProfile) userRole = 'teacher';
+    else if (studentProfile) userRole = 'student';
+  }
 
   const handleMenuItemClick = () => {
     setOpen(false);
   };
+  
+  const visibleMenuItems = menuItems.filter(item => {
+    if (!user) return ['/', '/matematica', '/portugues', '/memoria'].includes(item.href); // Guest view
+    return item.roles.includes(userRole);
+  });
 
   return (
     <Sidebar collapsible="icon">
@@ -165,14 +187,15 @@ function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {menuItems.map((item) => {
-            if (item.href === '/imprimir' && !canShowImprimir) {
-              if (isTeacherLoading) {
-                return <SidebarMenuSkeleton key={item.href} showIcon />;
-              }
-              return null; // Don't show if not teacher/admin
-            }
-            return (
+          {isLoading ? (
+            <>
+              <SidebarMenuSkeleton showIcon />
+              <SidebarMenuSkeleton showIcon />
+              <SidebarMenuSkeleton showIcon />
+              <SidebarMenuSkeleton showIcon />
+            </>
+          ) : (
+            visibleMenuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
@@ -186,9 +209,9 @@ function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-            );
-          })}
-          {isAdmin && (
+            ))
+          )}
+          {userRole === 'admin' && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild

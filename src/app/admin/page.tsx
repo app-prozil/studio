@@ -38,11 +38,11 @@ type UserProfile = {
   deletedAt?: string;
 };
 
-function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showArchived: boolean}) {
+function UserTable({ type, showArchived }: { type: 'teacher' | 'student' | 'director', showArchived: boolean}) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const collectionName = type === 'teacher' ? 'teachers' : 'students';
+  const collectionName = type === 'teacher' ? 'teachers' : type === 'student' ? 'students' : 'directors';
   
   const usersQuery = useMemoFirebase(
     () => (firestore && user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1') ? collection(firestore, collectionName) : null,
@@ -129,6 +129,12 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showAr
   if (error) return <p className="text-destructive">Ocorreu um erro ao carregar os usuários. Verifique as permissões do Firestore.</p>;
   if (!users) return <p>Nenhum usuário encontrado.</p>
 
+  const typeLabels = {
+    teacher: 'Professor',
+    student: 'Aluno',
+    director: 'Diretoria'
+  }
+
   return (
     <>
       <div className="border rounded-lg">
@@ -172,7 +178,7 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student', showAr
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar {type === 'teacher' ? 'Professor' : 'Aluno'}</DialogTitle>
+            <DialogTitle>Editar {typeLabels[type]}</DialogTitle>
             <DialogDescription>Altere os dados do usuário abaixo.</DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -221,9 +227,10 @@ export default function AdminPage() {
 
   const [showArchivedTeachers, setShowArchivedTeachers] = useState(false);
   const [showArchivedStudents, setShowArchivedStudents] = useState(false);
+  const [showArchivedDirectors, setShowArchivedDirectors] = useState(false);
 
   const handleClearData = async () => {
-    if (!isAuthorized) {
+    if (!isAuthorized || !firestore) {
         toast({ variant: 'destructive', title: 'Não autorizado.' });
         return;
     }
@@ -233,12 +240,14 @@ export default function AdminPage() {
     try {
         const batch = writeBatch(firestore);
 
+        // Clear Students
         const studentsCollectionRef = collection(firestore, 'students');
         const studentsSnapshot = await getDocs(studentsCollectionRef);
         studentsSnapshot.forEach(doc => {
             batch.delete(doc.ref);
         });
 
+        // Clear Teachers (except admin)
         const teachersCollectionRef = collection(firestore, 'teachers');
         const teachersSnapshot = await getDocs(teachersCollectionRef);
         teachersSnapshot.forEach(doc => {
@@ -247,8 +256,15 @@ export default function AdminPage() {
             }
         });
 
+        // Clear Directors
+        const directorsCollectionRef = collection(firestore, 'directors');
+        const directorsSnapshot = await getDocs(directorsCollectionRef);
+        directorsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
         await batch.commit();
-        toast({ title: 'Sucesso!', description: 'Todos os perfis de professores e alunos (exceto o admin) foram removidos.' });
+        toast({ title: 'Sucesso!', description: 'Todos os perfis de usuários (exceto o admin) foram removidos.' });
     } catch (e) {
         console.error("Error clearing data: ", e);
         toast({ variant: 'destructive', title: 'Erro ao limpar dados', description: 'Verifique as permissões ou tente novamente.' });
@@ -311,7 +327,7 @@ export default function AdminPage() {
                           Limpar Perfis de Usuários
                       </Button>
                       <p className="text-sm text-muted-foreground mt-2">
-                          Remove todos os perfis de professores e alunos do banco de dados.
+                          Remove todos os perfis de professores, alunos e diretores do banco de dados.
                       </p>
                   </div>
                 </div>
@@ -319,9 +335,10 @@ export default function AdminPage() {
           </Card>
         
           <Tabs defaultValue="teachers">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="teachers">Professores</TabsTrigger>
                 <TabsTrigger value="students">Alunos</TabsTrigger>
+                <TabsTrigger value="directors">Diretoria</TabsTrigger>
             </TabsList>
             <TabsContent value="teachers" className="mt-6">
               <Card>
@@ -357,6 +374,23 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+             <TabsContent value="directors" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gerenciar Diretoria</CardTitle>
+                   <div className="flex items-center justify-between pt-1">
+                    <CardDescription>Visualize, edite ou arquive perfis da diretoria.</CardDescription>
+                    <div className="flex items-center space-x-2">
+                        <Switch id="show-archived-directors" checked={showArchivedDirectors} onCheckedChange={setShowArchivedDirectors} />
+                        <Label htmlFor="show-archived-directors">Mostrar Arquivados</Label>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <UserTable type="director" showArchived={showArchivedDirectors}/>
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </>
       )}
@@ -366,7 +400,7 @@ export default function AdminPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação excluirá permanentemente todos os perfis de professores e alunos do <strong>banco de dados (Firestore)</strong>.
+              Esta ação excluirá permanentemente todos os perfis de professores, alunos e diretores do <strong>banco de dados (Firestore)</strong>.
               <br/><br/>
               <strong className="text-destructive">Importante:</strong> Esta ação <strong>NÃO</strong> exclui as contas de login (email e senha) do <strong>Firebase Authentication</strong>. Para liberar um e-mail para novo cadastro, você deve excluir a conta manualmente no Firebase Console.
             </AlertDialogDescription>

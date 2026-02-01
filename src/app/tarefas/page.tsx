@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ShieldAlert, LogIn, ClipboardCheck } from 'lucide-react';
+import DirectorDashboard from '../diretoria/page';
 
 export default function TarefasPage() {
   const { user, isUserLoading } = useUser();
@@ -18,18 +19,22 @@ export default function TarefasPage() {
     () => (user ? doc(firestore, 'teachers', user.uid) : null),
     [firestore, user]
   );
-
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
 
   const studentDocRef = useMemoFirebase(
     () => (user ? doc(firestore, 'students', user.uid) : null),
     [firestore, user]
   );
-  
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
+  const directorDocRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'directors', user.uid) : null),
+    [firestore, user]
+  );
+  const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
 
-  if (isUserLoading || isTeacherLoading || isStudentLoading) {
+
+  if (isUserLoading || isTeacherLoading || isStudentLoading || isDirectorLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-1/4" />
@@ -70,6 +75,10 @@ export default function TarefasPage() {
     );
   }
 
+  if (directorProfile) {
+    return <DirectorDashboard />;
+  }
+
   if (teacherProfile) {
     return <TeacherTaskView teacherId={user.uid} />;
   }
@@ -81,7 +90,7 @@ export default function TarefasPage() {
   return (
     <div className="text-center">
       <h1 className="text-2xl font-bold">Perfil não encontrado</h1>
-      <p className="text-muted-foreground">Não conseguimos identificar seu perfil como professor ou aluno.</p>
+      <p className="text-muted-foreground">Não conseguimos identificar seu perfil como professor, aluno ou diretoria.</p>
     </div>
   );
 }
