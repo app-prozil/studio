@@ -28,8 +28,10 @@ service cloud.firestore {
     }
 
     function isDirector() {
-      // Check if the requesting user has a profile in the /directors collection.
-      return isSignedIn() && exists(/databases/$(database)/documents/directors/$(request.auth.uid));
+      // Check if the requesting user has a profile in the /directors collection,
+      // but explicitly exclude the admin from this check to avoid permission errors
+      // on collection group queries. The admin is not a director.
+      return !isAdmin() && isSignedIn() && exists(/databases/$(database)/documents/directors/$(request.auth.uid));
     }
 
     function isTaskAuthor(task) {
