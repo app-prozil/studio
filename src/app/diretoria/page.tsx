@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, FileText, User, ShieldAlert, LogIn, Briefcase, Download, Users, GraduationCap, ClipboardList, PieChart } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -67,10 +67,18 @@ export default function DirectorDashboard() {
   const searchParams = useSearchParams();
   const view = searchParams.get('view');
 
-  const [activeTab, setActiveTab] = useState(view === 'by-student' ? 'by-student' : 'by-teacher');
+  const [activeTab, setActiveTab] = useState('by-teacher');
   const [viewingReport, setViewingReport] = useState<Task | null>(null);
   const [viewingGeneralReportFor, setViewingGeneralReportFor] = useState<{name: string, tasks: Task[], teacherName?: string} | null>(null);
   
+  useEffect(() => {
+    if (view === 'by-student') {
+        setActiveTab('by-student');
+    } else {
+        setActiveTab('by-teacher');
+    }
+  }, [view]);
+
   const directorDocRef = useMemoFirebase(() => (user ? doc(firestore, 'directors', user.uid) : null), [firestore, user]);
   const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
   const isAuthorized = !!directorProfile;
