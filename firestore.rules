@@ -13,8 +13,7 @@ service cloud.firestore {
 
     function isAdmin() {
       // The admin's Firebase Auth UID is 'yUKh2hnexMdiTd2t9rXEU0SgjPk1'.
-      // Comparing by email as a workaround for potential issues with UID in collection group queries.
-      return isSignedIn() && request.auth.token.email == 'admin@prozil.com';
+      return isSignedIn() && request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
     }
 
     function isOwner(userId) {
@@ -116,8 +115,8 @@ service cloud.firestore {
       // GET: A student can read their own profile. A teacher can read their own students' profiles. Admins and directors can read all.
       allow get: if isOwner(studentId) || (isTeacher() && request.auth.uid in resource.data.teacherIds) || isAdmin() || isDirector();
       
-      // LIST: Admins and directors can list/query for students.
-      allow list: if isAdmin() || isDirector();
+      // LIST: Only Admins can list/query for all students.
+      allow list: if isAdmin();
       
       // WRITE: A user can create/update/delete their OWN student profile. Admins can do anything.
       allow write: if isOwner(studentId) || isAdmin();
@@ -145,8 +144,8 @@ service cloud.firestore {
       // READ: Any signed-in user can read a director's profile. This resolves a circular dependency
       // for other rules that call isDirector().
       allow get: if isSignedIn();
-      // LIST: Admins and directors can list all directors.
-      allow list: if isAdmin() || isDirector();
+      // LIST: Only Admins can list all directors.
+      allow list: if isAdmin();
       // WRITE: A user can manage their OWN director profile. Admin can manage any.
       allow write: if isOwner(directorId) || isAdmin();
     }
