@@ -57,7 +57,7 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student' | 'dire
   const { data: allUsers, isLoading, error } = useCollection<UserProfile>(usersQuery);
 
   const users = useMemo(() => {
-    if (!allUsers) return null;
+    if (!allUsers) return [];
     const isArchived = (user: UserProfile) => user.deletedAt != null;
     return allUsers.filter(user => showArchived ? isArchived(user) : !isArchived(user));
   }, [allUsers, showArchived]);
@@ -130,15 +130,21 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student' | 'dire
       });
   };
 
-  if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (error) return <p className="text-destructive">Ocorreu um erro ao carregar os usuários. Verifique as permissões do Firestore.</p>;
-  if (!users) return <p>Nenhum usuário encontrado.</p>
 
   const typeLabels = {
     teacher: 'Professor',
     student: 'Aluno',
     director: 'Diretoria'
   }
+
+  const typeNames = {
+    teacher: 'professores',
+    student: 'alunos',
+    director: 'diretores'
+  }
+
+  const emptyMessage = showArchived ? `Nenhum ${typeNames[type]} arquivado.` : `Nenhum ${typeNames[type]} encontrado.`;
 
   return (
     <>
@@ -154,28 +160,42 @@ function UserTable({ type, showArchived }: { type: 'teacher' | 'student' | 'dire
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users?.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell><code>{user.prozilId}</code></TableCell>
-                <TableCell>
-                  {user.lastSeen ? formatDistanceToNow(new Date(user.lastSeen), { addSuffix: true, locale: ptBR }) : 'Nunca'}
-                </TableCell>
-                <TableCell className="text-right">
-                   {showArchived ? (
-                    <Button variant="outline" size="sm" onClick={() => handleRestore(user)}>
-                        <ArchiveRestore className="mr-2 h-4 w-4"/> Restaurar
-                    </Button>
-                  ) : (
-                    <>
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}><Edit className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => setArchivingUser(user)} className="text-destructive hover:text-destructive"><Archive className="w-4 h-4" /></Button>
-                    </>
-                  )}
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center">
+                  <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
                 </TableCell>
               </TableRow>
-            ))}
+            ) : users.length > 0 ? (
+              users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell><code>{user.prozilId}</code></TableCell>
+                  <TableCell>
+                    {user.lastSeen ? formatDistanceToNow(new Date(user.lastSeen), { addSuffix: true, locale: ptBR }) : 'Nunca'}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {showArchived ? (
+                      <Button variant="outline" size="sm" onClick={() => handleRestore(user)}>
+                          <ArchiveRestore className="mr-2 h-4 w-4"/> Restaurar
+                      </Button>
+                    ) : (
+                      <>
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}><Edit className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => setArchivingUser(user)} className="text-destructive hover:text-destructive"><Archive className="w-4 h-4" /></Button>
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  {emptyMessage}
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>

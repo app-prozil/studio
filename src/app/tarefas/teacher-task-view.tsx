@@ -1295,7 +1295,9 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                 <CardDescription>Visualize e gerencie as tarefas que você atribuiu.</CardDescription>
             </CardHeader>
             <CardContent>
-                {isLoadingTasks ? <p>Carregando tarefas...</p> : (
+                {isLoadingTasks ? (
+                  <div className="flex h-full items-center justify-center pt-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                ) : sortedTasks.length > 0 ? (
                   <ul className="space-y-2 h-[500px] overflow-y-auto">
                       {sortedTasks.map(task => (
                           <li key={task.id} className="p-3 border rounded-lg flex justify-between items-start">
@@ -1333,6 +1335,10 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                           </li>
                       ))}
                   </ul>
+                ) : (
+                    <div className="text-center text-muted-foreground py-8 h-[500px] flex items-center justify-center">
+                        <p>Nenhuma tarefa criada ainda.</p>
+                    </div>
                 )}
             </CardContent>
         </Card>
