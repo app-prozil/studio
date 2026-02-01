@@ -18,14 +18,6 @@ type Task = {
   studentId: string;
 };
 
-type Teacher = {
-    id: string;
-};
-
-type Student = {
-    id: string;
-};
-
 export default function Home() {
   const mathImage = PlaceHolderImages.find(img => img.id === 'math-learning');
   const portugueseImage = PlaceHolderImages.find(img => img.id === 'portuguese-reading');
@@ -62,37 +54,7 @@ export default function Home() {
   const hasPortugueseTask = studentTasks?.some(t => t.subject === 'portugues');
   const hasMemoryTask = studentTasks?.some(t => t.subject === 'memoria');
   
-  // Data fetching for Director Dashboard
-  const tasksCollectionGroup = useMemoFirebase(() => isDirector ? query(collectionGroup(firestore, 'tasks')) : null, [firestore, isDirector]);
-  const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksCollectionGroup);
-  
-  const teachersQuery = useMemoFirebase(() => isDirector ? collection(firestore, 'teachers') : null, [firestore, isDirector]);
-  const { data: teachers, isLoading: isLoadingTeachers } = useCollection<Teacher>(teachersQuery);
-
-  const directorStudentsQuery = useMemoFirebase(() => isDirector ? collection(firestore, 'students') : null, [firestore, isDirector]);
-  const { data: students, isLoading: isLoadingDirectorStudents } = useCollection<Student>(directorStudentsQuery);
-  
-  const dashboardStats = useMemo(() => {
-    if (!isDirector || !allTasks || !teachers || !students) {
-      return { totalTeachers: 0, totalStudents: 0, totalTasks: 0, completionRate: 0 };
-    }
-    const validStudentIds = new Set(students.map(s => s.id));
-    const uniqueTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values())
-        .filter(task => validStudentIds.has(task.studentId));
-
-    const completedTasks = uniqueTasks.filter(t => t.isCompleted).length;
-    const completionRate = uniqueTasks.length > 0 ? Math.round((completedTasks / uniqueTasks.length) * 100) : 0;
-    
-    return {
-      totalTeachers: teachers.length,
-      totalStudents: students.length,
-      totalTasks: uniqueTasks.length,
-      completionRate
-    };
-  }, [isDirector, allTasks, teachers, students]);
-
-
-  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || isDirectorLoading || isLoadingStudentTasks || (isDirector && (isLoadingTasks || isLoadingTeachers || isLoadingDirectorStudents));
+  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || isDirectorLoading || isLoadingStudentTasks;
 
 
   if (isLoading) {
@@ -110,104 +72,64 @@ export default function Home() {
           </div>
       );
   }
-
-  if (isDirector && directorProfile) {
-    return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-4xl font-bold font-headline flex items-center gap-3">
-            <Briefcase className="w-10 h-10 text-primary"/>
-            Painel da Diretoria
-          </h1>
-          <p className="text-muted-foreground">Acompanhe as métricas e acesse as visões detalhadas de professores e alunos.</p>
+  
+  if (isDirector) {
+      return (
+        <div className="space-y-8">
+            <div className="text-center">
+                <h1 className="text-4xl font-bold tracking-tight font-headline text-foreground sm:text-5xl">
+                    Bem-vindo(a), {directorProfile?.name || 'Diretor(a)'}!
+                </h1>
+                <p className="mt-4 text-lg text-muted-foreground">
+                    Seu ponto de partida para a supervisão e análise da plataforma.
+                </p>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2">
+                <Card className="flex flex-col">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Briefcase className="w-8 h-8 text-primary" />
+                            <span className="text-2xl font-headline">Painel da Diretoria</span>
+                        </CardTitle>
+                        <CardDescription>
+                           Acesse a visão geral com métricas, e navegue entre as tarefas por aluno ou professor.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                        <p className="text-muted-foreground">
+                            Este é o seu centro de controle para monitorar todas as atividades da plataforma.
+                        </p>
+                    </CardContent>
+                    <CardFooter>
+                        <Button asChild className="w-full">
+                            <Link href="/diretoria">Acessar Painel <ArrowRight className="ml-2" /></Link>
+                        </Button>
+                    </CardFooter>
+                </Card>
+                <Card className="flex flex-col">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <PieChart className="w-8 h-8 text-primary" />
+                            <span className="text-2xl font-headline">Progresso dos Alunos</span>
+                        </CardTitle>
+                        <CardDescription>
+                           Visualize relatórios de desempenho e acompanhe a evolução dos alunos.
+                        </CardDescription>
+                    </CardHeader>
+                     <CardContent className="flex-grow">
+                        <p className="text-muted-foreground">
+                           Filtre por aluno para ver pontuações, tempo de estudo e mais.
+                        </p>
+                    </CardContent>
+                    <CardFooter>
+                        <Button asChild className="w-full">
+                            <Link href="/progresso">Ver Relatórios <ArrowRight className="ml-2" /></Link>
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </div>
         </div>
-        
-         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Professores</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboardStats.totalTeachers}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Alunos</CardTitle>
-              <GraduationCap className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboardStats.totalStudents}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tarefas Atribuídas</CardTitle>
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboardStats.totalTasks}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Taxa de Conclusão</CardTitle>
-              <PieChart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboardStats.completionRate}%</div>
-            </CardContent>
-          </Card>
-        </div>
-
-         <div className="grid gap-6 md:grid-cols-2">
-          <Card className="flex flex-col">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-8 h-8 text-primary" />
-                <span className="text-2xl font-headline">Visão por Professor</span>
-              </CardTitle>
-              <CardDescription>
-                Monitore as tarefas atribuídas e o progresso de cada professor.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-               <p className="text-muted-foreground">
-                  Acompanhe as atividades, veja relatórios detalhados por tarefa e entenda como cada professor está utilizando a plataforma.
-              </p>
-            </CardContent>
-            <CardFooter>
-              <Button asChild className="w-full">
-                <Link href="/diretoria/por-professor">Acessar Visão por Professor <ArrowRight className="ml-2" /></Link>
-              </Button>
-            </CardFooter>
-          </Card>
-
-          <Card className="flex flex-col">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GraduationCap className="w-8 h-8 text-primary" />
-                <span className="text-2xl font-headline">Visão por Aluno</span>
-              </CardTitle>
-              <CardDescription>
-                Acompanhe o desempenho e as tarefas de cada aluno individualmente.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-               <p className="text-muted-foreground">
-                  Visualize todas as tarefas de um aluno, gere relatórios de desempenho geral e identifique pontos de atenção.
-              </p>
-            </CardContent>
-            <CardFooter>
-              <Button asChild className="w-full">
-                <Link href="/diretoria/por-aluno">Acessar Visão por Aluno <ArrowRight className="ml-2" /></Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </div>
-    );
+      );
   }
 
   const showPrintCard = !user || isTeacherOrAdmin;
