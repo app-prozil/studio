@@ -91,7 +91,7 @@ export default function Home() {
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link href="/diretoria">Acessar Painel<ArrowRight className="ml-2" /></Link>
+                <Link href="/diretoria?view=by-student">Acessar Painel<ArrowRight className="ml-2" /></Link>
               </Button>
             </CardFooter>
           </Card>
@@ -109,7 +109,7 @@ export default function Home() {
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link href="/diretoria">Acessar Tarefas<ArrowRight className="ml-2" /></Link>
+                <Link href="/diretoria?view=by-teacher">Acessar Tarefas<ArrowRight className="ml-2" /></Link>
               </Button>
             </CardFooter>
           </Card>

@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, FileText, User, ShieldAlert, LogIn, Briefcase, Download, Users, GraduationCap, ClipboardList, PieChart } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
@@ -63,7 +64,10 @@ type Student = {
 export default function DirectorDashboard() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const searchParams = useSearchParams();
+  const view = searchParams.get('view');
 
+  const [activeTab, setActiveTab] = useState(view === 'by-student' ? 'by-student' : 'by-teacher');
   const [viewingReport, setViewingReport] = useState<Task | null>(null);
   const [viewingGeneralReportFor, setViewingGeneralReportFor] = useState<{name: string, tasks: Task[], teacherName?: string} | null>(null);
   
@@ -257,7 +261,7 @@ export default function DirectorDashboard() {
         </Card>
       </div>
 
-      <Tabs defaultValue="by-teacher">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="by-teacher">Visão por Professor</TabsTrigger>
           <TabsTrigger value="by-student">Visão por Aluno</TabsTrigger>
