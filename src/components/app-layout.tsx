@@ -51,6 +51,7 @@ function UserNav() {
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
+  const isAdmin = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   
   const teacherDocRef = useMemoFirebase(
     () => (user ? doc(firestore, 'teachers', user.uid) : null),
@@ -59,14 +60,14 @@ function UserNav() {
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
 
   const studentDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'students', user.uid) : null),
-    [firestore, user]
+    () => (user && !isAdmin ? doc(firestore, 'students', user.uid) : null),
+    [firestore, user, isAdmin]
   );
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
   const directorDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'directors', user.uid) : null),
-    [firestore, user]
+    () => (user && !isAdmin ? doc(firestore, 'directors', user.uid) : null),
+    [firestore, user, isAdmin]
   );
   const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
   
@@ -83,7 +84,6 @@ function UserNav() {
 
   if (user) {
     const profile = teacherProfile || studentProfile || directorProfile;
-    const isAdmin = user.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
     const displayName = profile?.name || (isAdmin ? 'Administrador' : (user.displayName || 'Usuário'));
 
     return (
@@ -146,17 +146,17 @@ function AppSidebar() {
   const firestore = useFirestore();
   const { setOpen } = useSidebar();
   
+  const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+  const isAdmin = user?.uid === ADMIN_UID;
+  
   const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
   
-  const studentDocRef = useMemoFirebase(() => (user ? doc(firestore, 'students', user.uid) : null), [firestore, user]);
+  const studentDocRef = useMemoFirebase(() => (user && !isAdmin ? doc(firestore, 'students', user.uid) : null), [firestore, user, isAdmin]);
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
-  const directorDocRef = useMemoFirebase(() => (user ? doc(firestore, 'directors', user.uid) : null), [firestore, user]);
+  const directorDocRef = useMemoFirebase(() => (user && !isAdmin ? doc(firestore, 'directors', user.uid) : null), [firestore, user, isAdmin]);
   const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
-
-  const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
-  const isAdmin = user?.uid === ADMIN_UID;
   
   const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || isDirectorLoading;
 
