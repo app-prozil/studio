@@ -13,6 +13,7 @@ export default {
         body: ['PT Sans', 'sans-serif'],
         headline: ['PT Sans', 'sans-serif'],
         code: ['monospace'],
+        libras: ['Libras Black 2020', 'sans-serif'],
       },
       colors: {
         background: 'hsl(var(--background))',

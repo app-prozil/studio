@@ -71,6 +71,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 
 // Schemas
@@ -234,6 +235,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [focusedInput, setFocusedInput] = useState<string | null>('text');
 
   const specialCharsCategories = {
+    'Alfabeto em Libras': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
     'Mãos e Gestos (Libras)': ['🤟', '🤘', '🤙', '👋', '🤚', '🖐', '✋', '🖖', '👌', '🤏', '🤌', '🤞', '✌️', '🫰', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '🫶', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦵', '🦿', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄'],
     'Símbolos e Setas': ['+', '-', '×', '÷', '=', '≠', '<', '>', '≤', '≥', '★', '☆', '✔', '✖', '●', '■', '▲', '♦', '♥', '♠', '♣', '→', '←', '↑', '↓', '↔', '↩', '↪'],
     'Pessoas e Profissões': ['😀', '😁', '😂', '😊', '😍', '🤔', '👍', '👎', '👏', '🙏', '💪', '👨‍🏫', '👩‍🏫', '👨‍🎓', '👩‍🎓', '👨‍⚕️', '👩‍⚕️', '👨‍⚖️', '👩‍⚖️', '👨‍🌾', '👩‍🌾', '👨‍🍳', '👩‍🍳', '👨‍🔧', '👩‍🔧', '👨‍🏭', '👩‍🏭', '👨‍💼', '👩‍💼', '👨‍🔬', '👩‍🔬', '👨‍💻', '👩‍💻', '👨‍🎤', '👩‍🎤', '👨‍🎨', '👩‍🎨', '👨‍✈️', '👩‍✈️', '👨‍🚀', '👩‍🚀', '👨‍🚒', '👩‍🚒', '👮', '👮‍♀️', '🕵️', '🕵️‍♀️', '💂', '💂‍♀️', '👷', '👷‍♀️'],
@@ -561,7 +563,10 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                             variant="outline"
                             size="icon"
                             key={char}
-                            className="h-9 w-9 text-lg"
+                            className={cn(
+                                "h-9 w-9 text-lg",
+                                category === 'Alfabeto em Libras' && 'font-libras text-2xl'
+                            )}
                             onClick={() => {
                               if (focusedInput) {
                                   const currentText = form.getValues(focusedInput as any) || '';
@@ -2006,6 +2011,7 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
 
 
 
