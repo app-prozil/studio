@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Book, Calculator, Printer, LogIn, Puzzle } from 'lucide-react';
+import { ArrowRight, Book, Calculator, Printer, LogIn, Puzzle, User, Briefcase, BarChart } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -25,9 +25,14 @@ export default function Home() {
 
   const studentDocRef = useMemoFirebase(() => (user ? doc(firestore, 'students', user.uid) : null), [firestore, user]);
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
+
+  const directorDocRef = useMemoFirebase(() => (user ? doc(firestore, 'directors', user.uid) : null), [firestore, user]);
+  const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
   
   const isStudent = !!studentProfile;
-  const isTeacherOrAdmin = !!teacherProfile || isAdmin;
+  const isTeacher = !!teacherProfile;
+  const isDirector = !!directorProfile;
+  const isTeacherOrAdmin = isTeacher || isAdmin;
   
   const tasksQuery = useMemoFirebase(() => 
     (isStudent && user) 
@@ -41,7 +46,7 @@ export default function Home() {
   const hasPortugueseTask = tasks?.some(t => t.subject === 'portugues');
   const hasMemoryTask = tasks?.some(t => t.subject === 'memoria');
 
-  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || (isStudent && isLoadingTasks);
+  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || isDirectorLoading || (isStudent && isLoadingTasks);
 
 
   if (isLoading) {
@@ -58,6 +63,77 @@ export default function Home() {
               </div>
           </div>
       );
+  }
+
+  if (isDirector && directorProfile) {
+    return (
+      <div className="space-y-8">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold tracking-tight font-headline text-foreground sm:text-5xl">
+            Bem-vindo(a) ao Painel ProZil, {directorProfile.name}!
+          </h1>
+          <p className="mt-4 text-lg text-muted-foreground">
+            Acesse rapidamente as ferramentas de supervisão e análise da plataforma.
+          </p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="flex flex-col">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="w-8 h-8 text-primary" />
+                <span className="text-2xl font-headline">Painel da Diretoria</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow">
+              <p className="text-muted-foreground">
+                Acompanhe as atividades de todos os professores e alunos em um só lugar.
+              </p>
+            </CardContent>
+            <CardFooter>
+              <Button asChild className="w-full">
+                <Link href="/diretoria">Acessar Painel<ArrowRight className="ml-2" /></Link>
+              </Button>
+            </CardFooter>
+          </Card>
+          <Card className="flex flex-col">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart className="w-8 h-8 text-primary" />
+                <span className="text-2xl font-headline">Progresso dos Alunos</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow">
+              <p className="text-muted-foreground">
+                Monitore o desempenho dos alunos e visualize relatórios detalhados.
+              </p>
+            </CardContent>
+            <CardFooter>
+              <Button asChild className="w-full">
+                <Link href="/progresso">Ver Relatórios<ArrowRight className="ml-2" /></Link>
+              </Button>
+            </CardFooter>
+          </Card>
+           <Card className="flex flex-col">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-8 h-8 text-primary" />
+                <span className="text-2xl font-headline">Meu Perfil</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow">
+              <p className="text-muted-foreground">
+               Visualize e gerencie suas informações de perfil.
+              </p>
+            </CardContent>
+            <CardFooter>
+              <Button asChild className="w-full">
+                <Link href="/perfil">Acessar Perfil<ArrowRight className="ml-2" /></Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   const showPrintCard = !user || isTeacherOrAdmin;
