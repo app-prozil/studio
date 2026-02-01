@@ -18,14 +18,14 @@ service cloud.firestore {
     // Correctly checks if a user is a Teacher.
     // For Admin, it returns true immediately to avoid DB reads and permission spirals.
     function isTeacher(userId) {
-      if (isAdmin()) { return true; } // Admin is treated as a teacher.
+      if (request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1') { return true; } // Admin is treated as a teacher.
       return exists(/databases/$(database)/documents/teachers/$(userId));
     }
 
     // Correctly checks if a user is a Director.
     // For Admin, it returns false immediately to avoid DB reads and permission spirals.
     function isDirector(userId) {
-      if (isAdmin()) { return false; } // Admin is NOT a director.
+      if (request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1') { return false; } // Admin is NOT a director.
       return exists(/databases/$(database)/documents/directors/$(userId));
     }
 
@@ -118,7 +118,6 @@ service cloud.firestore {
       // Anyone signed in can view a director's public profile.
       allow get: if isSignedIn();
       // Directors and Admin can list all directors.
-      // The helper function isDirector() will prevent the admin from causing a recursive read.
       allow list: if isDirector(request.auth.uid) || isAdmin();
       // Only the owner or an admin can write to a director's profile.
       allow write: if isOwner(directorId) || isAdmin();
