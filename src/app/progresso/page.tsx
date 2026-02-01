@@ -209,20 +209,20 @@ function StudentProgressView({ studentId, studentName }: { studentId: string, st
   )
 }
 
-function TeacherProgressView({ teacherId }: { teacherId: string }) {
+function TeacherProgressView({ userId, userType }: { userId: string, userType: 'teacher' | 'admin' | 'director' }) {
   const firestore = useFirestore();
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [isLoadingStudents, setIsLoadingStudents] = useState(true);
-  const isAdmin = teacherId === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+  const isAdminOrDirector = userType === 'admin' || userType === 'director';
 
   useEffect(() => {
     const fetchStudents = async () => {
       setIsLoadingStudents(true);
       const studentsColRef = collection(firestore, 'students');
-      const q = isAdmin
+      const q = isAdminOrDirector
         ? query(studentsColRef)
-        : query(studentsColRef, where('teacherIds', 'array-contains', teacherId));
+        : query(studentsColRef, where('teacherIds', 'array-contains', userId));
       try {
           const querySnapshot = await getDocs(q);
           const studentData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Student[];
@@ -234,17 +234,17 @@ function TeacherProgressView({ teacherId }: { teacherId: string }) {
       }
     };
     fetchStudents();
-  }, [teacherId, firestore, isAdmin]);
+  }, [userId, firestore, isAdminOrDirector, userType]);
   
   const tasksQuery = useMemoFirebase(() => {
-    if (isAdmin) {
+    if (isAdminOrDirector) {
       return query(collectionGroup(firestore, 'tasks'), where('isCompleted', '==', true));
     }
     return query(
-      collection(firestore, 'teachers', teacherId, 'tasks'),
+      collection(firestore, 'teachers', userId, 'tasks'),
       where('isCompleted', '==', true)
     );
-  }, [firestore, teacherId, isAdmin]);
+  }, [firestore, userId, isAdminOrDirector, userType]);
 
   const { data: allCompletedTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 
@@ -311,8 +311,11 @@ export default function ProgressPage() {
 
   const studentDocRef = useMemoFirebase(() => (user ? doc(firestore, 'students', user.uid) : null), [firestore, user]);
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
+  
+  const directorDocRef = useMemoFirebase(() => (user ? doc(firestore, 'directors', user.uid) : null), [firestore, user]);
+  const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
 
-  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading;
+  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || isDirectorLoading;
 
   if (isLoading) {
     return (
@@ -358,8 +361,9 @@ export default function ProgressPage() {
     );
   }
 
-  if (teacherProfile || isAdmin) {
-    return <TeacherProgressView teacherId={user.uid} />;
+  if (teacherProfile || isAdmin || directorProfile) {
+    const userType = directorProfile ? 'director' : isAdmin ? 'admin' : 'teacher';
+    return <TeacherProgressView userId={user!.uid} userType={userType} />;
   }
 
   if (studentProfile) {
@@ -369,7 +373,7 @@ export default function ProgressPage() {
   return (
     <div className="text-center">
       <h1 className="text-2xl font-bold">Perfil não encontrado</h1>
-      <p className="text-muted-foreground">Não conseguimos identificar seu perfil como professor ou aluno.</p>
+      <p className="text-muted-foreground">Não conseguimos identificar seu perfil como professor, aluno ou diretoria.</p>
     </div>
   );
 }
