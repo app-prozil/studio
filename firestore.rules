@@ -137,8 +137,8 @@ service cloud.firestore {
     }
 
     match /directors/{directorId} {
-      // READ: Any signed-in user or the admin can read director profiles for transparency.
-      allow read: if isSignedIn() || isAdmin();
+      // READ: Any signed-in user can read director profiles for transparency.
+      allow read: if isSignedIn();
       // WRITE: A user can manage their OWN director profile. Admin can manage any.
       allow write: if isOwner(directorId) || isAdmin();
     }
