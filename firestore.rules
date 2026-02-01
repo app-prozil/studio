@@ -156,7 +156,7 @@ service cloud.firestore {
       // Allow the signup page to query for an email.
       allow list: if true;
       // Only admins can create/delete invites.
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
       // No one needs to read single docs or update them.
       allow get, update: if false;
     }
