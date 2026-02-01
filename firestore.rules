@@ -72,6 +72,13 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
     // Collection Rules
     // -------------------------------------------------------------------------
+    
+    // This rule is specifically for the collection group query used by directors/admins
+    // to view all tasks across the system. It only allows LIST operations.
+    // GET operations on individual tasks are still governed by the more specific nested rules.
+    match /{path=**}/tasks/{taskId} {
+      allow list: if isAdmin() || isDirector();
+    }
 
     match /teachers/{teacherId} {
       // READ: Any signed-in user can read teacher profiles. This is necessary for
@@ -131,7 +138,7 @@ service cloud.firestore {
 
     match /directors/{directorId} {
       // READ: Any signed-in user or the admin can read director profiles for transparency.
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() || isAdmin();
       // WRITE: A user can manage their OWN director profile. Admin can manage any.
       allow write: if isOwner(directorId) || isAdmin();
     }
@@ -146,5 +153,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
