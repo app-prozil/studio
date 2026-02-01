@@ -5,6 +5,7 @@
 
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -562,7 +563,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormControl>
                     <Textarea 
                       {...field} 
-                      className="font-libras font-black text-5xl min-h-[120px]"
+                      className="font-libras font-black text-4xl min-h-[120px]"
                       onFocus={() => setFocusedInput('librasText')} 
                       placeholder="Insira aqui o conteúdo em Libras"
                     />
@@ -1887,8 +1888,7 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
       return {};
     }
   
-    const tasksCopy = [...tasks];
-    const grouped = tasksCopy.reduce((acc: Record<string, Task[]>, task: Task) => {
+    const grouped = tasks.reduce((acc: Record<string, Task[]>, task: Task) => {
       const studentIdentifier = task.studentName || task.studentId;
       if (!acc[studentIdentifier]) {
         acc[studentIdentifier] = [];
