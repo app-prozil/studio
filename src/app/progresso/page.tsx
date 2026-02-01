@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, collectionGroup } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
@@ -214,12 +214,15 @@ function TeacherProgressView({ teacherId }: { teacherId: string }) {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [isLoadingStudents, setIsLoadingStudents] = useState(true);
+  const isAdmin = teacherId === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
   useEffect(() => {
     const fetchStudents = async () => {
       setIsLoadingStudents(true);
       const studentsColRef = collection(firestore, 'students');
-      const q = query(studentsColRef, where('teacherIds', 'array-contains', teacherId));
+      const q = isAdmin
+        ? query(studentsColRef)
+        : query(studentsColRef, where('teacherIds', 'array-contains', teacherId));
       try {
           const querySnapshot = await getDocs(q);
           const studentData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Student[];
@@ -231,15 +234,18 @@ function TeacherProgressView({ teacherId }: { teacherId: string }) {
       }
     };
     fetchStudents();
-  }, [teacherId, firestore]);
+  }, [teacherId, firestore, isAdmin]);
   
-  const tasksQuery = useMemoFirebase(() => 
-    query(
+  const tasksQuery = useMemoFirebase(() => {
+    if (isAdmin) {
+      return query(collectionGroup(firestore, 'tasks'), where('isCompleted', '==', true));
+    }
+    return query(
       collection(firestore, 'teachers', teacherId, 'tasks'),
       where('isCompleted', '==', true)
-    ),
-    [firestore, teacherId]
-  );
+    );
+  }, [firestore, teacherId, isAdmin]);
+
   const { data: allCompletedTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 
   const selectedStudentTasks = useMemo(() => {
@@ -352,7 +358,7 @@ export default function ProgressPage() {
     );
   }
 
-  if (teacherProfile) {
+  if (teacherProfile || isAdmin) {
     return <TeacherProgressView teacherId={user.uid} />;
   }
 
