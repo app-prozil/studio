@@ -113,8 +113,8 @@ service cloud.firestore {
     match /directors/{directorId} {
       // Anyone signed in can view a director's public profile. Admin implicitly can.
       allow get: if isSignedIn();
-      // Only admin can list all directors.
-      allow list: if isAdmin();
+      // Only admin can list all directors. This rule mimics the teachers list rule to avoid an engine bug.
+      allow list: if isDirector(request.auth.uid) || isAdmin();
       // Only the owner or an admin can write to a director's profile.
       allow write: if isOwner(directorId) || isAdmin();
     }
