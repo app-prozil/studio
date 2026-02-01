@@ -465,18 +465,18 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
         setTimeout(() => {
             setHandState('thumbs-up');
-        }, 1000);
+        }, 1500);
 
         setTimeout(() => {
             triggerConfettiExplosion();
             setShowCorrectAnswerModal(true);
-        }, 1500);
+        }, 2500);
 
         setTimeout(() => {
             setShowHandAnimation(false);
             setShowCorrectAnswerModal(false);
             handleNextQuestion(updatedQuestions);
-        }, 3300);
+        }, 4500);
 
     } else {
         setIsCorrect(false);
@@ -876,14 +876,12 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
     
     return (
-      <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
-        <p className="text-4xl sm:text-5xl">
-            {currentQuestion.text}
-        </p>
-        {currentQuestion.text2 && (
-          <p className="font-libras text-7xl">{currentQuestion.text2}</p>
-        )}
-      </div>
+        <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
+            <p className="text-4xl sm:text-5xl">{currentQuestion.text}</p>
+            {currentQuestion.text2 && (
+                <p className="font-libras text-7xl mt-4">{currentQuestion.text2}</p>
+            )}
+        </div>
     );
   }
 
