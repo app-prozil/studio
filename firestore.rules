@@ -97,7 +97,7 @@ service cloud.firestore {
 
     // --- Student Profiles and Data ---
     match /students/{studentId} {
-      allow get: if isOwner(studentId) || (isTeacher() && resource.data.teacherIds.hasAny([request.auth.uid])) || isDirector();
+      allow get: if isOwner(studentId) || (isTeacher() && resource.data.teacherIds.hasAny([request.auth.uid]));
       allow list: if isTeacher(); // Allows teachers to query for students. The client-side query must be secure.
       allow write: if isOwner(studentId);
 
