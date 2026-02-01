@@ -516,7 +516,6 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormControl>
                     <Textarea 
                       {...field}
-                      className="font-libras"
                       onFocus={() => setFocusedInput('text')}
                       placeholder={
                         questionType === 'fill_in_the_blank' ? "Ex: A COR DO SOL É ___. (Use 3 underline ___ para a lacuna)" :
@@ -603,7 +602,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                           <FormItem>
                               <FormLabel>{getOptionLabel(index)}</FormLabel>
                               <div className="flex items-center gap-2">
-                                  <FormControl><Input {...field} className="font-libras" onFocus={() => setFocusedInput(`options.${index}`)} placeholder={getOptionPlaceholder(index)} /></FormControl>
+                                  <FormControl><Input {...field} onFocus={() => setFocusedInput(`options.${index}`)} placeholder={getOptionPlaceholder(index)} /></FormControl>
                                   {(questionType === 'organize_syllables' || questionType === 'memory_game' || questionType === 'match_the_pairs') && (
                                       <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 2}>
                                           <Trash2 className="w-4 h-4 text-destructive" />
@@ -711,7 +710,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormField control={form.control} name="answer" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Resposta Correta</FormLabel>
-                        <FormControl><Input {...field} className="font-libras" onFocus={() => setFocusedInput('answer')} placeholder='Ex: AMARELO'/></FormControl>
+                        <FormControl><Input {...field} onFocus={() => setFocusedInput('answer')} placeholder='Ex: AMARELO'/></FormControl>
                         <FormDescription>
                             O texto deve corresponder exatamente à opção correta acima.
                         </FormDescription>
