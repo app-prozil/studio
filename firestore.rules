@@ -3,128 +3,81 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // =====================================================================
-    //  HELPER FUNCTIONS
-    // =====================================================================
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Correctly checks if a user is a Teacher.
-    // For Admin, it returns true immediately to avoid DB reads and permission spirals.
-    function isTeacher(userId) {
-      if (request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1') { return true; } // Admin is treated as a teacher.
-      return exists(/databases/$(database)/documents/teachers/$(userId));
-    }
-
-    // Correctly checks if a user is a Director.
-    // For Admin, it returns false immediately to avoid DB reads and permission spirals.
-    function isDirector(userId) {
-      if (request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1') { return false; } // Admin is NOT a director.
-      return exists(/databases/$(database)/documents/directors/$(userId));
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-    
-    function isTaskAuthor(task) {
-      return isSignedIn() && request.auth.uid == task.teacherId;
-    }
-    
-    function isStudentUpdatingPerformance() {
-      // Rule: Student must be the one the task is assigned to.
-      if (request.auth.uid != resource.data.studentId) {
-        return false;
-      }
-      // Rule: Cannot un-complete a task.
-      if (resource.data.isCompleted == true && request.resource.data.isCompleted == false) {
-        return false;
-      }
-      // Rule: Students can only update their performance fields, not the core task definition.
-      let immutableFields = ['title', 'description', 'dueDate', 'teacherId', 'studentId', 'subject', 'taskType', 'studentName', 'teacherName', 'studentProzilId'];
-      return request.resource.data.diff(resource.data).affectedKeys().toSet().intersection(immutableFields.toSet()).size() == 0;
-    }
-
-    // =====================================================================
-    //  RULES - Admin access is explicitly added to each relevant rule.
-    // =====================================================================
-
     // --- Collection Group Query for Tasks ---
-    // This allows Directors to generate reports across all tasks.
+    // Permite que diretores gerem relatórios e que o admin tenha acesso total.
     match /{path=**}/tasks/{taskId} {
-      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isDirector(request.auth.uid);
+      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || exists(/databases/$(database)/documents/directors/$(request.auth.uid));
     }
 
     // --- Teacher Profiles and Data ---
     match /teachers/{teacherId} {
-      // Anyone can view a teacher's public profile.
-      allow get: if isSignedIn();
-      // Directors and Admin can list all teachers.
-      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isDirector(request.auth.uid);
-      // Only the owner or an Admin can write to a teacher's profile.
-      allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(teacherId);
+      // Admin pode ler qualquer perfil; outros usuários logados também.
+      allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth != null;
+      // Admin e diretores podem listar professores.
+      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || exists(/databases/$(database)/documents/directors/$(request.auth.uid));
+      // Admin ou o próprio professor podem escrever.
+      allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId;
 
       // Subcollection: Teacher's Exercise Bank
       match /exercises/{exerciseId} {
-        // The owner, directors, or an admin can read exercises.
-        allow read: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(teacherId) || isDirector(request.auth.uid);
-        // Only the owner or an admin can create/edit/delete exercises.
-        allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(teacherId);
+        // Admin, o dono, ou um diretor podem ler.
+        allow read: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId || exists(/databases/$(database)/documents/directors/$(request.auth.uid));
+        // Admin ou o dono podem escrever.
+        allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId;
       }
 
       // Subcollection: Master copy of tasks created by the teacher.
       match /tasks/{taskId} {
-        // The owner, directors, or an admin can read the master task.
-        allow read: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(teacherId) || isDirector(request.auth.uid);
-        // The owner or an admin can create/delete master tasks.
-        allow create, delete: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(teacherId);
-        // The owner, admin, or the assigned student (for performance) can update.
-        allow update: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(teacherId) || isStudentUpdatingPerformance();
+        // Admin, o dono, ou um diretor podem ler.
+        allow read: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId || exists(/databases/$(database)/documents/directors/$(request.auth.uid));
+        // Admin ou o dono podem criar/deletar.
+        allow create, delete: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId;
+        // Admin, o dono, ou o aluno podem atualizar.
+        allow update: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId || request.auth.uid == resource.data.studentId;
       }
     }
 
     // --- Student Profiles and Data ---
     match /students/{studentId} {
-      // The owner, linked teachers, or an admin can get a student's profile.
-      allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(studentId) || (isTeacher(request.auth.uid) && resource.data.teacherIds.hasAny([request.auth.uid]));
-      // Teachers and admin can list students. Client-side query must be secure.
-      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isTeacher(request.auth.uid);
-      // Only the owner or an admin can write to a student's profile.
-      allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(studentId);
+      // Admin, o dono, ou um professor vinculado podem ler.
+      allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId || (exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) && resource.data.teacherIds.hasAny([request.auth.uid]));
+      // Admin ou um professor podem listar alunos.
+      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+      // Admin ou o dono podem escrever.
+      allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId;
 
       // Subcollection: Copy of tasks assigned to the student.
       match /tasks/{taskId} {
-        // The owner, the task author, directors, or an admin can get the task.
-        allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(studentId) || isTaskAuthor(resource.data) || isDirector(request.auth.uid);
-        // Only the owner or an admin can list their own tasks.
-        allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(studentId);
-        // Teachers or admins can assign (create) tasks.
-        allow create: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isTeacher(request.auth.uid);
-        // The owner, author, or admin can update the task copy.
-        allow update: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(studentId) || isTaskAuthor(resource.data);
-        // The author or admin can delete the task copy.
-        allow delete: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isTaskAuthor(resource.data);
+        // Admin, o dono, o autor, ou um diretor podem ler.
+        allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId || request.auth.uid == resource.data.teacherId || exists(/databases/$(database)/documents/directors/$(request.auth.uid));
+        // Admin ou o dono podem listar suas próprias tarefas.
+        allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId;
+        // Admin ou um professor podem criar tarefas.
+        allow create: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+        // Admin, o dono, ou o autor podem atualizar.
+        allow update: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId || request.auth.uid == resource.data.teacherId;
+        // Admin ou o autor podem deletar.
+        allow delete: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == resource.data.teacherId;
       }
     }
 
     // --- Director Profiles ---
     match /directors/{directorId} {
-      // Anyone signed in can view a director's public profile.
-      allow get: if isSignedIn();
-      // Only the Admin can list directors (this is only used on the admin page).
+      // Admin pode ler; outros usuários logados também.
+      allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth != null;
+      // APENAS admin pode listar diretores.
       allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
-      // Only the owner or an admin can write to a director's profile.
-      allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isOwner(directorId);
+      // Admin ou o próprio dono podem escrever.
+      allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == directorId;
     }
 
     // --- User Invitations ---
     match /invites/{inviteId} {
-      // Publicly listable so the signup page can check if an email is invited.
+      // Qualquer um pode listar, para a página de signup verificar convites.
       allow list: if true;
-      // No one needs to read a single invite directly.
+      // Ninguém precisa ler um convite individual.
       allow get: if false;
-      // Only admin can create/delete invites.
+      // APENAS admin pode criar/deletar convites.
       allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
     }
   }
