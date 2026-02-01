@@ -11,6 +11,10 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/teachers/$(userId));
     }
 
+    function isStudent(userId) {
+      return exists(/databases/$(database)/documents/students/$(userId));
+    }
+
     // --- Collection Group Query for Tasks ---
     match /{path=**}/tasks/{taskId} {
       allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isDirector(request.auth.uid);
@@ -20,8 +24,8 @@ service cloud.firestore {
     match /teachers/{teacherId} {
       // Admin pode ler qualquer perfil; outros usuários logados também.
       allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth != null;
-      // Admin e diretores podem listar professores.
-      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isDirector(request.auth.uid);
+      // Admin, diretores e alunos podem listar professores (para encontrar pelo ProZil ID).
+      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || isDirector(request.auth.uid) || isStudent(request.auth.uid);
       // Admin ou o próprio professor podem escrever.
       allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == teacherId;
 
