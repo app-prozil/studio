@@ -16,24 +16,26 @@ service cloud.firestore {
     }
 
     // --- Role Checks ---
-    // These functions check if a user belongs to a specific role by checking
-    // for their profile document.
-
     function isAdmin() {
       // The admin is a superuser with a hardcoded, unique UID.
       return isSignedIn() && request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
     }
 
     function isTeacher() {
-      // Checks if the user has a profile in the /teachers collection.
-      // NOTE: The admin user also has a teacher profile.
+      // The admin user is also a teacher, so this check should pass for them without a DB read.
+      if (isAdmin()) {
+        return true;
+      }
+      // For other users, check if a teacher document exists.
       return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
 
     function isDirector() {
-      // Checks if the user has a profile in the /directors collection.
-      // This will be evaluated even in an 'OR' condition for an admin, so the
-      // admin MUST have permission to perform this 'get'-like check.
+      // The admin user is NOT a director. This check should fail fast for them without a DB read.
+      if (isAdmin()) {
+        return false;
+      }
+      // For other users, check if a director document exists.
       return isSignedIn() && exists(/databases/$(database)/documents/directors/$(request.auth.uid));
     }
 
@@ -71,7 +73,7 @@ service cloud.firestore {
 
     // --- Teacher Profiles and Data ---
     match /teachers/{teacherId} {
-      // Anyone can read basic teacher profiles (e.g., for students to find them).
+      // Anyone can read basic teacher profiles.
       allow get: if isSignedIn();
       // Only admins and directors can list all teachers.
       allow list: if isAdmin() || isDirector();
@@ -122,8 +124,6 @@ service cloud.firestore {
     }
 
     // --- Director Profiles ---
-    // This is a critical section. The admin MUST have GET permission here
-    // for other rules involving `isDirector()` to be evaluated correctly.
     match /directors/{directorId} {
       // A director can read their own profile. An admin can read any profile.
       allow get: if isOwner(directorId) || isAdmin();
