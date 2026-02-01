@@ -331,10 +331,10 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       return [];
     }
     return exercises.filter(ex => {
-        const subjectMatch = subjectFilter === 'all' || ex.subject === subjectFilter;
-        const effectiveQuestionType = ex.questionType || 'multiple_choice';
-        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === questionTypeFilter;
-        return subjectMatch && typeMatch;
+      const subjectMatch = subjectFilter === 'all' || ex.subject === subjectFilter;
+      const effectiveQuestionType = ex.questionType || 'multiple_choice';
+      const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === questionTypeFilter;
+      return subjectMatch && typeMatch;
     });
   }, [exercises, subjectFilter, questionTypeFilter, isLoading]);
 
@@ -557,7 +557,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormControl>
                     <Textarea 
                       {...field} 
-                      className="font-libras font-black text-7xl py-4"
+                      className="font-libras font-black text-5xl"
                       onFocus={() => setFocusedInput('librasText')} 
                       placeholder="Insira aqui o conteúdo em Libras"
                     />
