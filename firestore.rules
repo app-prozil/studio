@@ -113,7 +113,7 @@ service cloud.firestore {
 
     // --- Director Profiles ---
     match /directors/{directorId} {
-      allow get: if isSignedIn();
+      allow get: if isOwner(directorId);
       allow list: if false; // Only admin can list directors (handled by global rule).
       allow write: if isOwner(directorId);
     }
