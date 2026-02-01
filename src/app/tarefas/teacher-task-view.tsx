@@ -557,7 +557,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormControl>
                     <Textarea 
                       {...field} 
-                      className="font-libras font-black text-7xl min-h-[200px]"
+                      className="font-libras font-black text-7xl py-4"
                       onFocus={() => setFocusedInput('librasText')} 
                       placeholder="Insira aqui o conteúdo em Libras"
                     />
@@ -1881,8 +1881,8 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
     if (!tasks) {
       return {};
     }
-  
-    const grouped = tasks.reduce((acc: Record<string, Task[]>, task: Task) => {
+    const tasksCopy = [...tasks];
+    const grouped = tasksCopy.reduce((acc: Record<string, Task[]>, task: Task) => {
       const studentIdentifier = task.studentName || task.studentId;
       if (!acc[studentIdentifier]) {
         acc[studentIdentifier] = [];
