@@ -1,7 +1,15 @@
 @font-face {
   font-family: 'LibrasFont';
-  src: url('/fonts/libras-black-2020-regular.ttf') format('truetype');
+  src: url('/fonts/libras-2020-regular.ttf') format('truetype');
   font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'LibrasFont';
+  src: url('/fonts/libras-black-2020-regular.ttf') format('truetype');
+  font-weight: 900;
   font-style: normal;
   font-display: swap;
 }

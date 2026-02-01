@@ -235,7 +235,8 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [focusedInput, setFocusedInput] = useState<string | null>('text');
 
   const specialCharsCategories = {
-    'Alfabeto em Libras': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
+    'Libras (Regular)': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
+    'Libras (Black)': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
     'Mãos e Gestos (Libras)': ['🤟', '🤘', '🤙', '👋', '🤚', '🖐', '✋', '🖖', '👌', '🤏', '🤌', '🤞', '✌️', '🫰', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '🫶', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦵', '🦿', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄'],
     'Símbolos e Setas': ['+', '-', '×', '÷', '=', '≠', '<', '>', '≤', '≥', '★', '☆', '✔', '✖', '●', '■', '▲', '♦', '♥', '♠', '♣', '→', '←', '↑', '↓', '↔', '↩', '↪'],
     'Pessoas e Profissões': ['😀', '😁', '😂', '😊', '😍', '🤔', '👍', '👎', '👏', '🙏', '💪', '👨‍🏫', '👩‍🏫', '👨‍🎓', '👩‍🎓', '👨‍⚕️', '👩‍⚕️', '👨‍⚖️', '👩‍⚖️', '👨‍🌾', '👩‍🌾', '👨‍🍳', '👩‍🍳', '👨‍🔧', '👩‍🔧', '👨‍🏭', '👩‍🏭', '👨‍💼', '👩‍💼', '👨‍🔬', '👩‍🔬', '👨‍💻', '👩‍💻', '👨‍🎤', '👩‍🎤', '👨‍🎨', '👩‍🎨', '👨‍✈️', '👩‍✈️', '👨‍🚀', '👩‍🚀', '👨‍🚒', '👩‍🚒', '👮', '👮‍♀️', '🕵️', '🕵️‍♀️', '💂', '💂‍♀️', '👷', '👷‍♀️'],
@@ -535,7 +536,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
               {(questionType !== 'guess_the_word' && questionType !== 'organize_categories' && questionType !== 'organize_sentence' && questionType !== 'match_the_pairs') && (
                 <FormField control={form.control} name="text2" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Imagem / Complemento (Opcional)</FormLabel>
+                    <FormLabel>Imagem / Complemento (use para Libras)</FormLabel>
                     <FormControl>
                       <Textarea 
                         {...field} 
@@ -565,7 +566,8 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                             key={char}
                             className={cn(
                                 "h-9 w-9 text-lg",
-                                category === 'Alfabeto em Libras' && 'font-libras text-2xl'
+                                category === 'Libras (Regular)' && 'font-libras font-normal text-2xl',
+                                category === 'Libras (Black)' && 'font-libras font-black text-2xl'
                             )}
                             onClick={() => {
                               if (focusedInput) {
@@ -2011,6 +2013,7 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
 
 
     
+
 
 
 

@@ -324,7 +324,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           const rightCol: string[] = [];
           for (let i = 0; i < currentQ.options.length; i += 2) {
               leftCol.push(currentQ.options[i]);
-              rightCol.push(currentQ.options[i+1]);
+              rightCol.push(currentQ.options[i + 1]);
           }
           setMatchPairsColumns({
               left: leftCol.sort(() => Math.random() - 0.5),
@@ -402,17 +402,23 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     let isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
     let isThisAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
     
-    const shouldAdvance = isPuzzle || isThisAnswerCorrect;
+    let shouldAdvance = false;
+    
+    if (isPuzzle) {
+        // For puzzle games, completing it is always considered "correct" for advancing the game.
+        // The scoring is handled separately by the 'mistakeMade' flag.
+        shouldAdvance = true;
+    } else {
+        // For direct answer questions, only a correct answer advances.
+        shouldAdvance = isThisAnswerCorrect;
+    }
 
     let finalStatusForThisQuestion: 'correct' | 'incorrect' | undefined = undefined;
 
-    // The status is only set on the first attempt for a question.
     if (currentQuestion.status === 'unanswered') {
       if (isPuzzle) {
-        // For puzzles, the final status depends on if any mistakes were made during the process.
         finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
       } else {
-        // For direct answer questions, it's based on this single answer.
         finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
       }
     }
@@ -423,8 +429,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       
       const newAttempts = (q.attempts || 0) + 1;
       
-      // Update the question with performance data.
-      // Crucially, only change the 'status' if it's still 'unanswered'.
       return {
         ...q,
         studentAnswer: answer,
@@ -435,7 +439,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     });
     setQuestions(updatedQuestions);
     
-    // Save progress to Firestore without blocking the UI
     const isTestDrive = taskId === 'test-drive';
     const isTaskTestMode = isTestDrive || mode === 'test';
     const isExerciseTestMode = mode === 'test_exercise';
@@ -451,7 +454,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setGameState('showingAnswer');
     setSelectedAnswer(answer);
 
-    // Provide UI feedback and advance the game
     if (shouldAdvance) {
         setIsCorrect(true);
         triggerConfettiExplosion();
@@ -462,9 +464,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         }, 1800);
     } else {
         setIsCorrect(false);
-        // This is where we ensure the question is marked as incorrect if it hasn't been already.
         if (currentQuestion.status === 'unanswered') {
-          setMistakeMade(true); // This will ensure puzzles are marked incorrect, though this branch is for direct-answer questions.
+          // This ensures direct-answer questions are marked as incorrect on the first wrong attempt.
+          setMistakeMade(true);
         }
         toast({ variant: 'destructive', title: 'Tente de novo!', duration: 2000 });
         setTimeout(() => {
@@ -849,14 +851,14 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                 <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
                     {renderTextWithBlank(currentQuestion.text, selectedAnswer || '')}
                 </p>
-                {currentQuestion.text2 && <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
+                {currentQuestion.text2 && <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl font-libras'} flex items-center justify-center flex-wrap gap-2 mt-4`}>
                     {renderTextWithBlank(currentQuestion.text2, selectedAnswer || '')}
                 </p>}
             </>
         ) : (
              <>
                 {currentQuestion.text && <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl'}`}>{currentQuestion.text}</p>}
-                {currentQuestion.text2 && <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl'} mt-4`}>{currentQuestion.text2}</p>}
+                {currentQuestion.text2 && <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl font-libras'} mt-4`}>{currentQuestion.text2}</p>}
             </>
         )}
       </div>
