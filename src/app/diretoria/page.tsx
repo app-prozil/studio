@@ -53,6 +53,12 @@ type Teacher = {
     email: string;
 };
 
+type Student = {
+    id: string;
+    name: string;
+    prozilId: string;
+};
+
 
 export default function DirectorDashboard() {
   const { user, isUserLoading } = useUser();
@@ -71,35 +77,48 @@ export default function DirectorDashboard() {
   const teachersQuery = useMemoFirebase(() => isAuthorized ? collection(firestore, 'teachers') : null, [firestore, isAuthorized]);
   const { data: teachers, isLoading: isLoadingTeachers } = useCollection<Teacher>(teachersQuery);
 
-  const isLoading = isUserLoading || isDirectorLoading || isLoadingTasks || isLoadingTeachers;
+  const studentsQuery = useMemoFirebase(() => isAuthorized ? collection(firestore, 'students') : null, [firestore, isAuthorized]);
+  const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
+
+  const isLoading = isUserLoading || isDirectorLoading || isLoadingTasks || isLoadingTeachers || isLoadingStudents;
   
   const dashboardStats = useMemo(() => {
-    if (!allTasks || !teachers) {
+    if (!allTasks || !teachers || !students) {
       return { totalTeachers: 0, totalStudents: 0, totalTasks: 0, completionRate: 0 };
     }
-    const uniqueTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values());
-    const totalStudents = new Set(uniqueTasks.map(t => t.studentId)).size;
+    const validStudentIds = new Set(students.map(s => s.id));
+    const uniqueTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values())
+        .filter(task => validStudentIds.has(task.studentId));
+
     const completedTasks = uniqueTasks.filter(t => t.isCompleted).length;
     const completionRate = uniqueTasks.length > 0 ? Math.round((completedTasks / uniqueTasks.length) * 100) : 0;
     
     return {
       totalTeachers: teachers.length,
-      totalStudents,
+      totalStudents: students.length,
       totalTasks: uniqueTasks.length,
       completionRate
     };
 
-  }, [allTasks, teachers]);
+  }, [allTasks, teachers, students]);
 
 
   const { tasksByTeacher, tasksByStudent } = useMemo(() => {
-    if (!allTasks || !teachers) {
+    if (!allTasks || !teachers || !students) {
       return { tasksByTeacher: {}, tasksByStudent: {} };
     }
 
-    const uniqueTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values());
+    const studentMap = new Map(students.map(s => [s.id, s]));
+    const validStudentIds = new Set(students.map(s => s.id));
 
-    const groupedByTeacherId = uniqueTasks.reduce((acc: Record<string, Task[]>, task: Task) => {
+    const processedTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values())
+      .filter(task => validStudentIds.has(task.studentId))
+      .map(task => ({
+          ...task,
+          studentName: studentMap.get(task.studentId)?.name || task.studentName || 'Nome não encontrado'
+      }));
+
+    const groupedByTeacherId = processedTasks.reduce((acc: Record<string, Task[]>, task: Task) => {
       const teacherId = task.teacherId;
       if (!acc[teacherId]) {
         acc[teacherId] = [];
@@ -118,7 +137,7 @@ export default function DirectorDashboard() {
         }
     }
     
-    const tasksByStudent = uniqueTasks.reduce((acc: Record<string, Task[]>, task: Task) => {
+    const tasksByStudent = processedTasks.reduce((acc: Record<string, Task[]>, task: Task) => {
         const studentId = task.studentId;
         if (!acc[studentId]) {
             acc[studentId] = [];
@@ -138,7 +157,7 @@ export default function DirectorDashboard() {
 
     return { tasksByTeacher, tasksByStudent };
 
-  }, [allTasks, teachers]);
+  }, [allTasks, teachers, students]);
 
   if (isLoading) {
     return (
