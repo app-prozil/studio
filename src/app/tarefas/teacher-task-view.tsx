@@ -1484,7 +1484,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   );
 }
 
-function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+export function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const { toast } = useToast();
 
@@ -1680,7 +1680,7 @@ function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | null, i
 }
 
 
-function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenChange, teacherName }: { studentName: string; tasks: Task[]; isOpen: boolean; onOpenChange: (open: boolean) => void; teacherName?: string }) {
+export function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenChange, teacherName }: { studentName: string; tasks: Task[]; isOpen: boolean; onOpenChange: (open: boolean) => void; teacherName?: string }) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const { toast } = useToast();
 
