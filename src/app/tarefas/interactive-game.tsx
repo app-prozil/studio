@@ -868,8 +868,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                   {renderTextWithBlank(currentQuestion.text, selectedAnswer || '')}
               </p>
               {currentQuestion.text2 && (
-                  <p className="text-5xl mt-4">
-                      {currentQuestion.text2}
+                  <p className="text-5xl mt-4 flex items-center justify-center flex-wrap gap-2">
+                      {renderTextWithBlank(currentQuestion.text2, selectedAnswer || '')}
                   </p>
               )}
                {currentQuestion.librasText && (
