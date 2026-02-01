@@ -18,10 +18,18 @@ service cloud.firestore {
     }
 
     function isTeacher() {
+      // FIX: Admin is a teacher, but don't hit the DB if we know it's the admin.
+      if (isAdmin()) {
+        return true;
+      }
       return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
 
     function isDirector() {
+      // FIX: Admin isn't a director. Don't hit the DB for the admin.
+      if (isAdmin()) {
+          return false;
+      }
       return exists(/databases/$(database)/documents/directors/$(request.auth.uid));
     }
 
@@ -117,7 +125,7 @@ service cloud.firestore {
       // No one needs to read a single invite directly.
       allow get: if false;
       // Only admin can create/delete invites (handled by global rule).
-      allow write: if false; 
+      allow write: if isAdmin();
     }
   }
 }
