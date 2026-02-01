@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Book, Calculator, Printer, LogIn, Puzzle, User, Briefcase, BarChart } from 'lucide-react';
+import { ArrowRight, Book, Calculator, Printer, LogIn, Puzzle, User, Briefcase, BarChart, Users } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -98,18 +98,18 @@ export default function Home() {
           <Card className="flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart className="w-8 h-8 text-primary" />
-                <span className="text-2xl font-headline">Progresso dos Alunos</span>
+                <Users className="w-8 h-8 text-primary" />
+                <span className="text-2xl font-headline">Tarefas por Professor</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-grow">
               <p className="text-muted-foreground">
-                Monitore o desempenho dos alunos e visualize relatórios detalhados.
+                Monitore as tarefas atribuídas por cada professor.
               </p>
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link href="/progresso">Ver Relatórios<ArrowRight className="ml-2" /></Link>
+                <Link href="/diretoria">Acessar Tarefas<ArrowRight className="ml-2" /></Link>
               </Button>
             </CardFooter>
           </Card>
