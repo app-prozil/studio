@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, FileText, User, ShieldAlert, LogIn, Briefcase, Download } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Eye, FileText, User, ShieldAlert, LogIn, Briefcase, Download, Users, GraduationCap, ClipboardList, PieChart } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -71,10 +72,29 @@ export default function DirectorDashboard() {
   const { data: teachers, isLoading: isLoadingTeachers } = useCollection<Teacher>(teachersQuery);
 
   const isLoading = isUserLoading || isDirectorLoading || isLoadingTasks || isLoadingTeachers;
-
-  const tasksByTeacher = useMemo(() => {
+  
+  const dashboardStats = useMemo(() => {
     if (!allTasks || !teachers) {
-      return {};
+      return { totalTeachers: 0, totalStudents: 0, totalTasks: 0, completionRate: 0 };
+    }
+    const uniqueTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values());
+    const totalStudents = new Set(uniqueTasks.map(t => t.studentId)).size;
+    const completedTasks = uniqueTasks.filter(t => t.isCompleted).length;
+    const completionRate = uniqueTasks.length > 0 ? Math.round((completedTasks / uniqueTasks.length) * 100) : 0;
+    
+    return {
+      totalTeachers: teachers.length,
+      totalStudents,
+      totalTasks: uniqueTasks.length,
+      completionRate
+    };
+
+  }, [allTasks, teachers]);
+
+
+  const { tasksByTeacher, tasksByStudent } = useMemo(() => {
+    if (!allTasks || !teachers) {
+      return { tasksByTeacher: {}, tasksByStudent: {} };
     }
 
     const uniqueTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values());
@@ -88,18 +108,35 @@ export default function DirectorDashboard() {
       return acc;
     }, {});
 
-    const groupedByName: Record<string, { tasks: Task[], teacher: Teacher }> = {};
-    
+    const tasksByTeacher: Record<string, { tasks: Task[], teacher: Teacher }> = {};
     for (const teacher of teachers) {
         if (groupedByTeacherId[teacher.id]) {
-            groupedByName[teacher.name] = {
+            tasksByTeacher[teacher.name] = {
                 teacher: teacher,
                 tasks: groupedByTeacherId[teacher.id].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
             };
         }
     }
     
-    return groupedByName;
+    const tasksByStudent = uniqueTasks.reduce((acc: Record<string, Task[]>, task: Task) => {
+        const studentIdentifier = task.studentName || task.studentId;
+        if (!acc[studentIdentifier]) {
+            acc[studentIdentifier] = [];
+        }
+        acc[studentIdentifier].push(task);
+        return acc;
+    }, {});
+
+    for (const studentIdentifier in tasksByStudent) {
+        tasksByStudent[studentIdentifier].sort((a, b) => {
+            if (a.isCompleted !== b.isCompleted) {
+            return a.isCompleted ? 1 : -1;
+            }
+            return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+        });
+    }
+
+    return { tasksByTeacher, tasksByStudent };
 
   }, [allTasks, teachers]);
 
@@ -161,60 +198,168 @@ export default function DirectorDashboard() {
         </h1>
         <p className="text-muted-foreground">Acompanhe as atividades de todos os professores e alunos.</p>
       </div>
+      
+       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Professores</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.totalTeachers}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Alunos</CardTitle>
+            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.totalStudents}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tarefas Atribuídas</CardTitle>
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.totalTasks}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Taxa de Conclusão</CardTitle>
+            <PieChart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.completionRate}%</div>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Visão Geral por Professor</CardTitle>
-          <CardDescription>Veja todas as tarefas atribuídas, agrupadas por professor.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {Object.keys(tasksByTeacher).length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">Nenhuma tarefa atribuída por professores foi encontrada.</div>
-          ) : (
-            <Accordion type="multiple" className="w-full">
-              {Object.entries(tasksByTeacher).map(([teacherName, { tasks, teacher }]) => (
-                <AccordionItem value={teacher.id} key={teacher.id}>
-                  <AccordionTrigger className="text-lg font-medium hover:no-underline">
-                    <div className="flex items-center gap-3">
-                      <User className="h-5 w-5 text-primary" />
-                      {teacherName}
-                      <Badge variant="outline">{tasks.length} tarefas</Badge>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                     <ul className="space-y-3 pt-2">
-                      {tasks.map(task => (
-                         <li key={task.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg bg-background/50 gap-4">
-                             <div className="grid gap-1.5 flex-1">
-                                 <p className={`font-semibold ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                                   {task.title}
-                                 </p>
-                                  <p className="text-sm text-muted-foreground">Para: {task.studentName}</p>
-                                 <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-1">
-                                     <Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
-                                     <span>
-                                      Entrega: {format(new Date(task.dueDate), "dd/MM/yyyy")}
-                                     </span>
-                                     <span className="flex items-center gap-1">
-                                      <FileText className="w-3 h-3"/> {task.questions?.length || 0} questões
-                                     </span>
+      <Tabs defaultValue="by-teacher">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="by-teacher">Visão por Professor</TabsTrigger>
+          <TabsTrigger value="by-student">Visão por Aluno</TabsTrigger>
+        </TabsList>
+        <TabsContent value="by-teacher" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tarefas por Professor</CardTitle>
+              <CardDescription>Veja todas as tarefas atribuídas, agrupadas por professor.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {Object.keys(tasksByTeacher).length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">Nenhuma tarefa atribuída por professores foi encontrada.</div>
+              ) : (
+                <Accordion type="multiple" className="w-full">
+                  {Object.entries(tasksByTeacher).map(([teacherName, { tasks, teacher }]) => (
+                    <AccordionItem value={teacher.id} key={teacher.id}>
+                      <AccordionTrigger className="text-lg font-medium hover:no-underline">
+                        <div className="flex items-center gap-3">
+                          <User className="h-5 w-5 text-primary" />
+                          {teacherName}
+                          <Badge variant="outline">{tasks.length} tarefas</Badge>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                         <ul className="space-y-3 pt-2">
+                          {tasks.map(task => (
+                             <li key={task.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg bg-background/50 gap-4">
+                                 <div className="grid gap-1.5 flex-1">
+                                     <p className={`font-semibold ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                                       {task.title}
+                                     </p>
+                                     <p className="text-sm text-muted-foreground">Para: {task.studentName}</p>
+                                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-1">
+                                         <Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
+                                         <span>
+                                          Entrega: {format(new Date(task.dueDate), "dd/MM/yyyy")}
+                                         </span>
+                                         <span className="flex items-center gap-1">
+                                          <FileText className="w-3 h-3"/> {task.questions?.length || 0} questões
+                                         </span>
+                                     </div>
                                  </div>
-                             </div>
-                             <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-                                <Button variant="outline" size="sm" onClick={() => setViewingReport(task)}>
-                                    <Eye className="mr-2 h-3 w-3"/> Ver Relatório
-                                </Button>
-                             </div>
-                          </li>
-                      ))}
-                    </ul>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          )}
-        </CardContent>
-      </Card>
+                                 <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                                    <Button variant="outline" size="sm" onClick={() => setViewingReport(task)}>
+                                        <Eye className="mr-2 h-3 w-3"/> Ver Relatório
+                                    </Button>
+                                 </div>
+                              </li>
+                          ))}
+                        </ul>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+         <TabsContent value="by-student" className="mt-6">
+           <Card>
+            <CardHeader>
+              <CardTitle>Tarefas por Aluno</CardTitle>
+              <CardDescription>Veja o desempenho e as tarefas de cada aluno individualmente.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {Object.keys(tasksByStudent).length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">Nenhuma tarefa encontrada.</div>
+              ) : (
+                <Accordion type="multiple" className="w-full">
+                  {Object.entries(tasksByStudent).map(([studentName, studentTasks]) => (
+                    <AccordionItem value={studentName} key={studentName}>
+                      <AccordionTrigger className="text-lg font-medium hover:no-underline">
+                        <div className="flex items-center gap-3">
+                          <GraduationCap className="h-5 w-5 text-primary" />
+                          {studentName}
+                          <Badge variant="outline">{studentTasks.length} tarefas</Badge>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="flex justify-end pb-2 -mt-2">
+                           <Button 
+                              variant="secondary" 
+                              size="sm" 
+                              onClick={() => setViewingGeneralReportFor({ name: studentName, tasks: studentTasks, teacherName: studentTasks[0]?.teacherName })}>
+                              <Download className="mr-2 h-4 w-4"/>
+                              Gerar Relatório Geral do Aluno
+                          </Button>
+                        </div>
+                         <ul className="space-y-3 pt-2">
+                          {studentTasks.map(task => (
+                             <li key={task.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg bg-background/50 gap-4">
+                                 <div className="grid gap-1.5 flex-1">
+                                     <p className={`font-semibold ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                                       {task.title}
+                                     </p>
+                                     <p className="text-sm text-muted-foreground">Por: {task.teacherName}</p>
+                                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-1">
+                                         <Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
+                                         <span>
+                                          Entrega: {format(new Date(task.dueDate), "dd/MM/yyyy")}
+                                         </span>
+                                     </div>
+                                 </div>
+                                 <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                                    <Button variant="outline" size="sm" onClick={() => setViewingReport(task)}>
+                                        <Eye className="mr-2 h-3 w-3"/> Ver Relatório da Tarefa
+                                    </Button>
+                                 </div>
+                              </li>
+                          ))}
+                        </ul>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
       
       <TaskReportDialog task={viewingReport} isOpen={!!viewingReport} onOpenChange={() => setViewingReport(null)} />
       {viewingGeneralReportFor && (
