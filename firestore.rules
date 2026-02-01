@@ -140,7 +140,8 @@ service cloud.firestore {
     }
 
     match /directors/{directorId} {
-      // READ: Any signed-in user can read a director's profile.
+      // READ: Any signed-in user can read a director's profile. This resolves a circular dependency
+      // for other rules that call isDirector().
       allow get: if isSignedIn();
       // LIST: Admins and directors can list all directors.
       allow list: if isAdmin() || isDirector();
