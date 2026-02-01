@@ -11,136 +11,113 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // The admin is a superuser with a hardcoded, unique UID.
+    // This function is the ultimate authority and is checked first in rules.
+    function isAdmin() {
+      return request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+    }
+
+    function isTeacher() {
+      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+    }
+
+    function isDirector() {
+      return exists(/databases/$(database)/documents/directors/$(request.auth.uid));
+    }
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- Role Checks ---
-    function isAdmin() {
-      // The admin is a superuser with a hardcoded, unique UID.
-      return isSignedIn() && request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
-    }
-
-    function isTeacher() {
-      // The admin user is also a teacher, so this check should pass for them without a DB read.
-      if (isAdmin()) {
-        return true;
-      }
-      // For other users, check if a teacher document exists.
-      return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-    }
-
-    function isDirector() {
-      // The admin user is NOT a director. This check should fail fast for them without a DB read.
-      if (isAdmin()) {
-        return false;
-      }
-      // For other users, check if a director document exists.
-      return isSignedIn() && exists(/databases/$(database)/documents/directors/$(request.auth.uid));
-    }
-
-    // --- Data Ownership & Relationship Checks ---
-
     function isTaskAuthor(task) {
-      // Checks if the requesting user is the teacher who created the task.
       return isSignedIn() && request.auth.uid == task.teacherId;
     }
-
+    
     function isStudentUpdatingPerformance() {
-      // Only the assigned student can update their own performance data.
-      // They cannot change core task properties.
+      // Rule: Student must be the one the task is assigned to.
       if (request.auth.uid != resource.data.studentId) {
         return false;
       }
+      // Rule: Cannot un-complete a task.
       if (resource.data.isCompleted == true && request.resource.data.isCompleted == false) {
-        return false; // Cannot un-complete a task
+        return false;
       }
-      // List of immutable fields for a student
+      // Rule: Students can only update their performance fields, not the core task definition.
       let immutableFields = ['title', 'description', 'dueDate', 'teacherId', 'studentId', 'subject', 'taskType', 'studentName', 'teacherName', 'studentProzilId'];
       return request.resource.data.diff(resource.data).affectedKeys().toSet().intersection(immutableFields.toSet()).size() == 0;
     }
 
+    // =====================================================================
+    //  GLOBAL ADMIN RULE
+    // =====================================================================
+    
+    // This single rule grants the administrator unconditional read/write access
+    // to the entire database, solving all previous cascading permission errors.
+    match /{path=**} {
+      allow read, write: if isAdmin();
+    }
 
     // =====================================================================
-    //  COLLECTION RULES
+    //  COLLECTION-SPECIFIC RULES (FOR NON-ADMINS)
     // =====================================================================
 
-    // --- Collection Group Query for Tasks ---
-    // Allows directors and admins to view all tasks across the system.
+    // --- Collection Group Query ---
+    // This allows Directors to list all tasks across the entire database for reporting.
     match /{path=**}/tasks/{taskId} {
-      allow list: if isAdmin() || isDirector();
+      allow list: if isDirector();
     }
 
     // --- Teacher Profiles and Data ---
     match /teachers/{teacherId} {
-      // Anyone can read basic teacher profiles.
       allow get: if isSignedIn();
-      // Only admins and directors can list all teachers.
-      allow list: if isAdmin() || isDirector();
-      // A teacher can manage their own profile. Admin has full rights.
-      allow write: if isOwner(teacherId) || isAdmin();
+      allow list: if isDirector();
+      allow write: if isOwner(teacherId);
 
       // Subcollection: Teacher's Exercise Bank
       match /exercises/{exerciseId} {
-        // Teacher can manage their own bank. Admins/Directors can read.
-        allow read: if isOwner(teacherId) || isAdmin() || isDirector();
-        allow write: if isOwner(teacherId) || isAdmin();
+        allow read: if isOwner(teacherId) || isDirector();
+        allow write: if isOwner(teacherId);
       }
 
       // Subcollection: Master copy of tasks created by the teacher.
       match /tasks/{taskId} {
-        // Teacher can manage their own tasks. Admin/Directors can read.
-        allow read: if isOwner(teacherId) || isAdmin() || isDirector();
-        allow create, delete: if isOwner(teacherId) || isAdmin();
-        // A teacher can update their own task. A student can update their performance data. Admin has full rights.
-        allow update: if isOwner(teacherId) || isAdmin() || isStudentUpdatingPerformance();
+        allow read: if isOwner(teacherId) || isDirector();
+        allow create, delete: if isOwner(teacherId);
+        allow update: if isOwner(teacherId) || isStudentUpdatingPerformance();
       }
     }
 
     // --- Student Profiles and Data ---
     match /students/{studentId} {
-      // A student can read their own profile.
-      // A teacher can read profiles of their linked students.
-      // Admins and directors can read any student profile.
-      allow get: if isOwner(studentId) || (isTeacher() && request.auth.uid in resource.data.teacherIds) || isAdmin() || isDirector();
-      // Only admins can list ALL students directly.
-      allow list: if isAdmin();
-      // A student can manage their own profile. Admin has full rights.
-      allow write: if isOwner(studentId) || isAdmin();
+      allow get: if isOwner(studentId) || (isTeacher() && resource.data.teacherIds.hasAny([request.auth.uid])) || isDirector();
+      allow list: if isTeacher(); // Allows teachers to query for students. The client-side query must be secure.
+      allow write: if isOwner(studentId);
 
       // Subcollection: Copy of tasks assigned to the student.
       match /tasks/{taskId} {
-        // Student can read their own task. The authoring teacher can also read it. Admin/Directors can read any.
-        allow get: if isOwner(studentId) || isTaskAuthor(resource.data) || isAdmin() || isDirector();
-        // A student can list their own tasks. Admins/Directors can list tasks for any student.
-        allow list: if isOwner(studentId) || isAdmin() || isDirector();
-        // A teacher or admin can create a task for a student.
-        allow create: if isTeacher() || isAdmin();
-        // Student can update their performance. Teacher can edit the task. Admin can do anything.
-        allow update: if isOwner(studentId) || isTaskAuthor(resource.data) || isAdmin();
-        // Authoring teacher or admin can delete a task.
-        allow delete: if isTaskAuthor(resource.data) || isAdmin();
+        allow get: if isOwner(studentId) || isTaskAuthor(resource.data) || isDirector();
+        allow list: if isOwner(studentId);
+        allow create: if isTeacher();
+        allow update: if isOwner(studentId) || isTaskAuthor(resource.data);
+        allow delete: if isTaskAuthor(resource.data);
       }
     }
 
     // --- Director Profiles ---
     match /directors/{directorId} {
-      // Anyone can read a director profile. This avoids circular dependencies with isDirector().
       allow get: if isSignedIn();
-      // ONLY the admin can get a list of all directors.
-      allow list: if isAdmin();
-      // A director can manage their own profile. Admin has full rights.
-      allow write: if isOwner(directorId) || isAdmin();
+      allow list: if false; // Only admin can list directors (handled by global rule).
+      allow write: if isOwner(directorId);
     }
 
     // --- User Invitations ---
     match /invites/{inviteId} {
-      // The signup page needs to query invites by email, so list is public.
+      // Publicly listable so the signup page can check if an email is invited.
       allow list: if true;
-      // Reading a single invite document is not needed.
+      // No one needs to read a single invite directly.
       allow get: if false;
-      // Only admins can create, update, or delete invites.
-      allow write: if isAdmin();
+      // Only admin can create/delete invites (handled by global rule).
+      allow write: if false; 
     }
   }
 }
