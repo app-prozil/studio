@@ -41,7 +41,7 @@ const menuItems = [
   { href: '/tarefas', label: 'Tarefas', icon: ClipboardCheck, roles: ['student', 'teacher', 'admin'] },
   { href: '/diretoria', label: 'Painel Diretoria', icon: Briefcase, roles: ['director', 'admin'] },
   { href: '/imprimir', label: 'Imprimir', icon: Printer, roles: ['teacher', 'admin'] },
-  { href: '/progresso', label: 'Progresso', icon: BarChart, roles: ['student', 'teacher', 'admin'] },
+  { href: '/progresso', label: 'Progresso', icon: BarChart, roles: ['student', 'teacher'] },
 ];
 
 const settingsMenuItem = { href: '/configuracoes', label: 'Configurações', icon: Settings };
