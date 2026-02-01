@@ -41,8 +41,8 @@ service cloud.firestore {
     match /students/{studentId} {
       // Admin, o dono, ou um professor vinculado podem ler.
       allow get: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId || (exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) && resource.data.teacherIds.hasAny([request.auth.uid]));
-      // Admin ou um professor podem listar alunos.
-      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+      // Admin, um professor ou um diretor podem listar alunos.
+      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) || exists(/databases/$(database)/documents/directors/$(request.auth.uid));
       // Admin ou o dono podem escrever.
       allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.uid == studentId;
 
