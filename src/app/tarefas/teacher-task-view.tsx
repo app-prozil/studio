@@ -1,6 +1,7 @@
 
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -1883,9 +1884,7 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
       return {};
     }
   
-    const tasksCopy = JSON.parse(JSON.stringify(tasks));
-  
-    const grouped = tasksCopy.reduce((acc: Record<string, Task[]>, task: Task) => {
+    const grouped = tasks.reduce((acc: Record<string, Task[]>, task: Task) => {
       const studentIdentifier = task.studentName || task.studentId;
       if (!acc[studentIdentifier]) {
         acc[studentIdentifier] = [];
