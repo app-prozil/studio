@@ -851,14 +851,14 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                 <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
                     {renderTextWithBlank(currentQuestion.text, selectedAnswer || '')}
                 </p>
-                {currentQuestion.text2 && <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl font-libras'} flex items-center justify-center flex-wrap gap-2 mt-4`}>
+                {currentQuestion.text2 && <p className="text-4xl sm:text-5xl font-libras mt-4 flex items-center justify-center flex-wrap gap-2">
                     {renderTextWithBlank(currentQuestion.text2, selectedAnswer || '')}
                 </p>}
             </>
         ) : (
              <>
                 {currentQuestion.text && <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl'}`}>{currentQuestion.text}</p>}
-                {currentQuestion.text2 && <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl font-libras'} mt-4`}>{currentQuestion.text2}</p>}
+                {currentQuestion.text2 && <p className="text-4xl sm:text-5xl font-libras mt-4">{currentQuestion.text2}</p>}
             </>
         )}
       </div>
