@@ -58,7 +58,7 @@ service cloud.firestore {
     // --- Collection Group Query for Tasks ---
     // This allows Directors to generate reports across all tasks.
     match /{path=**}/tasks/{taskId} {
-      allow list: if isDirector(request.auth.uid) || isAdmin();
+      allow list: if isAdmin() || isDirector(request.auth.uid);
     }
 
     // --- Teacher Profiles and Data ---
@@ -66,50 +66,50 @@ service cloud.firestore {
       // Anyone can view a teacher's public profile.
       allow get: if isSignedIn();
       // Directors and Admin can list all teachers.
-      allow list: if isDirector(request.auth.uid) || isAdmin();
+      allow list: if isAdmin() || isDirector(request.auth.uid);
       // Only the owner or an Admin can write to a teacher's profile.
-      allow write: if isOwner(teacherId) || isAdmin();
+      allow write: if isAdmin() || isOwner(teacherId);
 
       // Subcollection: Teacher's Exercise Bank
       match /exercises/{exerciseId} {
         // The owner, directors, or an admin can read exercises.
-        allow read: if isOwner(teacherId) || isDirector(request.auth.uid) || isAdmin();
+        allow read: if isAdmin() || isOwner(teacherId) || isDirector(request.auth.uid);
         // Only the owner or an admin can create/edit/delete exercises.
-        allow write: if isOwner(teacherId) || isAdmin();
+        allow write: if isAdmin() || isOwner(teacherId);
       }
 
       // Subcollection: Master copy of tasks created by the teacher.
       match /tasks/{taskId} {
         // The owner, directors, or an admin can read the master task.
-        allow read: if isOwner(teacherId) || isDirector(request.auth.uid) || isAdmin();
+        allow read: if isAdmin() || isOwner(teacherId) || isDirector(request.auth.uid);
         // The owner or an admin can create/delete master tasks.
-        allow create, delete: if isOwner(teacherId) || isAdmin();
+        allow create, delete: if isAdmin() || isOwner(teacherId);
         // The owner, admin, or the assigned student (for performance) can update.
-        allow update: if isOwner(teacherId) || isStudentUpdatingPerformance() || isAdmin();
+        allow update: if isAdmin() || isOwner(teacherId) || isStudentUpdatingPerformance();
       }
     }
 
     // --- Student Profiles and Data ---
     match /students/{studentId} {
       // The owner, linked teachers, or an admin can get a student's profile.
-      allow get: if isOwner(studentId) || (isTeacher(request.auth.uid) && resource.data.teacherIds.hasAny([request.auth.uid])) || isAdmin();
+      allow get: if isAdmin() || isOwner(studentId) || (isTeacher(request.auth.uid) && resource.data.teacherIds.hasAny([request.auth.uid]));
       // Teachers and admin can list students. Client-side query must be secure.
-      allow list: if isTeacher(request.auth.uid) || isAdmin();
+      allow list: if isAdmin() || isTeacher(request.auth.uid);
       // Only the owner or an admin can write to a student's profile.
-      allow write: if isOwner(studentId) || isAdmin();
+      allow write: if isAdmin() || isOwner(studentId);
 
       // Subcollection: Copy of tasks assigned to the student.
       match /tasks/{taskId} {
         // The owner, the task author, directors, or an admin can get the task.
-        allow get: if isOwner(studentId) || isTaskAuthor(resource.data) || isDirector(request.auth.uid) || isAdmin();
+        allow get: if isAdmin() || isOwner(studentId) || isTaskAuthor(resource.data) || isDirector(request.auth.uid);
         // Only the owner or an admin can list their own tasks.
-        allow list: if isOwner(studentId) || isAdmin();
+        allow list: if isAdmin() || isOwner(studentId);
         // Teachers or admins can assign (create) tasks.
-        allow create: if isTeacher(request.auth.uid) || isAdmin();
+        allow create: if isAdmin() || isTeacher(request.auth.uid);
         // The owner, author, or admin can update the task copy.
-        allow update: if isOwner(studentId) || isTaskAuthor(resource.data) || isAdmin();
+        allow update: if isAdmin() || isOwner(studentId) || isTaskAuthor(resource.data);
         // The author or admin can delete the task copy.
-        allow delete: if isTaskAuthor(resource.data) || isAdmin();
+        allow delete: if isAdmin() || isTaskAuthor(resource.data);
       }
     }
 
@@ -118,9 +118,9 @@ service cloud.firestore {
       // Anyone signed in can view a director's public profile.
       allow get: if isSignedIn();
       // Directors and Admin can list all directors.
-      allow list: if isDirector(request.auth.uid) || isAdmin();
+      allow list: if isAdmin() || isDirector(request.auth.uid);
       // Only the owner or an admin can write to a director's profile.
-      allow write: if isOwner(directorId) || isAdmin();
+      allow write: if isAdmin() || isOwner(directorId);
     }
 
     // --- User Invitations ---
