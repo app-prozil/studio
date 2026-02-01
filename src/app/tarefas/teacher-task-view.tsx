@@ -70,7 +70,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 
@@ -557,7 +557,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormControl>
                     <Textarea 
                       {...field} 
-                      className="font-libras font-black text-5xl"
+                      className={cn("font-libras font-black py-4", "libras-input-text")}
                       onFocus={() => setFocusedInput('librasText')} 
                       placeholder="Insira aqui o conteúdo em Libras"
                     />
@@ -1881,8 +1881,7 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
     if (!tasks) {
       return {};
     }
-    const tasksCopy = [...tasks];
-    const grouped = tasksCopy.reduce((acc: Record<string, Task[]>, task: Task) => {
+    const grouped = [...tasks].reduce((acc: Record<string, Task[]>, task: Task) => {
       const studentIdentifier = task.studentName || task.studentId;
       if (!acc[studentIdentifier]) {
         acc[studentIdentifier] = [];

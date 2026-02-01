@@ -182,6 +182,10 @@
 }
 
 @layer utilities {
+  .libras-input-text {
+    font-size: 3rem !important; /* 48px */
+    line-height: 1 !important;
+  }
   .animate-gift-bounce {
     animation: gift-bounce 1.2s cubic-bezier(0.5, 0.05, 1, 0.5) infinite;
     transform-origin: bottom center;
