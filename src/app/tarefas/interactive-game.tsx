@@ -903,14 +903,17 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     <>
       <Dialog open={showHandAnimation} onOpenChange={setShowHandAnimation}>
         <DialogContent className="max-w-md text-center bg-transparent border-none shadow-none" onPointerDownOutside={(e) => e.preventDefault()}>
-            <div className="flex justify-center items-center h-48 overflow-hidden">
-                {handState === 'pointing' && (
-                    <div className="text-9xl animate-hand-slide-in">👉</div>
-                )}
-                {handState === 'thumbs-up' && (
-                    <div className="text-9xl animate-thumbs-up-pop">👍</div>
-                )}
-            </div>
+          <DialogHeader>
+            <DialogTitle className="sr-only">Animação de Resposta Correta</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center items-center h-48 overflow-hidden">
+              {handState === 'pointing' && (
+                  <div className="text-9xl animate-hand-slide-in">👉</div>
+              )}
+              {handState === 'thumbs-up' && (
+                  <div className="text-9xl animate-thumbs-up-pop">👍</div>
+              )}
+          </div>
         </DialogContent>
       </Dialog>
 
