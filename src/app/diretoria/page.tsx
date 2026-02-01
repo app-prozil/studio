@@ -119,16 +119,16 @@ export default function DirectorDashboard() {
     }
     
     const tasksByStudent = uniqueTasks.reduce((acc: Record<string, Task[]>, task: Task) => {
-        const studentIdentifier = task.studentName || task.studentId;
-        if (!acc[studentIdentifier]) {
-            acc[studentIdentifier] = [];
+        const studentId = task.studentId;
+        if (!acc[studentId]) {
+            acc[studentId] = [];
         }
-        acc[studentIdentifier].push(task);
+        acc[studentId].push(task);
         return acc;
     }, {});
 
-    for (const studentIdentifier in tasksByStudent) {
-        tasksByStudent[studentIdentifier].sort((a, b) => {
+    for (const studentId in tasksByStudent) {
+        tasksByStudent[studentId].sort((a, b) => {
             if (a.isCompleted !== b.isCompleted) {
             return a.isCompleted ? 1 : -1;
             }
@@ -309,8 +309,10 @@ export default function DirectorDashboard() {
                 <div className="text-center text-muted-foreground py-8">Nenhuma tarefa encontrada.</div>
               ) : (
                 <Accordion type="multiple" className="w-full">
-                  {Object.entries(tasksByStudent).map(([studentName, studentTasks]) => (
-                    <AccordionItem value={studentName} key={studentName}>
+                  {Object.entries(tasksByStudent).map(([studentId, studentTasks]) => {
+                    const studentName = studentTasks[0]?.studentName || studentId;
+                    return (
+                    <AccordionItem value={studentId} key={studentId}>
                       <AccordionTrigger className="text-lg font-medium hover:no-underline">
                         <div className="flex items-center gap-3">
                           <GraduationCap className="h-5 w-5 text-primary" />
@@ -353,7 +355,7 @@ export default function DirectorDashboard() {
                         </ul>
                       </AccordionContent>
                     </AccordionItem>
-                  ))}
+                  )})}
                 </Accordion>
               )}
             </CardContent>
