@@ -144,8 +144,10 @@ service cloud.firestore {
       // READ: Any signed-in user can read a director's profile. This resolves a circular dependency
       // for other rules that call isDirector().
       allow get: if isSignedIn();
-      // LIST: Only Admins can list all directors.
-      allow list: if isAdmin();
+      
+      // LIST: Only Admins can list all directors. This is inlined to prevent function call issues.
+      allow list: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+      
       // WRITE: A user can manage their OWN director profile. Admin can manage any.
       allow write: if isOwner(directorId) || isAdmin();
     }
