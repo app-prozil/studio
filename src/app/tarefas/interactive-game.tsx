@@ -465,18 +465,18 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
         setTimeout(() => {
             setHandState('thumbs-up');
-        }, 1500);
+        }, 2000);
 
         setTimeout(() => {
             triggerConfettiExplosion();
             setShowCorrectAnswerModal(true);
-        }, 2500);
+        }, 3500);
 
         setTimeout(() => {
             setShowHandAnimation(false);
             setShowCorrectAnswerModal(false);
             handleNextQuestion(updatedQuestions);
-        }, 4500);
+        }, 5500);
 
     } else {
         setIsCorrect(false);
