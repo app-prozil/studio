@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, writeBatch, deleteField, getDocs } from 'firebase/firestore';
+import { collection, doc, updateDoc, writeBatch, deleteField, getDocs, setDoc } from 'firebase/firestore';
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Edit, ShieldAlert, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
+import { Loader2, Edit, ShieldAlert, Archive, ArchiveRestore, Trash2, UserPlus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -27,6 +27,11 @@ const userSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
   prozilId: z.string().min(1, 'O ProZil ID é obrigatório.'),
   email: z.string().email('Email inválido.'),
+});
+
+const directorInviteSchema = z.object({
+  name: z.string().min(2, 'O nome do diretor é obrigatório.'),
+  email: z.string().email('O email do diretor é inválido.'),
 });
 
 type UserProfile = {
@@ -228,6 +233,12 @@ export default function AdminPage() {
   const [showArchivedTeachers, setShowArchivedTeachers] = useState(false);
   const [showArchivedStudents, setShowArchivedStudents] = useState(false);
   const [showArchivedDirectors, setShowArchivedDirectors] = useState(false);
+  
+  const [isCreatingDirector, setIsCreatingDirector] = useState(false);
+  const directorForm = useForm<z.infer<typeof directorInviteSchema>>({
+    resolver: zodResolver(directorInviteSchema),
+    defaultValues: { name: '', email: '' },
+  });
 
   const handleClearData = async () => {
     if (!isAuthorized || !firestore) {
@@ -272,6 +283,35 @@ export default function AdminPage() {
         setIsClearing(false);
     }
   };
+  
+  async function handleInviteDirector(values: z.infer<typeof directorInviteSchema>) {
+    setIsCreatingDirector(true);
+    try {
+      const newInviteRef = doc(collection(firestore, 'invites'));
+      const inviteData = {
+        id: newInviteRef.id,
+        email: values.email,
+        name: values.name,
+        role: 'director',
+        createdAt: new Date().toISOString(),
+      };
+      await setDoc(newInviteRef, inviteData);
+      toast({
+        title: 'Convite Enviado!',
+        description: `Um convite para ${values.name} foi criado. Eles podem agora se registrar como diretoria usando o email ${values.email}.`
+      });
+      directorForm.reset();
+    } catch (error) {
+      console.error('Error sending invite:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao Enviar Convite',
+        description: 'Verifique as permissões de escrita na coleção "invites" e tente novamente.'
+      });
+    } finally {
+      setIsCreatingDirector(false);
+    }
+  }
 
 
   if (isUserLoading) {
@@ -314,25 +354,47 @@ export default function AdminPage() {
 
       {isAuthorized && (
         <>
-          <Card>
+          <div className="grid md:grid-cols-2 gap-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Ações do Administrador</CardTitle>
+                    <CardDescription>Use estas ações para gerenciar os dados da plataforma.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-4">
+                    <div>
+                        <Button variant="destructive" onClick={() => setIsClearConfirmOpen(true)} disabled={isClearing}>
+                            {isClearing ? <Loader2 className="animate-spin mr-2"/> : <Trash2 className="mr-2"/>}
+                            Limpar Perfis de Usuários
+                        </Button>
+                        <p className="text-sm text-muted-foreground mt-2">
+                            Remove todos os perfis de professores, alunos e diretores do banco de dados.
+                        </p>
+                    </div>
+                  </div>
+                </CardContent>
+            </Card>
+            <Card>
               <CardHeader>
-                  <CardTitle>Ações do Administrador</CardTitle>
-                  <CardDescription>Use estas ações para gerenciar os dados da plataforma.</CardDescription>
+                <CardTitle>Convidar Novo Diretor</CardTitle>
+                <CardDescription>
+                  Crie um convite para um novo usuário da diretoria. Eles poderão então criar uma conta com o e-mail convidado.
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-4">
-                  <div>
-                      <Button variant="destructive" onClick={() => setIsClearConfirmOpen(true)} disabled={isClearing}>
-                          {isClearing ? <Loader2 className="animate-spin mr-2"/> : <Trash2 className="mr-2"/>}
-                          Limpar Perfis de Usuários
-                      </Button>
-                      <p className="text-sm text-muted-foreground mt-2">
-                          Remove todos os perfis de professores, alunos e diretores do banco de dados.
-                      </p>
-                  </div>
-                </div>
+                <Form {...directorForm}>
+                  <form onSubmit={directorForm.handleSubmit(handleInviteDirector)} className="space-y-4">
+                    <FormField control={directorForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nome do Diretor</FormLabel><FormControl><Input {...field} placeholder="Nome completo" /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={directorForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email do Diretor</FormLabel><FormControl><Input type="email" {...field} placeholder="email@escola.com" /></FormControl><FormMessage /></FormItem>)} />
+                    <Button type="submit" disabled={isCreatingDirector}>
+                      {isCreatingDirector ? <Loader2 className="animate-spin mr-2" /> : <UserPlus className="mr-2" />}
+                      Enviar Convite
+                    </Button>
+                  </form>
+                </Form>
               </CardContent>
-          </Card>
+            </Card>
+          </div>
         
           <Tabs defaultValue="teachers">
             <TabsList className="grid w-full grid-cols-3">
@@ -416,5 +478,7 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
 
     

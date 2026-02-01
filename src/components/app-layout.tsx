@@ -36,12 +36,12 @@ import { Skeleton } from './ui/skeleton';
 const menuItems = [
   { href: '/', label: 'Início', icon: Home, roles: ['student', 'teacher', 'director', 'admin'] },
   { href: '/diretoria', label: 'Painel Diretoria', icon: Briefcase, roles: ['director', 'admin'] },
-  { href: '/matematica', label: 'Matemática', icon: Calculator, roles: ['student', 'teacher'] },
-  { href: '/portugues', label: 'Português', icon: Book, roles: ['student', 'teacher'] },
-  { href: '/memoria', label: 'Memória', icon: Puzzle, roles: ['student', 'teacher'] },
-  { href: '/tarefas', label: 'Tarefas', icon: ClipboardCheck, roles: ['student', 'teacher'] },
+  { href: '/matematica', label: 'Matemática', icon: Calculator, roles: ['student', 'teacher', 'admin'] },
+  { href: '/portugues', label: 'Português', icon: Book, roles: ['student', 'teacher', 'admin'] },
+  { href: '/memoria', label: 'Memória', icon: Puzzle, roles: ['student', 'teacher', 'admin'] },
+  { href: '/tarefas', label: 'Tarefas', icon: ClipboardCheck, roles: ['student', 'teacher', 'admin'] },
   { href: '/imprimir', label: 'Imprimir', icon: Printer, roles: ['teacher', 'admin'] },
-  { href: '/progresso', label: 'Progresso', icon: BarChart, roles: ['student', 'teacher'] },
+  { href: '/progresso', label: 'Progresso', icon: BarChart, roles: ['student', 'teacher', 'admin'] },
 ];
 
 const settingsMenuItem = { href: '/configuracoes', label: 'Configurações', icon: Settings };
@@ -266,3 +266,5 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+    

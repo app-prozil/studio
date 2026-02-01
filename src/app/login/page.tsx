@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirebase } from '@/firebase/provider';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, User } from 'firebase/auth';
-import { collection, doc, query, where, getDocs, setDoc } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -73,8 +73,30 @@ export default function LoginPage() {
   async function handleSignUp(values: z.infer<typeof signUpSchema>) {
     setIsLoading(true);
     let createdUser: User | null = null;
+    let inviteDocId: string | null = null;
 
     try {
+      // Step 0: If director, check for an invitation
+      if (values.role === 'director') {
+        const invitesRef = collection(firestore, 'invites');
+        const q = query(invitesRef, where("email", "==", values.email), where("role", "==", "director"));
+        const inviteSnap = await getDocs(q);
+        if (inviteSnap.empty) {
+          toast({
+            variant: 'destructive',
+            title: 'Cadastro não autorizado',
+            description: 'Você precisa de um convite de um administrador para se cadastrar como diretoria.',
+          });
+          setIsLoading(false);
+          return;
+        }
+        inviteDocId = inviteSnap.docs[0].id;
+        // Optionally use the name from the invite
+        if (!values.name) {
+          values.name = inviteSnap.docs[0].data().name;
+        }
+      }
+
       // Step 1: Create the auth user
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       createdUser = userCredential.user;
@@ -108,8 +130,13 @@ export default function LoginPage() {
 
       // Step 3: Write the profile data to Firestore and wait for it to complete.
       await setDoc(userDocRef, userData);
+      
+      // Step 4: If it was a director signup, delete the invite
+      if (inviteDocId) {
+        await deleteDoc(doc(firestore, 'invites', inviteDocId));
+      }
 
-      // Step 4: Success! Redirect to the main page.
+      // Step 5: Success! Redirect to the main page.
       router.push('/');
       
     } catch (error: any) {
@@ -297,3 +324,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    

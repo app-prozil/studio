@@ -77,7 +77,7 @@ service cloud.firestore {
       // READ: Any signed-in user can read teacher profiles. This is necessary for
       // students to find their teacher's ProZil ID during signup.
       // Admins and directors can also read.
-      allow read: if isSignedIn() || isDirector();
+      allow read: if isSignedIn();
       
       // WRITE: A user can create/update/delete their OWN teacher profile. 
       // An admin can write to ANY teacher profile.
@@ -131,9 +131,20 @@ service cloud.firestore {
 
     match /directors/{directorId} {
       // READ: Any signed-in user or the admin can read director profiles for transparency.
-      allow read: if isSignedIn() || isAdmin();
+      allow read: if isSignedIn();
       // WRITE: A user can manage their OWN director profile. Admin can manage any.
       allow write: if isOwner(directorId) || isAdmin();
     }
+    
+    match /invites/{inviteId} {
+      // Allow the signup page to query for an email.
+      allow list: if true;
+      // Only admins can create/delete invites.
+      allow write: if isAdmin();
+      // No one needs to read single docs or update them.
+      allow get, update: if false;
+    }
   }
 }
+
+    
