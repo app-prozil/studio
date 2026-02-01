@@ -851,7 +851,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                   {renderTextWithBlank(currentQuestion.text, selectedAnswer || '')}
               </p>
               {currentQuestion.text2 && (
-                  <p className="font-libras text-5xl flex items-center justify-center flex-wrap gap-2">
+                  <p className="font-libras text-7xl">
                       {renderTextWithBlank(currentQuestion.text2, selectedAnswer || '')}
                   </p>
               )}
@@ -865,7 +865,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             {currentQuestion.text}
         </p>
         {currentQuestion.text2 && (
-          <p className="font-libras text-5xl">{currentQuestion.text2}</p>
+          <p className="font-libras text-7xl">{currentQuestion.text2}</p>
         )}
       </div>
     );
