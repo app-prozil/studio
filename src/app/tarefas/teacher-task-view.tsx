@@ -1,6 +1,3 @@
-
-
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -24,9 +21,6 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
 import seedData from '@/lib/seed-exercises.json';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import html2canvas from 'html2canvas';
 import {
   Dialog,
   DialogContent,
@@ -1516,6 +1510,9 @@ export function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | 
     if (!task) return;
     setIsGeneratingPdf(true);
     try {
+      const { default: jsPDF } = await import('jspdf');
+      await import('jspdf-autotable');
+      const { default: html2canvas } = await import('html2canvas');
       const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -1722,6 +1719,8 @@ export function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenC
   const handleGeneratePdf = async () => {
     setIsGeneratingPdf(true);
     try {
+        const { default: jsPDF } = await import('jspdf');
+        await import('jspdf-autotable');
         const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const pageHeight = pdf.internal.pageSize.getHeight();
         const pageWidth = pdf.internal.pageSize.getWidth();

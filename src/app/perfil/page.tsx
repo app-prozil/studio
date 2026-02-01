@@ -15,7 +15,6 @@ import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { manuals, ManualContent } from '@/lib/manuals';
-import jsPDF from 'jspdf';
 
 type StudentProfileData = {
   id: string;
@@ -226,9 +225,10 @@ export default function ProfilePage() {
     }
   };
 
-  const generateManualPdf = (manual: ManualContent) => {
+  const generateManualPdf = async (manual: ManualContent) => {
     setIsGeneratingPdf(true);
     try {
+      const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
