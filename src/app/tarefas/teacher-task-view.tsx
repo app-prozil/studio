@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -333,7 +334,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
         const subjectMatch = subjectFilter === 'all' || ex.subject === subjectFilter;
         const effectiveQuestionType = ex.questionType || 'multiple_choice';
-        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
+        const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === questionTypeFilter;
         return subjectMatch && typeMatch;
     });
   }, [exercises, subjectFilter, questionTypeFilter, isLoading]);
@@ -956,7 +957,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
-      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
@@ -1523,7 +1524,7 @@ export function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | 
       
       const addPageNumbers = () => {
         const pageCount = pdf.internal.pages.length - 1;
-        for(let i = 1; i <= pageCount, i++) {
+        for(let i = 1; i <= pageCount, i++;) {
             pdf.setPage(i);
             pdf.setFontSize(9);
             pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
@@ -1729,7 +1730,7 @@ export function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenC
         
         const addPageNumbers = () => {
             const pageCount = pdf.internal.pages.length - 1;
-            for(let i = 1; i <= pageCount, i++) {
+            for(let i = 1; i <= pageCount, i++;) {
                 pdf.setPage(i);
                 pdf.setFontSize(9);
                 pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
