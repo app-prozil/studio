@@ -77,8 +77,12 @@ service cloud.firestore {
       allow list: if true;
       // Ninguém precisa ler um convite individual.
       allow get: if false;
-      // APENAS admin pode criar/deletar convites.
-      allow write: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+      // APENAS admin pode criar convites.
+      allow create: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+      // Admin pode deletar, ou o usuário consumindo o convite.
+      allow delete: if request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' || request.auth.email == resource.data.email;
+      // Invites não devem ser atualizados.
+      allow update: if false;
     }
   }
 }
