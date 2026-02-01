@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Book, Calculator, Printer, LogIn, Puzzle, User, Briefcase, BarChart, Users } from 'lucide-react';
+import { ArrowRight, Book, Calculator, Printer, LogIn, Puzzle, User, Briefcase, Users, GraduationCap } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -86,12 +86,12 @@ export default function Home() {
             </CardHeader>
             <CardContent className="flex-grow">
               <p className="text-muted-foreground">
-                Acompanhe as atividades de todos os professores e alunos em um só lugar.
+                Acompanhe as métricas gerais de professores, alunos e tarefas em um só lugar.
               </p>
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link href="/diretoria?view=by-student">Acessar Painel<ArrowRight className="ml-2" /></Link>
+                <Link href="/diretoria">Acessar Painel<ArrowRight className="ml-2" /></Link>
               </Button>
             </CardFooter>
           </Card>
@@ -99,35 +99,35 @@ export default function Home() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="w-8 h-8 text-primary" />
-                <span className="text-2xl font-headline">Tarefas por Professor</span>
+                <span className="text-2xl font-headline">Visão por Professor</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-grow">
               <p className="text-muted-foreground">
-                Monitore as tarefas atribuídas por cada professor.
+                Monitore as tarefas atribuídas e o progresso de cada professor.
               </p>
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link href="/diretoria?view=by-teacher">Acessar Tarefas<ArrowRight className="ml-2" /></Link>
+                <Link href="/diretoria/por-professor">Ver Professores<ArrowRight className="ml-2" /></Link>
               </Button>
             </CardFooter>
           </Card>
            <Card className="flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <User className="w-8 h-8 text-primary" />
-                <span className="text-2xl font-headline">Meu Perfil</span>
+                <GraduationCap className="w-8 h-8 text-primary" />
+                <span className="text-2xl font-headline">Visão por Aluno</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-grow">
               <p className="text-muted-foreground">
-               Visualize e gerencie suas informações de perfil.
+               Acompanhe o desempenho e as tarefas de cada aluno individualmente.
               </p>
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link href="/perfil">Acessar Perfil<ArrowRight className="ml-2" /></Link>
+                <Link href="/diretoria/por-aluno">Ver Alunos<ArrowRight className="ml-2" /></Link>
               </Button>
             </CardFooter>
           </Card>

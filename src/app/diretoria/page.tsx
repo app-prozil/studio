@@ -3,19 +3,12 @@
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { collection, collectionGroup, doc, query } from 'firebase/firestore';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Eye, FileText, User, ShieldAlert, LogIn, Briefcase, Download, Users, GraduationCap, ClipboardList, PieChart } from 'lucide-react';
-import { useMemo, useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ShieldAlert, LogIn, Briefcase, Users, GraduationCap, ClipboardList, PieChart, ArrowRight } from 'lucide-react';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { TaskReportDialog, StudentGeneralReportDialog } from '@/app/tarefas/teacher-task-view';
 
 
 type PerformanceQuestion = {
@@ -64,20 +57,6 @@ type Student = {
 export default function DirectorDashboard() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const searchParams = useSearchParams();
-  const view = searchParams.get('view');
-
-  const [activeTab, setActiveTab] = useState('by-teacher');
-  const [viewingReport, setViewingReport] = useState<Task | null>(null);
-  const [viewingGeneralReportFor, setViewingGeneralReportFor] = useState<{name: string, tasks: Task[], teacherName?: string} | null>(null);
-  
-  useEffect(() => {
-    if (view === 'by-student') {
-        setActiveTab('by-student');
-    } else {
-        setActiveTab('by-teacher');
-    }
-  }, [view]);
 
   const directorDocRef = useMemoFirebase(() => (user ? doc(firestore, 'directors', user.uid) : null), [firestore, user]);
   const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
@@ -115,71 +94,14 @@ export default function DirectorDashboard() {
   }, [allTasks, teachers, students]);
 
 
-  const { tasksByTeacher, tasksByStudent } = useMemo(() => {
-    if (!allTasks || !teachers || !students) {
-      return { tasksByTeacher: {}, tasksByStudent: {} };
-    }
-
-    const studentMap = new Map(students.map(s => [s.id, s]));
-    const validStudentIds = new Set(students.map(s => s.id));
-
-    const processedTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values())
-      .filter(task => validStudentIds.has(task.studentId))
-      .map(task => ({
-          ...task,
-          studentName: studentMap.get(task.studentId)?.name || task.studentName || 'Nome não encontrado'
-      }));
-
-    const groupedByTeacherId = processedTasks.reduce((acc: Record<string, Task[]>, task: Task) => {
-      const teacherId = task.teacherId;
-      if (!acc[teacherId]) {
-        acc[teacherId] = [];
-      }
-      acc[teacherId].push(task);
-      return acc;
-    }, {});
-
-    const tasksByTeacher: Record<string, { tasks: Task[], teacher: Teacher }> = {};
-    for (const teacher of teachers) {
-        if (groupedByTeacherId[teacher.id]) {
-            tasksByTeacher[teacher.name] = {
-                teacher: teacher,
-                tasks: groupedByTeacherId[teacher.id].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            };
-        }
-    }
-    
-    const tasksByStudent = processedTasks.reduce((acc: Record<string, Task[]>, task: Task) => {
-        const studentId = task.studentId;
-        if (!acc[studentId]) {
-            acc[studentId] = [];
-        }
-        acc[studentId].push(task);
-        return acc;
-    }, {});
-
-    for (const studentId in tasksByStudent) {
-        tasksByStudent[studentId].sort((a, b) => {
-            if (a.isCompleted !== b.isCompleted) {
-            return a.isCompleted ? 1 : -1;
-            }
-            return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
-        });
-    }
-
-    return { tasksByTeacher, tasksByStudent };
-
-  }, [allTasks, teachers, students]);
-
   if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-1/3" />
         <Skeleton className="h-6 w-2/3" />
         <div className="mt-8 space-y-4">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
         </div>
       </div>
     );
@@ -227,7 +149,7 @@ export default function DirectorDashboard() {
           <Briefcase className="w-10 h-10 text-primary"/>
           Painel da Diretoria
         </h1>
-        <p className="text-muted-foreground">Acompanhe as atividades de todos os professores e alunos.</p>
+        <p className="text-muted-foreground">Acompanhe as métricas e acesse as visões detalhadas de professores e alunos.</p>
       </div>
       
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -269,141 +191,51 @@ export default function DirectorDashboard() {
         </Card>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="by-teacher">Visão por Professor</TabsTrigger>
-          <TabsTrigger value="by-student">Visão por Aluno</TabsTrigger>
-        </TabsList>
-        <TabsContent value="by-teacher" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tarefas por Professor</CardTitle>
-              <CardDescription>Veja todas as tarefas atribuídas, agrupadas por professor.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {Object.keys(tasksByTeacher).length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">Nenhuma tarefa atribuída por professores foi encontrada.</div>
-              ) : (
-                <Accordion type="multiple" className="w-full">
-                  {Object.entries(tasksByTeacher).map(([teacherName, { tasks, teacher }]) => (
-                    <AccordionItem value={teacher.id} key={teacher.id}>
-                      <AccordionTrigger className="text-lg font-medium hover:no-underline">
-                        <div className="flex items-center gap-3">
-                          <User className="h-5 w-5 text-primary" />
-                          {teacherName}
-                          <Badge variant="outline">{tasks.length} tarefas</Badge>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                         <ul className="space-y-3 pt-2">
-                          {tasks.map(task => (
-                             <li key={task.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg bg-background/50 gap-4">
-                                 <div className="grid gap-1.5 flex-1">
-                                     <p className={`font-semibold ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                                       {task.title}
-                                     </p>
-                                     <p className="text-sm text-muted-foreground">Para: {task.studentName}</p>
-                                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-1">
-                                         <Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
-                                         <span>
-                                          Entrega: {format(new Date(task.dueDate), "dd/MM/yyyy")}
-                                         </span>
-                                         <span className="flex items-center gap-1">
-                                          <FileText className="w-3 h-3"/> {task.questions?.length || 0} questões
-                                         </span>
-                                     </div>
-                                 </div>
-                                 <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-                                    <Button variant="outline" size="sm" onClick={() => setViewingReport(task)}>
-                                        <Eye className="mr-2 h-3 w-3"/> Ver Relatório
-                                    </Button>
-                                 </div>
-                              </li>
-                          ))}
-                        </ul>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-         <TabsContent value="by-student" className="mt-6">
-           <Card>
-            <CardHeader>
-              <CardTitle>Tarefas por Aluno</CardTitle>
-              <CardDescription>Veja o desempenho e as tarefas de cada aluno individualmente.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {Object.keys(tasksByStudent).length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">Nenhuma tarefa encontrada.</div>
-              ) : (
-                <Accordion type="multiple" className="w-full">
-                  {Object.entries(tasksByStudent).map(([studentId, studentTasks]) => {
-                    const studentName = studentTasks[0]?.studentName || studentId;
-                    return (
-                    <AccordionItem value={studentId} key={studentId}>
-                      <AccordionTrigger className="text-lg font-medium hover:no-underline">
-                        <div className="flex items-center gap-3">
-                          <GraduationCap className="h-5 w-5 text-primary" />
-                          {studentName}
-                          <Badge variant="outline">{studentTasks.length} tarefas</Badge>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="flex justify-end pb-2 -mt-2">
-                           <Button 
-                              variant="secondary" 
-                              size="sm" 
-                              onClick={() => setViewingGeneralReportFor({ name: studentName, tasks: studentTasks, teacherName: studentTasks[0]?.teacherName })}>
-                              <Download className="mr-2 h-4 w-4"/>
-                              Gerar Relatório Geral do Aluno
-                          </Button>
-                        </div>
-                         <ul className="space-y-3 pt-2">
-                          {studentTasks.map(task => (
-                             <li key={task.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg bg-background/50 gap-4">
-                                 <div className="grid gap-1.5 flex-1">
-                                     <p className={`font-semibold ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                                       {task.title}
-                                     </p>
-                                     <p className="text-sm text-muted-foreground">Por: {task.teacherName}</p>
-                                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-1">
-                                         <Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
-                                         <span>
-                                          Entrega: {format(new Date(task.dueDate), "dd/MM/yyyy")}
-                                         </span>
-                                     </div>
-                                 </div>
-                                 <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-                                    <Button variant="outline" size="sm" onClick={() => setViewingReport(task)}>
-                                        <Eye className="mr-2 h-3 w-3"/> Ver Relatório da Tarefa
-                                    </Button>
-                                 </div>
-                              </li>
-                          ))}
-                        </ul>
-                      </AccordionContent>
-                    </AccordionItem>
-                  )})}
-                </Accordion>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-      
-      <TaskReportDialog task={viewingReport} isOpen={!!viewingReport} onOpenChange={() => setViewingReport(null)} />
-      {viewingGeneralReportFor && (
-          <StudentGeneralReportDialog 
-              studentName={viewingGeneralReportFor.name}
-              tasks={viewingGeneralReportFor.tasks}
-              teacherName={viewingGeneralReportFor.teacherName}
-              isOpen={!!viewingGeneralReportFor} 
-              onOpenChange={() => setViewingGeneralReportFor(null)} 
-          />
-      )}
+       <div className="grid gap-6 md:grid-cols-2">
+        <Card className="flex flex-col">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-8 h-8 text-primary" />
+              <span className="text-2xl font-headline">Visão por Professor</span>
+            </CardTitle>
+            <CardDescription>
+              Monitore as tarefas atribuídas e o progresso de cada professor.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow">
+             <p className="text-muted-foreground">
+                Acompanhe as atividades, veja relatórios detalhados por tarefa e entenda como cada professor está utilizando a plataforma.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link href="/diretoria/por-professor">Acessar Visão por Professor <ArrowRight className="ml-2" /></Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card className="flex flex-col">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <GraduationCap className="w-8 h-8 text-primary" />
+              <span className="text-2xl font-headline">Visão por Aluno</span>
+            </CardTitle>
+            <CardDescription>
+              Acompanhe o desempenho e as tarefas de cada aluno individualmente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow">
+             <p className="text-muted-foreground">
+                Visualize todas as tarefas de um aluno, gere relatórios de desempenho geral e identifique pontos de atenção.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link href="/diretoria/por-aluno">Acessar Visão por Aluno <ArrowRight className="ml-2" /></Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }
