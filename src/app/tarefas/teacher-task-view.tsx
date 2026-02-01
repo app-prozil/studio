@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -563,7 +556,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormControl>
                     <Textarea 
                       {...field} 
-                      className="font-libras font-black text-4xl min-h-[120px]"
+                      className="font-libras font-black text-7xl min-h-[200px]"
                       onFocus={() => setFocusedInput('librasText')} 
                       placeholder="Insira aqui o conteúdo em Libras"
                     />
@@ -2028,5 +2021,3 @@ export default function TeacherTaskView({ teacherId }: { teacherId: string }) {
     </div>
   );
 }
-
-    
