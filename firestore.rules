@@ -15,11 +15,6 @@ service cloud.firestore {
       // The admin's Firebase Auth UID is 'yUKh2hnexMdiTd2t9rXEU0SgjPk1'.
       return isSignedIn() && request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
     }
-
-    function isOwner(userId) {
-      // Check if the requesting user is the owner of the document.
-      return isSignedIn() && request.auth.uid == userId;
-    }
     
     function isTeacher() {
       // Check if the requesting user has a profile in the /teachers collection.
@@ -141,8 +136,7 @@ service cloud.firestore {
     }
 
     match /directors/{directorId} {
-      // READ: Any signed-in user can read a director's profile. This resolves a circular dependency
-      // for other rules that call isDirector().
+      // READ: Any signed-in user can read a director's profile.
       allow get: if isSignedIn();
       
       // LIST: Only Admins can list all directors.
@@ -155,10 +149,10 @@ service cloud.firestore {
     match /invites/{inviteId} {
       // Allow the signup page to query for an email.
       allow list: if true;
-      // Only admins can create/delete invites.
-      allow create, delete: if isAdmin();
-      // No one needs to read single docs or update them.
-      allow get, update: if false;
+      // Only admins can manage invites (create, update, delete).
+      allow write: if isAdmin();
+      // No one needs to read a single invite document.
+      allow get: if false;
     }
   }
 }
