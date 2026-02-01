@@ -2,6 +2,7 @@
 
 
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -564,6 +565,27 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                       placeholder="Insira aqui o conteúdo em Libras"
                     />
                   </FormControl>
+                  <div className="mt-2 space-y-2 rounded-md border bg-muted p-3">
+                    <Label className="text-xs">Inserir Caractere Libras</Label>
+                    <div className="flex flex-wrap gap-1">
+                      {specialCharsCategories['Libras (Regular)'].map((char) => (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          key={`libras-char-${char}`}
+                          className="h-9 w-9 font-libras text-2xl"
+                          onClick={() => {
+                            form.setValue('librasText', (field.value || '') + char, {
+                              shouldValidate: true,
+                            });
+                          }}
+                        >
+                          {char}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}/>
@@ -1466,7 +1488,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                     ))
                   ) : (
                     <div className="text-center text-muted-foreground py-8">
-                      Nenhum exercício encontrado. Crie alguns no Banco de Exercícios.
+                      Nenhum exercício encontrado para este filtro. Crie alguns no Banco de Exercícios.
                     </div>
                   )}
               </div>
