@@ -306,15 +306,13 @@ export default function ProgressPage() {
   const firestore = useFirestore();
   const isAdmin = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
-  // Sequentially check for user profile
   const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
 
-  const shouldCheckStudent = !isAdmin && !isTeacherLoading && !teacherProfile;
-  const studentDocRef = useMemoFirebase(() => (shouldCheckStudent && user ? doc(firestore, 'students', user.uid) : null), [shouldCheckStudent, user]);
+  const studentDocRef = useMemoFirebase(() => (user ? doc(firestore, 'students', user.uid) : null), [firestore, user]);
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
-  const isLoading = isUserLoading || isTeacherLoading || (shouldCheckStudent && isStudentLoading);
+  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading;
 
   if (isLoading) {
     return (

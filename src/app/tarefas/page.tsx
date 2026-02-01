@@ -16,19 +16,16 @@ export default function TarefasPage() {
   const firestore = useFirestore();
   const isAdmin = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
-  // Sequentially check for user profile
   const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
 
-  const shouldCheckStudent = !isAdmin && !isTeacherLoading && !teacherProfile;
-  const studentDocRef = useMemoFirebase(() => (shouldCheckStudent && user ? doc(firestore, 'students', user.uid) : null), [shouldCheckStudent, user]);
+  const studentDocRef = useMemoFirebase(() => (user ? doc(firestore, 'students', user.uid) : null), [firestore, user]);
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
-  const shouldCheckDirector = !isAdmin && !isTeacherLoading && !teacherProfile && !isStudentLoading && !studentProfile;
-  const directorDocRef = useMemoFirebase(() => (shouldCheckDirector && user ? doc(firestore, 'directors', user.uid) : null), [shouldCheckDirector, user]);
+  const directorDocRef = useMemoFirebase(() => (user ? doc(firestore, 'directors', user.uid) : null), [firestore, user]);
   const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
 
-  const isLoading = isUserLoading || isTeacherLoading || (shouldCheckStudent && isStudentLoading) || (shouldCheckDirector && isDirectorLoading);
+  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || isDirectorLoading;
 
   if (isLoading) {
     return (

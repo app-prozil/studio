@@ -20,18 +20,15 @@ export default function Home() {
   const firestore = useFirestore();
   const isAdmin = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
-  // Sequentially check for user profile to determine role
   const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
 
-  const shouldCheckStudent = !isAdmin && !isTeacherLoading && !teacherProfile;
-  const studentDocRef = useMemoFirebase(() => (shouldCheckStudent && user ? doc(firestore, 'students', user.uid) : null), [shouldCheckStudent, user]);
+  const studentDocRef = useMemoFirebase(() => (user ? doc(firestore, 'students', user.uid) : null), [firestore, user]);
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
   
   const isStudent = !!studentProfile;
   const isTeacherOrAdmin = !!teacherProfile || isAdmin;
   
-  // Fetch tasks only if the user is a student
   const tasksQuery = useMemoFirebase(() => 
     (isStudent && user) 
       ? query(collection(firestore, 'students', user.uid, 'tasks'), where('isCompleted', '==', false)) 
@@ -44,8 +41,7 @@ export default function Home() {
   const hasPortugueseTask = tasks?.some(t => t.subject === 'portugues');
   const hasMemoryTask = tasks?.some(t => t.subject === 'memoria');
 
-  // Unified loading state
-  const isLoading = isUserLoading || isTeacherLoading || (shouldCheckStudent && isStudentLoading) || (isStudent && isLoadingTasks);
+  const isLoading = isUserLoading || isTeacherLoading || isStudentLoading || (isStudent && isLoadingTasks);
 
 
   if (isLoading) {
