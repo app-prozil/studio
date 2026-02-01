@@ -74,6 +74,7 @@ export default function LoginPage() {
     setIsLoading(true);
     let createdUser: User | null = null;
     let inviteDocId: string | null = null;
+    const roleCollection = values.role === 'teacher' ? 'teachers' : values.role === 'student' ? 'students' : 'directors';
 
     try {
       // Step 0: If director, check for an invitation
@@ -106,15 +107,6 @@ export default function LoginPage() {
       const randomDigits = Math.floor(100000 + Math.random() * 900000);
       const prozilId = `${firstName}-${randomDigits}`;
 
-      let roleCollection;
-      if (values.role === 'teacher') {
-        roleCollection = 'teachers';
-      } else if (values.role === 'student') {
-        roleCollection = 'students';
-      } else {
-        roleCollection = 'directors';
-      }
-
       const userDocRef = doc(firestore, roleCollection, createdUser.uid);
       
       const userData: { [key: string]: any } = {
@@ -141,8 +133,16 @@ export default function LoginPage() {
       
     } catch (error: any) {
       // If the user was created but the process failed afterwards (e.g., Firestore write failed),
-      // we must delete the auth user to prevent an orphaned account.
+      // we must clean up to prevent an orphaned account.
       if (createdUser) {
+        // Also delete the Firestore profile document that might have been created
+        const userDocRef = doc(firestore, roleCollection, createdUser.uid);
+        try {
+          await deleteDoc(userDocRef);
+        } catch (firestoreDeleteError) {
+          console.error("CRITICAL: Failed to clean up orphaned Firestore profile. Please delete manually:", userDocRef.path, firestoreDeleteError);
+        }
+        
         try {
           await createdUser.delete();
         } catch (deleteError) {
@@ -324,5 +324,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
