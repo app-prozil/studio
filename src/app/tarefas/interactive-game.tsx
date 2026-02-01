@@ -115,6 +115,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const [finalScore, setFinalScore] = useState(0);
   const [showCorrectAnswerModal, setShowCorrectAnswerModal] = useState(false);
   const [mistakeMade, setMistakeMade] = useState(false);
+  const [showHandAnimation, setShowHandAnimation] = useState(false);
+  const [handState, setHandState] = useState<'pointing' | 'thumbs-up'>('pointing');
 
   // State for organize_syllables game
   const [constructedSyllables, setConstructedSyllables] = useState<string[]>([]);
@@ -456,12 +458,26 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
     if (shouldAdvance) {
         setIsCorrect(true);
-        triggerConfettiExplosion();
-        setShowCorrectAnswerModal(true);
+        
+        // New animation sequence
+        setHandState('pointing');
+        setShowHandAnimation(true);
+
         setTimeout(() => {
+            setHandState('thumbs-up');
+        }, 1000);
+
+        setTimeout(() => {
+            triggerConfettiExplosion();
+            setShowCorrectAnswerModal(true);
+        }, 1500);
+
+        setTimeout(() => {
+            setShowHandAnimation(false);
             setShowCorrectAnswerModal(false);
             handleNextQuestion(updatedQuestions);
-        }, 1800);
+        }, 3300);
+
     } else {
         setIsCorrect(false);
         if (currentQuestion.status === 'unanswered') {
@@ -847,7 +863,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     if (questionType === 'fill_in_the_blank') {
         return (
           <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
-              <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-3xl sm:text-5xl'} flex items-center justify-center flex-wrap gap-2`}>
+              <p className={'text-3xl sm:text-5xl flex items-center justify-center flex-wrap gap-2'}>
                   {renderTextWithBlank(currentQuestion.text, selectedAnswer || '')}
               </p>
               {currentQuestion.text2 && (
@@ -861,7 +877,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     
     return (
       <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
-        <p className={`${subject === 'matematica' ? 'text-4xl sm:text-6xl font-mono tracking-widest' : 'text-4xl sm:text-5xl'}`}>
+        <p className="text-4xl sm:text-5xl">
             {currentQuestion.text}
         </p>
         {currentQuestion.text2 && (
@@ -885,6 +901,19 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   return (
     <>
+      <Dialog open={showHandAnimation} onOpenChange={setShowHandAnimation}>
+        <DialogContent className="max-w-md text-center bg-transparent border-none shadow-none" onPointerDownOutside={(e) => e.preventDefault()}>
+            <div className="flex justify-center items-center h-48 overflow-hidden">
+                {handState === 'pointing' && (
+                    <div className="text-9xl animate-hand-slide-in">👉</div>
+                )}
+                {handState === 'thumbs-up' && (
+                    <div className="text-9xl animate-thumbs-up-pop">👍</div>
+                )}
+            </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showCorrectAnswerModal} onOpenChange={setShowCorrectAnswerModal}>
         <DialogContent className="max-w-md text-center bg-transparent border-none shadow-none" onPointerDownOutside={(e) => e.preventDefault()}>
             <DialogHeader>
