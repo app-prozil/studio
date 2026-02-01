@@ -117,8 +117,8 @@ service cloud.firestore {
     match /directors/{directorId} {
       // Anyone signed in can view a director's public profile.
       allow get: if isSignedIn();
-      // Directors and Admin can list all directors.
-      allow list: if isAdmin() || isDirector(request.auth.uid);
+      // Only the Admin can list directors (this is only used on the admin page).
+      allow list: if isAdmin();
       // Only the owner or an admin can write to a director's profile.
       allow write: if isAdmin() || isOwner(directorId);
     }
