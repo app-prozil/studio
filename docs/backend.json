@@ -139,6 +139,10 @@
           "type": "string",
           "description": "Optional second part of the question text, for better organization."
         },
+        "librasText": {
+          "type": "string",
+          "description": "Optional text content specifically for Libras characters."
+        },
         "options": {
           "type": "array",
           "description": "Options for the question. For multiple_choice/fill_in_the_blank, there are 3 choices. For organize_syllables, these are the syllables to be organized (2-6). For memory_game, these are the items for the cards, in pairs. Not used for guess_the_word.",
@@ -280,6 +284,9 @@
                 "type": "string"
               },
               "text2": {
+                "type": "string"
+              },
+              "librasText": {
                 "type": "string"
               },
               "options": {

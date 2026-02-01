@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -77,6 +78,7 @@ import { cn } from '@/lib/utils';
 const performanceQuestionSchema = z.object({
   text: z.string(),
   text2: z.string().optional(),
+  librasText: z.string().optional(),
   options: z.array(z.string()),
   answer: z.string(),
   questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game', 'guess_the_word', 'organize_categories', 'organize_sentence', 'match_the_pairs']).optional(),
@@ -113,6 +115,7 @@ const exerciseObjectSchema = z.object({
   questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game', 'guess_the_word', 'organize_categories', 'organize_sentence', 'match_the_pairs']),
   text: z.string().min(3, 'A pergunta ou dica deve ter pelo menos 3 caracteres.'),
   text2: z.string().optional(),
+  librasText: z.string().optional(),
   options: z.array(z.string()).min(0),
   answer: z.string(),
   subject: z.enum(['matematica', 'portugues', 'memoria']),
@@ -185,6 +188,7 @@ type Exercise = z.infer<typeof exerciseSchema>;
 type PerformanceQuestion = {
   text: string;
   text2?: string;
+  librasText?: string;
   options: string[];
   answer: string;
   questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs';
@@ -253,7 +257,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   
   const form = useForm<Exercise>({
     resolver: zodResolver(exerciseSchema),
-    defaultValues: { text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice', categories: ['Categoria 1', 'Categoria 2'], categoryItems: [{ item: '', category: 'Categoria 1'}, { item: '', category: 'Categoria 1'}] },
+    defaultValues: { text: '', text2: '', librasText: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice', categories: ['Categoria 1', 'Categoria 2'], categoryItems: [{ item: '', category: 'Categoria 1'}, { item: '', category: 'Categoria 1'}] },
   });
   
   const { watch, setValue, control } = form;
@@ -319,7 +323,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   };
 
   const resetForm = useCallback(() => {
-    form.reset({ text: '', text2: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice', categories: ['Categoria 1', 'Categoria 2'], categoryItems: [{ item: '', category: 'Categoria 1'}, { item: '', category: 'Categoria 1'}] });
+    form.reset({ text: '', text2: '', librasText: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice', categories: ['Categoria 1', 'Categoria 2'], categoryItems: [{ item: '', category: 'Categoria 1'}, { item: '', category: 'Categoria 1'}] });
   }, [form, teacherId]);
 
   const filteredExercises = useMemo(() => {
@@ -419,6 +423,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         ...finalValues,
         text: values.text.toUpperCase(),
         text2: values.text2 ? values.text2.toUpperCase() : '',
+        librasText: values.librasText ? values.librasText.toUpperCase() : '',
         options: optionsValue,
         answer: answerValue,
     };
@@ -532,24 +537,34 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 </FormItem>
               )}/>
 
-              {(questionType !== 'guess_the_word' && questionType !== 'organize_categories' && questionType !== 'organize_sentence' && questionType !== 'match_the_pairs') && (
-                <FormField control={form.control} name="text2" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Imagem / Complemento (use para Libras)</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field} 
-                        className="font-libras text-2xl"
-                        onFocus={() => setFocusedInput('text2')} 
-                        placeholder={
-                          questionType === 'organize_syllables' ? 'Ex: 🦋' : 'Ex: ☀️'
-                        } 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}/>
-              )}
+              <FormField control={form.control} name="text2" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Complemento da Pergunta (Opcional)</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field} 
+                      onFocus={() => setFocusedInput('text2')} 
+                      placeholder="Ex: ☀️ (emoji) ou texto adicional" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}/>
+
+              <FormField control={form.control} name="librasText" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Conteúdo em Libras (Opcional)</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field} 
+                      className="font-libras text-2xl"
+                      onFocus={() => setFocusedInput('librasText')} 
+                      placeholder="Insira aqui o conteúdo em Libras"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}/>
 
               <div className="space-y-3 rounded-lg border p-4">
                 <Label className="font-medium">Inserir Símbolo</Label>
@@ -826,7 +841,9 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
             {filteredExercises.length > 0 ? filteredExercises.map(ex => (
               <li key={ex.id} className="p-3 border rounded-lg flex justify-between items-start gap-2">
                 <div className="flex-1">
-                  <p className="font-semibold">{ex.text}{ex.text2 && ` ${ex.text2}`}</p>
+                  <p className="font-semibold">{ex.text}</p>
+                  {ex.text2 && <p className="text-sm text-muted-foreground">{ex.text2}</p>}
+                  {ex.librasText && <p className="text-sm font-libras text-muted-foreground">{ex.librasText}</p>}
                   <p className="text-sm text-muted-foreground">Resposta: {ex.answer}</p>
                   <div className="flex gap-2 mt-1 flex-wrap">
                     <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : ex.subject === 'portugues' ? 'Português' : 'Memória'}</Badge>
@@ -975,7 +992,8 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   useEffect(() => {
     form.setValue('questions', selectedExercises.map(e => ({
       text: e.text, 
-      text2: e.text2, 
+      text2: e.text2,
+      librasText: e.librasText, 
       options: e.options, 
       answer: e.answer, 
       questionType: e.questionType,
@@ -1066,6 +1084,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
         questionType: q.questionType || 'multiple_choice',
       };
       if (q.text2) newQ.text2 = q.text2;
+      if (q.librasText) newQ.librasText = q.librasText;
       if (q.studentAnswer) newQ.studentAnswer = q.studentAnswer;
       if (q.attempts) newQ.attempts = q.attempts;
       if (q.status) newQ.status = q.status;

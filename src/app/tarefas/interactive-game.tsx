@@ -16,6 +16,7 @@ import confetti from 'canvas-confetti';
 type Question = {
   text: string;
   text2?: string;
+  librasText?: string;
   options: string[];
   answer: string;
   questionType?: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs';
@@ -465,18 +466,18 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
         setTimeout(() => {
             setHandState('thumbs-up');
-        }, 2000);
+        }, 3500);
 
         setTimeout(() => {
             triggerConfettiExplosion();
             setShowCorrectAnswerModal(true);
-        }, 3500);
+        }, 5000);
 
         setTimeout(() => {
             setShowHandAnimation(false);
             setShowCorrectAnswerModal(false);
             handleNextQuestion(updatedQuestions);
-        }, 5500);
+        }, 7000);
 
     } else {
         setIsCorrect(false);
@@ -867,9 +868,12 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                   {renderTextWithBlank(currentQuestion.text, selectedAnswer || '')}
               </p>
               {currentQuestion.text2 && (
-                  <p className="font-libras text-7xl">
-                      {renderTextWithBlank(currentQuestion.text2, selectedAnswer || '')}
+                  <p className="text-5xl mt-4">
+                      {currentQuestion.text2}
                   </p>
+              )}
+               {currentQuestion.librasText && (
+                <p className="font-libras text-7xl mt-4">{currentQuestion.librasText}</p>
               )}
           </div>
         );
@@ -879,7 +883,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         <div className="font-bold text-center flex flex-col items-center justify-center gap-4">
             <p className="text-4xl sm:text-5xl">{currentQuestion.text}</p>
             {currentQuestion.text2 && (
-                <p className="font-libras text-7xl mt-4">{currentQuestion.text2}</p>
+                <p className="text-5xl mt-4">{currentQuestion.text2}</p>
+            )}
+            {currentQuestion.librasText && (
+              <p className="font-libras text-7xl mt-4">{currentQuestion.librasText}</p>
             )}
         </div>
     );
@@ -918,9 +925,10 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
       <Dialog open={showCorrectAnswerModal} onOpenChange={setShowCorrectAnswerModal}>
         <DialogContent className="max-w-md text-center bg-transparent border-none shadow-none" onPointerDownOutside={(e) => e.preventDefault()}>
             <DialogHeader>
-                <DialogTitle className="text-5xl font-bold font-headline mx-auto text-success">
+                <DialogTitle className="sr-only">Muito Bem!</DialogTitle>
+                <div className="text-5xl font-bold font-headline mx-auto text-success">
                     MUITO BEM!
-                </DialogTitle>
+                </div>
             </DialogHeader>
             <div className="flex justify-center items-center p-6 -mt-4">
                 <CheckCircle className="w-32 h-32 text-success" />
