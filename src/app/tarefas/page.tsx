@@ -14,6 +14,7 @@ import DirectorDashboard from '../diretoria/page';
 export default function TarefasPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const isAdmin = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
   const teacherDocRef = useMemoFirebase(
     () => (user ? doc(firestore, 'teachers', user.uid) : null),
@@ -28,8 +29,8 @@ export default function TarefasPage() {
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
   const directorDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'directors', user.uid) : null),
-    [firestore, user]
+    () => (user && !isAdmin ? doc(firestore, 'directors', user.uid) : null),
+    [firestore, user, isAdmin]
   );
   const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
 

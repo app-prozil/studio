@@ -60,7 +60,7 @@ export default function DirectorDashboard() {
   const [viewingReport, setViewingReport] = useState<Task | null>(null);
   const [viewingGeneralReportFor, setViewingGeneralReportFor] = useState<{name: string, tasks: Task[], teacherName?: string} | null>(null);
   
-  const directorDocRef = useMemoFirebase(() => (user ? doc(firestore, 'directors', user.uid) : null), [firestore, user]);
+  const directorDocRef = useMemoFirebase(() => (user && user.uid !== 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' ? doc(firestore, 'directors', user.uid) : null), [firestore, user]);
   const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
   const isAuthorized = !!directorProfile || user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   

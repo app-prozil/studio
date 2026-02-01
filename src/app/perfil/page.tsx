@@ -150,7 +150,8 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [prozilIdInput, setProzilIdInput] = useState('');
   const [isLinking, setIsLinking] = useState(false);
-
+  
+  const isAdmin = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
   const teacherDocRef = useMemoFirebase(
     () => (user ? doc(firestore, 'teachers', user.uid) : null),
@@ -165,8 +166,8 @@ export default function ProfilePage() {
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc<StudentProfileData>(studentDocRef);
 
   const directorDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'directors', user.uid) : null),
-    [firestore, user]
+    () => (user && !isAdmin ? doc(firestore, 'directors', user.uid) : null),
+    [firestore, user, isAdmin]
   );
   const { data: directorProfile, isLoading: isDirectorLoading } = useDoc(directorDocRef);
 
@@ -277,7 +278,7 @@ export default function ProfilePage() {
   }
 
   const displayName = profile?.name || user.displayName || 'Usuário';
-  const userRole = teacherProfile ? 'Professor' : studentProfile ? 'Aluno' : directorProfile ? 'Diretoria' : 'Não definido';
+  const userRole = isAdmin ? 'Administrador' : teacherProfile ? 'Professor' : studentProfile ? 'Aluno' : directorProfile ? 'Diretoria' : 'Não definido';
   
   let descriptionText = '';
   if (teacherProfile) {
