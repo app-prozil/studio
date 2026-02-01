@@ -7,11 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Loader2, Trash2, ShieldAlert, LogIn } from 'lucide-react';
+import { Copy, Loader2, Trash2, ShieldAlert, LogIn, BookOpen, Download } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { manuals, ManualContent } from '@/lib/manuals';
+import jsPDF from 'jspdf';
 
 type StudentProfileData = {
   id: string;
@@ -150,6 +154,8 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [prozilIdInput, setProzilIdInput] = useState('');
   const [isLinking, setIsLinking] = useState(false);
+  const [isManualOpen, setIsManualOpen] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   const isAdmin = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
@@ -166,6 +172,8 @@ export default function ProfilePage() {
   const profile = teacherProfile || studentProfile || directorProfile;
   
   const idToDisplay = profile?.prozilId;
+  const userRole = isAdmin ? 'admin' : teacherProfile ? 'teacher' : studentProfile ? 'student' : directorProfile ? 'director' : 'guest';
+  const manualContent = manuals[userRole] || manuals['student'];
 
   const handleCopyId = () => {
     if (idToDisplay) {
@@ -218,6 +226,63 @@ export default function ProfilePage() {
     }
   };
 
+  const generateManualPdf = (manual: ManualContent) => {
+    setIsGeneratingPdf(true);
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 15;
+      let y = margin;
+
+      const checkAndAddPage = (requiredHeight: number) => {
+        if (y + requiredHeight > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+      };
+
+      // Título
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.text(manual.title, pageWidth / 2, y, { align: 'center' });
+      y += 15;
+
+      // Introdução
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'italic');
+      const introLines = doc.splitTextToSize(manual.introduction, pageWidth - margin * 2);
+      checkAndAddPage(introLines.length * 7);
+      doc.text(introLines, margin, y);
+      y += introLines.length * 7 + 10;
+
+      // Seções
+      manual.sections.forEach(section => {
+        checkAndAddPage(17); // Altura da seção (título + parágrafo)
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(section.title, margin, y);
+        y += 10;
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        section.content.forEach(paragraph => {
+          const paraLines = doc.splitTextToSize(paragraph, pageWidth - margin * 2);
+          checkAndAddPage(paraLines.length * 7 + 5);
+          doc.text(paraLines, margin, y);
+          y += paraLines.length * 7 + 5;
+        });
+        y += 5; 
+      });
+
+      doc.save(`manual_prozil_${userRole}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({ variant: "destructive", title: "Erro ao gerar PDF", description: "Ocorreu um erro ao tentar criar o arquivo."});
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -269,7 +334,7 @@ export default function ProfilePage() {
   }
 
   const displayName = profile?.name || user.displayName || 'Usuário';
-  const userRole = isAdmin ? 'Administrador' : teacherProfile ? 'Professor' : studentProfile ? 'Aluno' : directorProfile ? 'Diretoria' : 'Não definido';
+  const roleLabel = isAdmin ? 'Administrador' : teacherProfile ? 'Professor' : studentProfile ? 'Aluno' : directorProfile ? 'Diretoria' : 'Não definido';
   
   let descriptionText = '';
   if (teacherProfile) {
@@ -291,7 +356,7 @@ export default function ProfilePage() {
               <CardTitle>{displayName}</CardTitle>
               <CardDescription>{user.email}</CardDescription>
             </div>
-            <div className="text-sm font-medium bg-primary/10 text-primary py-1 px-3 rounded-full">{userRole}</div>
+            <div className="text-sm font-medium bg-primary/10 text-primary py-1 px-3 rounded-full">{roleLabel}</div>
           </div>
         </CardHeader>
         <CardContent>
@@ -354,6 +419,49 @@ export default function ProfilePage() {
             </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Manual de Uso - ProZil</CardTitle>
+          <CardDescription>Acesse o guia completo para utilizar todas as funcionalidades disponíveis para o seu perfil.</CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Button onClick={() => setIsManualOpen(true)}>
+            <BookOpen className="mr-2 h-4 w-4" />
+            Abrir Manual do {roleLabel}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <Dialog open={isManualOpen} onOpenChange={setIsManualOpen}>
+        <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">{manualContent.title}</DialogTitle>
+            <DialogDescription>{manualContent.introduction}</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 my-4 pr-6">
+            <div className="space-y-6 text-sm">
+              {manualContent.sections.map((section, index) => (
+                <div key={index}>
+                  <h3 className="font-semibold text-lg mb-2">{section.title}</h3>
+                  <div className="space-y-2 text-muted-foreground">
+                    {section.content.map((p, i) => <p key={i}>{p}</p>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Fechar</Button>
+            </DialogClose>
+            <Button onClick={() => generateManualPdf(manualContent)} disabled={isGeneratingPdf}>
+              {isGeneratingPdf ? <Loader2 className="animate-spin mr-2" /> : <Download className="mr-2" />}
+              Baixar PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
