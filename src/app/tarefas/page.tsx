@@ -76,7 +76,7 @@ export default function TarefasPage() {
     );
   }
 
-  if (directorProfile || isAdmin) {
+  if (directorProfile) {
     return <DirectorDashboard />;
   }
 

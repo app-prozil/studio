@@ -35,7 +35,7 @@ import { Skeleton } from './ui/skeleton';
 
 const menuItems = [
   { href: '/', label: 'Início', icon: Home, roles: ['student', 'teacher', 'director', 'admin'] },
-  { href: '/diretoria', label: 'Painel Diretoria', icon: Briefcase, roles: ['director', 'admin'] },
+  { href: '/diretoria', label: 'Painel Diretoria', icon: Briefcase, roles: ['director'] },
   { href: '/matematica', label: 'Matemática', icon: Calculator, roles: ['student', 'teacher', 'admin'] },
   { href: '/portugues', label: 'Português', icon: Book, roles: ['student', 'teacher', 'admin'] },
   { href: '/memoria', label: 'Memória', icon: Puzzle, roles: ['student', 'teacher', 'admin'] },
