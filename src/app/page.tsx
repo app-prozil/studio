@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Book, Calculator, Printer, LogIn, Puzzle, User, Briefcase, Users, GraduationCap, ClipboardList, PieChart } from 'lucide-react';
+import { ArrowRight, Book, Calculator, Printer, LogIn, Puzzle, User, Briefcase } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -84,46 +84,20 @@ export default function Home() {
                     Seu ponto de partida para a supervisão e análise da plataforma.
                 </p>
             </div>
-            <div className="grid gap-6 md:grid-cols-2">
-                <Card className="flex flex-col">
+            <div className="max-w-md mx-auto">
+                <Card className="flex flex-col text-center">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center justify-center gap-2">
                             <Briefcase className="w-8 h-8 text-primary" />
                             <span className="text-2xl font-headline">Painel da Diretoria</span>
                         </CardTitle>
                         <CardDescription>
-                           Acesse a visão geral com métricas, e navegue entre as tarefas por aluno ou professor.
+                           Acesse seu painel central para monitorar as tarefas dos professores, acompanhar o desempenho dos alunos e visualizar as métricas gerais da escola.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-grow">
-                        <p className="text-muted-foreground">
-                            Este é o seu centro de controle para monitorar todas as atividades da plataforma.
-                        </p>
-                    </CardContent>
                     <CardFooter>
                         <Button asChild className="w-full">
                             <Link href="/diretoria">Acessar Painel <ArrowRight className="ml-2" /></Link>
-                        </Button>
-                    </CardFooter>
-                </Card>
-                <Card className="flex flex-col">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <PieChart className="w-8 h-8 text-primary" />
-                            <span className="text-2xl font-headline">Progresso dos Alunos</span>
-                        </CardTitle>
-                        <CardDescription>
-                           Visualize relatórios de desempenho e acompanhe a evolução dos alunos.
-                        </CardDescription>
-                    </CardHeader>
-                     <CardContent className="flex-grow">
-                        <p className="text-muted-foreground">
-                           Filtre por aluno para ver pontuações, tempo de estudo e mais.
-                        </p>
-                    </CardContent>
-                    <CardFooter>
-                        <Button asChild className="w-full">
-                            <Link href="/progresso">Ver Relatórios <ArrowRight className="ml-2" /></Link>
                         </Button>
                     </CardFooter>
                 </Card>
