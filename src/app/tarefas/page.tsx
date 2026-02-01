@@ -23,8 +23,8 @@ export default function TarefasPage() {
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
 
   const studentDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'students', user.uid) : null),
-    [firestore, user]
+    () => (user && !isAdmin ? doc(firestore, 'students', user.uid) : null),
+    [firestore, user, isAdmin]
   );
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
@@ -76,7 +76,7 @@ export default function TarefasPage() {
     );
   }
 
-  if (directorProfile) {
+  if (directorProfile || isAdmin) {
     return <DirectorDashboard />;
   }
 

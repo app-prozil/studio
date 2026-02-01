@@ -140,8 +140,8 @@ service cloud.firestore {
     }
 
     match /directors/{directorId} {
-      // READ: An owner, director, or admin can read a director's profile.
-      allow get: if isOwner(directorId) || isDirector() || isAdmin();
+      // READ: Any signed-in user can read a director's profile.
+      allow get: if isSignedIn();
       // LIST: Admins and directors can list all directors.
       allow list: if isAdmin() || isDirector();
       // WRITE: A user can manage their OWN director profile. Admin can manage any.

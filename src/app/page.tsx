@@ -18,16 +18,17 @@ export default function Home() {
   
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const isAdmin = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
   // This data is only needed if the user is logged in
   const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
   
-  const studentDocRef = useMemoFirebase(() => (user ? doc(firestore, 'students', user.uid) : null), [firestore, user]);
+  const studentDocRef = useMemoFirebase(() => (user && !isAdmin ? doc(firestore, 'students', user.uid) : null), [firestore, user, isAdmin]);
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
   const isStudent = !!studentProfile;
-  const isTeacherOrAdmin = !!teacherProfile || user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+  const isTeacherOrAdmin = !!teacherProfile || isAdmin;
   
   const tasksQuery = useMemoFirebase(() => 
     (isStudent && user) 

@@ -146,8 +146,7 @@ function AppSidebar() {
   const firestore = useFirestore();
   const { setOpen } = useSidebar();
   
-  const ADMIN_UID = 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
-  const isAdmin = user?.uid === ADMIN_UID;
+  const isAdmin = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
   
   const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
@@ -266,5 +265,3 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    

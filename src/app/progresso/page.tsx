@@ -298,11 +298,12 @@ function TeacherProgressView({ teacherId }: { teacherId: string }) {
 export default function ProgressPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const isAdmin = user?.uid === 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
 
   const teacherDocRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
   
-  const studentDocRef = useMemoFirebase(() => (user ? doc(firestore, 'students', user.uid) : null), [firestore, user]);
+  const studentDocRef = useMemoFirebase(() => (user && !isAdmin ? doc(firestore, 'students', user.uid) : null), [firestore, user, isAdmin]);
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc(studentDocRef);
 
   const isLoading = isUserLoading || isTeacherLoading || isStudentLoading;

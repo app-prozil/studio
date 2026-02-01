@@ -160,8 +160,8 @@ export default function ProfilePage() {
   const { data: teacherProfile, isLoading: isTeacherLoading } = useDoc(teacherDocRef);
 
   const studentDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'students', user.uid) : null),
-    [firestore, user]
+    () => (user && !isAdmin ? doc(firestore, 'students', user.uid) : null),
+    [firestore, user, isAdmin]
   );
   const { data: studentProfile, isLoading: isStudentLoading } = useDoc<StudentProfileData>(studentDocRef);
 
