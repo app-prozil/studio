@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -860,7 +861,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                         {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
                         : (ex.questionType === 'organize_syllables') ? 'Organizar Sílabas'
                         : (ex.questionType === 'organize_sentence') ? 'Organizar Frase'
-                        : (ex.questionType === 'memory_game') ? 'Memória'
+                        : (ex.questionType === 'memory_game') ? 'Memória' 
                         : (ex.questionType === 'match_the_pairs') ? 'Ligar Pares'
                         : (ex.questionType === 'guess_the_word') ? 'Adivinhar' 
                         : (ex.questionType === 'organize_categories') ? 'Categorias'
