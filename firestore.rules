@@ -12,8 +12,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // The admin's Firebase Auth UID. This is the most secure way to identify the admin.
-      return isSignedIn() && request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
+      // The admin's Firebase Auth UID is 'yUKh2hnexMdiTd2t9rXEU0SgjPk1'.
+      // Comparing by email as a workaround for potential issues with UID in collection group queries.
+      return isSignedIn() && request.auth.token.email == 'admin@prozil.com';
     }
 
     function isOwner(userId) {
@@ -83,7 +84,6 @@ service cloud.firestore {
     match /teachers/{teacherId} {
       // READ: Any signed-in user can read teacher profiles. This is necessary for
       // students to find their teacher's ProZil ID during signup.
-      // Admins and directors can also read.
       allow get: if isSignedIn();
 
       // LIST: Admins and directors can list all teachers.
