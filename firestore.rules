@@ -28,8 +28,7 @@ service cloud.firestore {
 
     function isDirector() {
       // Check if the requesting user has a profile in the /directors collection.
-      // This explicitly excludes the admin to prevent unnecessary and failing exists() checks for the admin user.
-      return request.auth.uid != 'yUKh2hnexMdiTd2t9rXEU0SgjPk1' && isSignedIn() && exists(/databases/$(database)/documents/directors/$(request.auth.uid));
+      return isSignedIn() && exists(/databases/$(database)/documents/directors/$(request.auth.uid));
     }
 
     function isTaskAuthor(task) {
@@ -141,8 +140,8 @@ service cloud.firestore {
     }
 
     match /directors/{directorId} {
-      // READ: Any signed-in user can read director profiles for transparency.
-      allow get: if isSignedIn();
+      // READ: An owner, director, or admin can read a director's profile.
+      allow get: if isOwner(directorId) || isDirector() || isAdmin();
       // LIST: Admins and directors can list all directors.
       allow list: if isAdmin() || isDirector();
       // WRITE: A user can manage their OWN director profile. Admin can manage any.
