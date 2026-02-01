@@ -15,20 +15,24 @@ service cloud.firestore {
       return request.auth.uid == 'yUKh2hnexMdiTd2t9rXEU0SgjPk1';
     }
 
-    // Pass the userId to check, typically request.auth.uid
+    // Correctly checks if a user is a Teacher.
+    // For Admin, it returns true immediately to avoid DB reads and permission spirals.
     function isTeacher(userId) {
+      if (isAdmin()) { return true; } // Admin is treated as a teacher.
       return exists(/databases/$(database)/documents/teachers/$(userId));
     }
 
-    // Pass the userId to check, typically request.auth.uid
+    // Correctly checks if a user is a Director.
+    // For Admin, it returns false immediately to avoid DB reads and permission spirals.
     function isDirector(userId) {
+      if (isAdmin()) { return false; } // Admin is NOT a director.
       return exists(/databases/$(database)/documents/directors/$(userId));
     }
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-
+    
     function isTaskAuthor(task) {
       return isSignedIn() && request.auth.uid == task.teacherId;
     }
@@ -52,14 +56,14 @@ service cloud.firestore {
     // =====================================================================
 
     // --- Collection Group Query for Tasks ---
+    // This allows Directors to generate reports across all tasks.
     match /{path=**}/tasks/{taskId} {
-      // Directors and Admins can list all tasks across the entire database for reporting.
       allow list: if isDirector(request.auth.uid) || isAdmin();
     }
 
     // --- Teacher Profiles and Data ---
     match /teachers/{teacherId} {
-      // Anyone signed in can view a teacher's public profile. Admin implicitly can.
+      // Anyone can view a teacher's public profile.
       allow get: if isSignedIn();
       // Directors and Admin can list all teachers.
       allow list: if isDirector(request.auth.uid) || isAdmin();
@@ -111,9 +115,10 @@ service cloud.firestore {
 
     // --- Director Profiles ---
     match /directors/{directorId} {
-      // Anyone signed in can view a director's public profile. Admin implicitly can.
+      // Anyone signed in can view a director's public profile.
       allow get: if isSignedIn();
-      // Only admin can list all directors. This rule mimics the teachers list rule to avoid an engine bug.
+      // Directors and Admin can list all directors.
+      // The helper function isDirector() will prevent the admin from causing a recursive read.
       allow list: if isDirector(request.auth.uid) || isAdmin();
       // Only the owner or an admin can write to a director's profile.
       allow write: if isOwner(directorId) || isAdmin();
