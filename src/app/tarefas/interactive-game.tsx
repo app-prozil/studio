@@ -287,15 +287,19 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
 
   useEffect(() => {
-    // This is the crucial fix: reset the mistake tracker for every new question.
+    // This effect should only run when the question index changes.
+    // NOT when the question object itself gets updated with performance stats.
+    // Therefore, we only depend on `currentQuestionIndex`.
+    
     setMistakeMade(false);
-
     setQuestionStartTime(Date.now());
+
     // Reset game-specific state when question changes
     setFlippedCards([]);
     setMatchedPairs([]);
     setIsChecking(false);
     setConstructedSyllables([]);
+    setAvailableSyllables([]);
     setGuessedLetters({});
     setChancesLeft(6);
     setAnimatingHeartIndex(null);
@@ -305,9 +309,16 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setMatchPairsLines([]);
     setMatchPairsSelectedItem(null);
     setMatchPairsMatched([]);
-    if (currentQuestion?.questionType === 'organize_categories') {
-      const items = [...(currentQuestion.categoryItems || [])].sort(() => Math.random() - 0.5);
-      const initialPlaced = currentQuestion.categories?.reduce((acc, cat) => ({...acc, [cat]: []}), {}) || {};
+
+    // We use `questions[currentQuestionIndex]` to get the new question data.
+    // The linter will complain about `questions` being a missing dependency,
+    // but adding it would re-introduce the bug where this effect runs on every
+    // answer. This is safe because this effect is designed to run only when
+    // moving to a new question.
+    const newQuestion = questions[currentQuestionIndex];
+    if (newQuestion?.questionType === 'organize_categories') {
+      const items = [...(newQuestion.categoryItems || [])].sort(() => Math.random() - 0.5);
+      const initialPlaced = newQuestion.categories?.reduce((acc, cat) => ({...acc, [cat]: []}), {}) || {};
       setOrganizeCategoryState({
         unplacedItems: items,
         placedItems: initialPlaced,
@@ -315,7 +326,8 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         incorrectCategory: null,
       });
     }
-  }, [currentQuestionIndex, currentQuestion]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIndex]);
   
   // This useEffect handles shuffling options for all game types
   useEffect(() => {
