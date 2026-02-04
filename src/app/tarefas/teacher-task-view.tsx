@@ -255,7 +255,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     defaultValues: { text: '', text2: '', librasText: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice', categories: ['Categoria 1', 'Categoria 2'], categoryItems: [{ item: '', category: 'Categoria 1'}, { item: '', category: 'Categoria 1'}] },
   });
   
-  const { watch, setValue, control } = form;
+  const { watch, setValue, control, trigger } = form;
   const { fields, append, remove, replace } = useFieldArray({ control, name: "options" });
   const { fields: categoriesFields, append: appendCategory, remove: removeCategory, replace: replaceCategories } = useFieldArray({ control, name: "categories" });
   const { fields: itemsFields, append: appendItem, remove: removeItem, replace: replaceItems } = useFieldArray({ control, name: "categoryItems" });
@@ -266,11 +266,17 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
   useEffect(() => {
     if (questionType === 'organize_syllables') {
-      setValue('answer', watchedOptions.join(''), { shouldValidate: true });
+      const newAnswer = (watchedOptions || []).join('');
+      // Set the value without triggering validation immediately
+      setValue('answer', newAnswer, { shouldValidate: false });
+      // Manually trigger validation for the 'answer' field if it has a value
+      if (newAnswer) {
+        trigger('answer');
+      }
     } else if (questionType === 'fill_in_the_blank') {
       setValue('answer', watchedOptions?.[0] || '', { shouldValidate: true });
     }
-  }, [watchedOptions, questionType, setValue]);
+  }, [watchedOptions, questionType, setValue, trigger]);
 
   const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs') => {
     setValue('questionType', value);
@@ -1520,7 +1526,7 @@ export function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | 
     try {
       const { default: jsPDF } = await import('jspdf');
       await import('jspdf-autotable');
-      const { default: html2canvas } = await import('html2canvas');
+      const { default: html2canvas } = (await import('html2canvas'));
       const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -1529,7 +1535,7 @@ export function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | 
       
       const addPageNumbers = () => {
         const pageCount = pdf.internal.pages.length - 1;
-        for(let i = 1; i <= pageCount, i++;) {
+        for(let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
             pdf.setFontSize(9);
             pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
@@ -1737,7 +1743,7 @@ export function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenC
         
         const addPageNumbers = () => {
             const pageCount = pdf.internal.pages.length - 1;
-            for(let i = 1; i <= pageCount, i++;) {
+            for(let i = 1; i <= pageCount; i++) {
                 pdf.setPage(i);
                 pdf.setFontSize(9);
                 pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
