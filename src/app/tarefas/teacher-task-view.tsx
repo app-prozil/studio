@@ -265,16 +265,26 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
   const questionType = watch('questionType');
   const watchedCategories = watch('categories');
-  const watchedOptions = watch('options');
 
   useEffect(() => {
-    if (questionType === 'organize_syllables') {
-        const newAnswer = (watchedOptions || []).join('');
-        setValue('answer', newAnswer, { shouldValidate: true });
-    } else if (questionType === 'fill_in_the_blank') {
-        setValue('answer', watchedOptions?.[0] || '', { shouldValidate: true });
-    }
-  }, [watchedOptions, questionType, setValue, fields.length]); // Added fields.length to dependency array
+    const subscription = watch((value) => {
+      const currentQuestionType = value.questionType;
+      const currentOptions = value.options || [];
+
+      if (currentQuestionType === 'organize_syllables') {
+        const newAnswer = currentOptions.join('');
+        if (form.getValues('answer') !== newAnswer) {
+          setValue('answer', newAnswer, { shouldValidate: true });
+        }
+      } else if (currentQuestionType === 'fill_in_the_blank') {
+        const newAnswer = currentOptions[0] || '';
+        if (form.getValues('answer') !== newAnswer) {
+          setValue('answer', newAnswer, { shouldValidate: true });
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, setValue, form]);
 
   const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs') => {
     setValue('questionType', value);
@@ -963,7 +973,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
-      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
@@ -1522,6 +1532,10 @@ export function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | 
     if (!task) return;
     setIsGeneratingPdf(true);
     try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+      const { default: html2canvas } = await import('html2canvas');
+
       const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -1549,7 +1563,7 @@ export function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | 
       y += 12;
 
       // Summary Table Programmatic
-      (pdf as any).autoTable({
+      autoTable(pdf, {
           startY: y,
           theme: 'grid',
           head: [['Aluno', 'Professor', 'Status', 'Data', 'Tempo', 'Pontuação']],
@@ -1728,6 +1742,9 @@ export function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenC
   const handleGeneratePdf = async () => {
     setIsGeneratingPdf(true);
     try {
+        const { default: jsPDF } = await import('jspdf');
+        const { default: autoTable } = await import('jspdf-autotable');
+
         const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const pageHeight = pdf.internal.pageSize.getHeight();
         const pageWidth = pdf.internal.pageSize.getWidth();
@@ -1755,7 +1772,7 @@ export function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenC
         y += 12;
 
         // Summary
-        (pdf as any).autoTable({
+        autoTable(pdf, {
             startY: y,
             theme: 'grid',
             body: [
@@ -1775,7 +1792,7 @@ export function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenC
         pdf.text('Resumo das Tarefas', margin, y);
         y += 8;
 
-        (pdf as any).autoTable({
+        autoTable(pdf, {
             startY: y,
             theme: 'striped',
             head: [['Tarefa', 'Status', 'Data de Conclusão', 'Pontuação']],
