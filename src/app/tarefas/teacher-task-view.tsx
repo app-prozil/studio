@@ -67,6 +67,9 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 
 // Schemas
@@ -255,7 +258,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     defaultValues: { text: '', text2: '', librasText: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice', categories: ['Categoria 1', 'Categoria 2'], categoryItems: [{ item: '', category: 'Categoria 1'}, { item: '', category: 'Categoria 1'}] },
   });
   
-  const { watch, setValue, control, trigger } = form;
+  const { watch, setValue, control } = form;
   const { fields, append, remove, replace } = useFieldArray({ control, name: "options" });
   const { fields: categoriesFields, append: appendCategory, remove: removeCategory, replace: replaceCategories } = useFieldArray({ control, name: "categories" });
   const { fields: itemsFields, append: appendItem, remove: removeItem, replace: replaceItems } = useFieldArray({ control, name: "categoryItems" });
@@ -266,17 +269,12 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
   useEffect(() => {
     if (questionType === 'organize_syllables') {
-      const newAnswer = (watchedOptions || []).join('');
-      // Set the value without triggering validation immediately
-      setValue('answer', newAnswer, { shouldValidate: false });
-      // Manually trigger validation for the 'answer' field if it has a value
-      if (newAnswer) {
-        trigger('answer');
-      }
+        const newAnswer = (watchedOptions || []).join('');
+        setValue('answer', newAnswer, { shouldValidate: true });
     } else if (questionType === 'fill_in_the_blank') {
-      setValue('answer', watchedOptions?.[0] || '', { shouldValidate: true });
+        setValue('answer', watchedOptions?.[0] || '', { shouldValidate: true });
     }
-  }, [watchedOptions, questionType, setValue, trigger]);
+  }, [watchedOptions, questionType, setValue, fields.length]); // Added fields.length to dependency array
 
   const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs') => {
     setValue('questionType', value);
@@ -1524,9 +1522,6 @@ export function TaskReportDialog({ task, isOpen, onOpenChange }: { task: Task | 
     if (!task) return;
     setIsGeneratingPdf(true);
     try {
-      const { default: jsPDF } = await import('jspdf');
-      await import('jspdf-autotable');
-      const { default: html2canvas } = (await import('html2canvas'));
       const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -1733,8 +1728,6 @@ export function StudentGeneralReportDialog({ studentName, tasks, isOpen, onOpenC
   const handleGeneratePdf = async () => {
     setIsGeneratingPdf(true);
     try {
-        const { default: jsPDF } = await import('jspdf');
-        await import('jspdf-autotable');
         const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const pageHeight = pdf.internal.pageSize.getHeight();
         const pageWidth = pdf.internal.pageSize.getWidth();
