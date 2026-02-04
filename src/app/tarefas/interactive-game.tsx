@@ -569,12 +569,11 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   };
 
   const handleClearSyllables = useCallback(() => {
-    if (gameState !== 'playing' && gameState !== 'showingAnswer') return;
-    if (currentQuestion?.options) {
-      setAvailableSyllables([...currentQuestion.options].sort(() => Math.random() - 0.5));
-      setConstructedSyllables([]);
-    }
-  }, [gameState, currentQuestion]);
+    if (!currentQuestion?.options) return;
+    const originalOptions = currentQuestion.options || [];
+    setAvailableSyllables([...originalOptions].sort(() => Math.random() - 0.5));
+    setConstructedSyllables([]);
+  }, [currentQuestion]);
 
   const handleSyllableClick = (syllable: string, index: number) => {
     if (gameState !== 'playing') return;
@@ -809,13 +808,16 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     } else {
       setMistakeMade(true);
       setIsWrongSentenceShake(true);
-      setTimeout(() => setIsWrongSentenceShake(false), 600);
       toast({
         variant: 'destructive',
         title: 'Quase lá!',
         description: 'A ordem das palavras não parece correta. Tente de novo!',
         duration: 2500,
       });
+      setTimeout(() => {
+        handleClearSentence();
+        setIsWrongSentenceShake(false);
+      }, 2000);
     }
   };
 

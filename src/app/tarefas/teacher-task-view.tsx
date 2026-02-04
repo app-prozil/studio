@@ -110,6 +110,7 @@ const taskSchema = z.object({
 const exerciseObjectSchema = z.object({
   id: z.string().optional(),
   teacherId: z.string(),
+  createdAt: z.string().optional(),
   questionType: z.enum(['multiple_choice', 'fill_in_the_blank', 'organize_syllables', 'memory_game', 'guess_the_word', 'organize_categories', 'organize_sentence', 'match_the_pairs']),
   text: z.string().min(3, 'A pergunta ou dica deve ter pelo menos 3 caracteres.'),
   text2: z.string().optional(),
@@ -233,6 +234,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'matematica' | 'portugues' | 'memoria'>('all');
   const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [focusedInput, setFocusedInput] = useState<string | null>('text');
 
   const specialCharsCategories = {
@@ -255,36 +257,37 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   
   const form = useForm<Exercise>({
     resolver: zodResolver(exerciseSchema),
-    defaultValues: { text: '', text2: '', librasText: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice', categories: ['Categoria 1', 'Categoria 2'], categoryItems: [{ item: '', category: 'Categoria 1'}, { item: '', category: 'Categoria 1'}] },
+    defaultValues: { text: '', text2: '', librasText: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', createdAt: '', questionType: 'multiple_choice', categories: ['Categoria 1', 'Categoria 2'], categoryItems: [{ item: '', category: 'Categoria 1'}, { item: '', category: 'Categoria 1'}] },
   });
   
-  const { watch, setValue, control } = form;
+  const { watch, setValue, control, trigger } = form;
   const { fields, append, remove, replace } = useFieldArray({ control, name: "options" });
   const { fields: categoriesFields, append: appendCategory, remove: removeCategory, replace: replaceCategories } = useFieldArray({ control, name: "categories" });
   const { fields: itemsFields, append: appendItem, remove: removeItem, replace: replaceItems } = useFieldArray({ control, name: "categoryItems" });
 
   const questionType = watch('questionType');
+  const watchedOptions = watch('options');
   const watchedCategories = watch('categories');
 
   useEffect(() => {
-    const subscription = watch((value) => {
+    const subscription = watch((value, { name }) => {
       const currentQuestionType = value.questionType;
-      const currentOptions = value.options || [];
 
-      if (currentQuestionType === 'organize_syllables') {
-        const newAnswer = currentOptions.join('');
-        if (form.getValues('answer') !== newAnswer) {
-          setValue('answer', newAnswer, { shouldValidate: true });
-        }
+      if (currentQuestionType === 'organize_syllables' && name?.startsWith('options')) {
+          const newAnswer = (value.options || []).join('');
+          if (form.getValues('answer') !== newAnswer) {
+              setValue('answer', newAnswer, { shouldValidate: true });
+              trigger('answer'); 
+          }
       } else if (currentQuestionType === 'fill_in_the_blank') {
-        const newAnswer = currentOptions[0] || '';
+        const newAnswer = (value.options || [])[0] || '';
         if (form.getValues('answer') !== newAnswer) {
           setValue('answer', newAnswer, { shouldValidate: true });
         }
       }
     });
     return () => subscription.unsubscribe();
-  }, [watch, setValue, form]);
+  }, [watch, setValue, form, trigger]);
 
   const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs') => {
     setValue('questionType', value);
@@ -341,7 +344,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   };
 
   const resetForm = useCallback(() => {
-    form.reset({ text: '', text2: '', librasText: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', questionType: 'multiple_choice', categories: ['Categoria 1', 'Categoria 2'], categoryItems: [{ item: '', category: 'Categoria 1'}, { item: '', category: 'Categoria 1'}] });
+    form.reset({ text: '', text2: '', librasText: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', createdAt: '', questionType: 'multiple_choice', categories: ['Categoria 1', 'Categoria 2'], categoryItems: [{ item: '', category: 'Categoria 1'}, { item: '', category: 'Categoria 1'}] });
   }, [form, teacherId]);
 
   const filteredExercises = useMemo(() => {
@@ -352,9 +355,19 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       const subjectMatch = subjectFilter === 'all' || ex.subject === subjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
       const typeMatch = questionTypeFilter === 'all' || effectiveQuestionType === questionTypeFilter;
-      return subjectMatch && typeMatch;
+      const searchMatch = searchQuery.trim() === '' || 
+                          (ex.text && ex.text.toLowerCase().includes(searchQuery.toLowerCase()));
+      return subjectMatch && typeMatch && searchMatch;
+    })
+    .sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        if (a.createdAt) return -1;
+        if (b.createdAt) return 1;
+        return 0;
     });
-  }, [exercises, subjectFilter, questionTypeFilter, isLoading]);
+  }, [exercises, subjectFilter, questionTypeFilter, searchQuery, isLoading]);
 
   const handleSeedExercises = async () => {
     if (!teacherId) {
@@ -368,7 +381,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         const batch = writeBatch(firestore);
         (seedData.exercises as any[]).forEach(exercise => {
             const newExerciseRef = doc(exercisesCollectionRef);
-            const exerciseWithId = { ...exercise, id: newExerciseRef.id, teacherId: teacherId };
+            const exerciseWithId = { ...exercise, id: newExerciseRef.id, teacherId: teacherId, createdAt: new Date().toISOString() };
             batch.set(newExerciseRef, exerciseWithId);
         });
         await batch.commit();
@@ -403,7 +416,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     let answerValue: string;
     let optionsValue: string[] = values.options?.filter(o => o.trim() !== '').map(o => o.toUpperCase());
 
-    let finalValues: Exercise = { ...values };
+    let finalValues: Partial<Exercise> = { ...values };
 
     switch (values.questionType) {
       case 'fill_in_the_blank':
@@ -463,7 +476,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       });
     } else {
       const newExerciseRef = doc(collection(firestore, 'teachers', teacherId, 'exercises'));
-      const newExercise = { ...finalValues, id: newExerciseRef.id, teacherId };
+      const newExercise = { ...finalValues, id: newExerciseRef.id, teacherId, createdAt: new Date().toISOString() };
       setDoc(newExerciseRef, newExercise).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: newExerciseRef.path,
@@ -810,6 +823,15 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
             <CardTitle>Seu Banco de Exercícios</CardTitle>
             <CardDescription>Visualize, gerencie e adicione exercícios de exemplo.</CardDescription>
             <div className="space-y-4 pt-4 border-t">
+                <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar por pergunta..."
+                        className="pl-8"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium pr-2">Matéria:</span>
                   <Button variant={subjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('all')}>
@@ -907,7 +929,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
               </li>
             )) : (
               <div className="text-center text-muted-foreground py-8">
-                 {subjectFilter === 'all' && questionTypeFilter === 'all' ? (
+                 {subjectFilter === 'all' && questionTypeFilter === 'all' && searchQuery.trim() === '' ? (
                   <>
                     <p className="font-semibold">Seu banco de exercícios está vazio.</p>
                     <p className="text-sm mt-2">Use o botão "Popular com Exemplos" para adicionar exercícios e começar.</p>
