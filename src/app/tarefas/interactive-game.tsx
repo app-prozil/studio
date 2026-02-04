@@ -461,24 +461,33 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     if (shouldAdvance) {
         setIsCorrect(true);
         
-        // New animation sequence
-        setHandState('pointing');
-        setShowHandAnimation(true);
+        // Encapsulate the animation sequence
+        const startAnimations = () => {
+          setHandState('pointing');
+          setShowHandAnimation(true);
+  
+          setTimeout(() => {
+              setHandState('thumbs-up');
+          }, 3500);
+  
+          setTimeout(() => {
+              triggerConfettiExplosion();
+              setShowCorrectAnswerModal(true);
+          }, 5000);
+  
+          setTimeout(() => {
+              setShowHandAnimation(false);
+              setShowCorrectAnswerModal(false);
+              handleNextQuestion(updatedQuestions);
+          }, 7000);
+        }
 
-        setTimeout(() => {
-            setHandState('thumbs-up');
-        }, 3500);
-
-        setTimeout(() => {
-            triggerConfettiExplosion();
-            setShowCorrectAnswerModal(true);
-        }, 5000);
-
-        setTimeout(() => {
-            setShowHandAnimation(false);
-            setShowCorrectAnswerModal(false);
-            handleNextQuestion(updatedQuestions);
-        }, 7000);
+        // Add delay for specific question type
+        if (questionType === 'organize_syllables') {
+            setTimeout(startAnimations, 2000); // 2 second delay for student to see the word
+        } else {
+            startAnimations();
+        }
 
     } else {
         setIsCorrect(false);
