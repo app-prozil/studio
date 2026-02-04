@@ -122,6 +122,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   // State for organize_syllables game
   const [constructedSyllables, setConstructedSyllables] = useState<string[]>([]);
   const [availableSyllables, setAvailableSyllables] = useState<string[]>([]);
+  const [isWrongSyllableShake, setIsWrongSyllableShake] = useState(false);
   
   // State for memory_game
   const [flippedCards, setFlippedCards] = useState<number[]>([]);
@@ -546,15 +547,28 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     }
   };
 
+  const handleClearSyllables = useCallback(() => {
+    if (gameState !== 'playing' && gameState !== 'showingAnswer') return;
+    setAvailableSyllables(prev => [...prev, ...constructedSyllables].sort(() => Math.random() - 0.5));
+    setConstructedSyllables([]);
+  }, [gameState, constructedSyllables]);
+
   useEffect(() => {
-    if (questionType === 'organize_syllables' && availableSyllables.length === 0 && constructedSyllables.length > 0) {
+    if (questionType === 'organize_syllables' && availableSyllables.length === 0 && constructedSyllables.length > 0 && gameState === 'playing') {
         const finalAnswer = constructedSyllables.join('');
         if (finalAnswer.toUpperCase() !== currentQuestion.answer.toUpperCase()) {
             setMistakeMade(true);
+            toast({ variant: 'destructive', title: 'Palavra incorreta!', description: 'Tente organizar as sílabas de novo.' });
+            setIsWrongSyllableShake(true);
+            setTimeout(() => {
+                handleClearSyllables();
+                setIsWrongSyllableShake(false);
+            }, 1500);
+        } else {
+            handleAnswer(finalAnswer);
         }
-        handleAnswer(finalAnswer);
     }
-  }, [availableSyllables, constructedSyllables, questionType, handleAnswer, currentQuestion]);
+  }, [availableSyllables, constructedSyllables, questionType, handleAnswer, currentQuestion, toast, handleClearSyllables, gameState]);
 
   // Memory Game: check for matches
   useEffect(() => {
@@ -898,12 +912,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setAvailableSyllables(prev => prev.filter((_, i) => i !== index));
   }
 
-  const handleClearSyllables = () => {
-    if (gameState !== 'playing') return;
-    setAvailableSyllables(prev => [...prev, ...constructedSyllables].sort(() => Math.random() - 0.5));
-    setConstructedSyllables([]);
-  }
-
   return (
     <>
       <Dialog open={showHandAnimation} onOpenChange={setShowHandAnimation}>
@@ -952,7 +960,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         
         {questionType === 'organize_syllables' && (
             <div className="space-y-6">
-                <div className="relative p-8 border-4 rounded-lg bg-muted min-h-32 flex items-center justify-center gap-2">
+                <div className={cn("relative p-8 border-4 rounded-lg bg-muted min-h-32 flex items-center justify-center gap-2", isWrongSyllableShake && 'animate-shake')}>
                     <p className="text-5xl font-bold font-mono tracking-widest">{constructedSyllables.join('')}</p>
                     {constructedSyllables.length > 0 && gameState === 'playing' && (
                          <Button variant="ghost" size="icon" className="absolute top-2 right-2" onClick={handleClearSyllables}>
