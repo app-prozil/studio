@@ -549,10 +549,18 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   const handleClearSyllables = useCallback(() => {
     if (gameState !== 'playing' && gameState !== 'showingAnswer') return;
-    setAvailableSyllables(prev => [...prev, ...constructedSyllables].sort(() => Math.random() - 0.5));
-    setConstructedSyllables([]);
-  }, [gameState, constructedSyllables]);
+    if (currentQuestion?.options) {
+      setAvailableSyllables([...currentQuestion.options].sort(() => Math.random() - 0.5));
+      setConstructedSyllables([]);
+    }
+  }, [gameState, currentQuestion]);
 
+  const handleSyllableClick = (syllable: string, index: number) => {
+    if (gameState !== 'playing') return;
+    setConstructedSyllables(prev => [...prev, syllable]);
+    setAvailableSyllables(prev => prev.filter((_, i) => i !== index));
+  }
+  
   useEffect(() => {
     if (questionType === 'organize_syllables' && availableSyllables.length === 0 && constructedSyllables.length > 0 && gameState === 'playing') {
         const finalAnswer = constructedSyllables.join('');
@@ -904,12 +912,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             )}
         </div>
     );
-  }
-
-  const handleSyllableClick = (syllable: string, index: number) => {
-    if (gameState !== 'playing') return;
-    setConstructedSyllables(prev => [...prev, syllable]);
-    setAvailableSyllables(prev => prev.filter((_, i) => i !== index));
   }
 
   return (
