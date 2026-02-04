@@ -661,7 +661,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (questionType === 'multiple_choice' && gameState === 'playing' && shuffledOptions.length > 0) {
+      if ((questionType === 'multiple_choice' || questionType === 'fill_in_the_blank') && gameState === 'playing' && shuffledOptions.length > 0) {
         if (event.key === '1' && shuffledOptions[0]) handleAnswer(shuffledOptions[0]);
         else if (event.key === '2' && shuffledOptions[1]) handleAnswer(shuffledOptions[1]);
         else if (event.key === '3' && shuffledOptions[2]) handleAnswer(shuffledOptions[2]);
