@@ -796,7 +796,17 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     const userAnswer = constructedSentence.map(sw => sw.word).join(' ');
     const isAnswerCorrect = userAnswer.toUpperCase() === currentQuestion.answer.toUpperCase();
 
-    if (!isAnswerCorrect) {
+    if (isAnswerCorrect) {
+      try {
+        const utterance = new SpeechSynthesisUtterance(currentQuestion.answer);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
+        console.error("Speech synthesis failed.", e);
+      }
+      handleAnswer(userAnswer);
+    } else {
       setMistakeMade(true);
       setIsWrongSentenceShake(true);
       setTimeout(() => setIsWrongSentenceShake(false), 600);
@@ -806,17 +816,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         description: 'A ordem das palavras não parece correta. Tente de novo!',
         duration: 2500,
       });
-    } else {
-        try {
-            const utterance = new SpeechSynthesisUtterance(currentQuestion.answer);
-            utterance.lang = 'pt-BR';
-            utterance.rate = 0.9;
-            window.speechSynthesis.speak(utterance);
-        } catch (e) {
-            console.error("Speech synthesis failed.", e);
-        }
     }
-    handleAnswer(userAnswer);
   };
 
 
