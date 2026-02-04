@@ -262,6 +262,15 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
 
   const questionType = watch('questionType');
   const watchedCategories = watch('categories');
+  const watchedOptions = watch('options');
+
+  useEffect(() => {
+    if (questionType === 'organize_syllables') {
+      setValue('answer', watchedOptions.join(''), { shouldValidate: true });
+    } else if (questionType === 'fill_in_the_blank') {
+      setValue('answer', watchedOptions?.[0] || '', { shouldValidate: true });
+    }
+  }, [watchedOptions, questionType, setValue]);
 
   const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs') => {
     setValue('questionType', value);
@@ -373,7 +382,6 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     }
   }, [editingExercise, form, resetForm, replace, replaceCategories, replaceItems]);
   
-  const watchedOptions = watch('options');
 
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
@@ -388,7 +396,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         answerValue = values.options[0].toUpperCase();
         break;
       case 'organize_syllables':
-        answerValue = values.options.join('').toUpperCase();
+        answerValue = values.answer.toUpperCase(); // Value is now set by useEffect
         break;
       case 'memory_game':
       case 'match_the_pairs':
@@ -552,7 +560,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormControl>
                     <Textarea 
                       {...field} 
-                      className={cn("font-libras font-black py-4", "libras-input-text")}
+                      className={cn("font-libras font-black", "libras-input-text")}
                       onFocus={() => setFocusedInput('librasText')} 
                       placeholder="Libras"
                     />
@@ -731,7 +739,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                   <FormField control={form.control} name="answer" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Resposta Correta (Palavra Completa)</FormLabel>
-                        <FormControl><Input value={watchedOptions.join('')} placeholder='Ex: BORBOLETA' readOnly /></FormControl>
+                        <FormControl><Input {...field} placeholder='Ex: BORBOLETA' readOnly /></FormControl>
                         <FormDescription>
                             Será preenchida automaticamente com a junção das sílabas.
                         </FormDescription>
@@ -755,7 +763,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
                 <FormField control={form.control} name="answer" render={({ field }) => (
                   <FormItem className="hidden">
                       <FormLabel>Resposta Correta (automática)</FormLabel>
-                      <FormControl><Input {...field} readOnly value={watchedOptions?.[0]} /></FormControl>
+                      <FormControl><Input {...field} readOnly /></FormControl>
                   </FormItem>
                 )}/>
               )}
