@@ -274,17 +274,19 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     const subscription = watch((value, { name, type }) => {
       const currentQuestionType = value.questionType;
 
-      if (currentQuestionType === 'organize_syllables' && (name?.startsWith('options') || type === 'change')) {
+      if (name?.startsWith('options') || (name === 'questionType' && type === 'change')) {
+        if (currentQuestionType === 'organize_syllables') {
           const newAnswer = (value.options || []).join('');
           if (getValues('answer') !== newAnswer) {
               setValue('answer', newAnswer, { shouldValidate: true });
               trigger('answer');
           }
-      } else if (currentQuestionType === 'fill_in_the_blank') {
-        const newAnswer = (value.options || [])[0] || '';
-        if (getValues('answer') !== newAnswer) {
-          setValue('answer', newAnswer, { shouldValidate: true });
-          trigger('answer');
+        } else if (currentQuestionType === 'fill_in_the_blank') {
+          const newAnswer = (value.options || [])[0] || '';
+          if (getValues('answer') !== newAnswer) {
+            setValue('answer', newAnswer, { shouldValidate: true });
+            trigger('answer');
+          }
         }
       }
     });
@@ -411,93 +413,106 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     }
   }, [editingExercise, form, resetForm, replace, replaceCategories, replaceItems]);
   
-
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
-    
-    // Create a new object to hold the processed data.
-    const finalValues: Partial<Exercise> = {
-        // Common properties that don't need special processing
-        teacherId: values.teacherId,
-        subject: values.subject,
-        difficulty: values.difficulty,
-        questionType: values.questionType,
-        // Uppercase text fields by default
-        text: values.text.toUpperCase(),
-        text2: values.text2 ? values.text2.toUpperCase() : '',
-        librasText: values.librasText ? values.librasText.toUpperCase() : '',
-    };
-
-    // Process options, answer, and other specific fields based on type
-    switch (values.questionType) {
+  
+    // Create a mutable copy of the form values to process.
+    const dataToSave: Exercise = JSON.parse(JSON.stringify(values));
+  
+    // Uppercase text fields by default, as it's desired for most content.
+    dataToSave.text = (dataToSave.text || '').toUpperCase();
+    dataToSave.text2 = (dataToSave.text2 || '').toUpperCase();
+    dataToSave.librasText = (dataToSave.librasText || '').toUpperCase();
+  
+    // Process options, answer, and other specific fields based on question type
+    switch (dataToSave.questionType) {
       case 'fill_in_the_blank':
-        finalValues.answer = values.options[0]; // Preserve case
-        finalValues.options = values.options?.filter(o => o.trim() !== ''); // Preserve case
+        // Answer is the first option. Preserve case of all options.
+        dataToSave.answer = dataToSave.options[0] || '';
+        dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '') || [];
         break;
       case 'organize_syllables':
-        finalValues.answer = values.answer.toUpperCase();
-        finalValues.options = values.options?.filter(o => o.trim() !== '').map(o => o.toUpperCase());
+        // Syllables and answer are uppercased.
+        dataToSave.answer = (dataToSave.answer || '').toUpperCase();
+        dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '').map(o => o.toUpperCase()) || [];
         break;
       case 'memory_game':
       case 'match_the_pairs':
-        finalValues.answer = "N/A";
-        finalValues.options = values.options?.filter(o => o.trim() !== ''); // Preserve case
+        // No answer. Preserve case of options.
+        dataToSave.answer = "N/A";
+        dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '') || [];
         break;
       case 'guess_the_word':
-        finalValues.answer = values.answer.toUpperCase();
-        finalValues.options = [];
+        // Answer is uppercased. No options.
+        dataToSave.answer = (dataToSave.answer || '').toUpperCase();
+        dataToSave.options = [];
         break;
       case 'organize_categories':
-        finalValues.answer = "N/A";
-        finalValues.options = [];
-        finalValues.categories = values.categories?.filter(c => c.trim() !== '').map(c => c.toUpperCase());
-        finalValues.categoryItems = values.categoryItems
-            ?.filter(i => i.item.trim() !== '')
-            .map(i => ({ item: i.item, category: i.category.toUpperCase() })); // Preserve item case
+        // This is the critical part.
+        // Preserve the case of the items, but uppercase the category names.
+        dataToSave.answer = "N/A";
+        dataToSave.options = [];
+        dataToSave.categories = dataToSave.categories?.filter(c => c && c.trim() !== '').map(c => c.toUpperCase()) || [];
+        dataToSave.categoryItems = dataToSave.categoryItems
+            ?.filter(i => i && i.item && i.item.trim() !== '')
+            .map(i => ({ item: i.item, category: (i.category || '').toUpperCase() })) || [];
         break;
       case 'organize_sentence':
-        finalValues.answer = values.answer; // Preserve case
-        finalValues.options = values.answer.split(' ').filter(word => word.trim() !== ''); // Preserve case
+        // Preserve case for the full sentence answer. Options are derived from it.
+        dataToSave.answer = dataToSave.answer || '';
+        dataToSave.options = (dataToSave.answer || '').split(' ').filter(word => word.trim() !== '');
         break;
       default: // 'multiple_choice'
-        finalValues.answer = values.answer.toUpperCase();
-        finalValues.options = values.options?.filter(o => o.trim() !== '').map(o => o.toUpperCase());
+        // Answer and options are uppercased.
+        dataToSave.answer = (dataToSave.answer || '').toUpperCase();
+        dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '').map(o => o.toUpperCase()) || [];
     }
     
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-      updateDoc(exerciseRef, finalValues).catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: exerciseRef.path,
-          operation: 'update',
-          requestResourceData: finalValues,
+      // Omit createdAt from the update
+      const { createdAt, ...dataForUpdate } = dataToSave;
+      updateDoc(exerciseRef, dataForUpdate)
+        .then(() => {
+          toast({ title: 'Exercício atualizado!' });
+          setEditingExercise(null);
+          resetForm();
+        })
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: exerciseRef.path,
+            operation: 'update',
+            requestResourceData: dataForUpdate,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+          toast({ variant: 'destructive', title: 'Erro ao atualizar exercício' });
+        })
+        .finally(() => {
+          setIsSubmitting(false);
         });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({ variant: 'destructive', title: 'Erro ao atualizar exercício' });
-      }).finally(() => {
-        toast({ title: 'Exercício atualizado!' });
-        setEditingExercise(null);
-        resetForm();
-        setIsSubmitting(false);
-      });
     } else {
       const newExerciseRef = doc(collection(firestore, 'teachers', teacherId, 'exercises'));
-      const newExercise = { ...finalValues, id: newExerciseRef.id, createdAt: new Date().toISOString() };
-      setDoc(newExerciseRef, newExercise).catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: newExerciseRef.path,
-          operation: 'create',
-          requestResourceData: newExercise,
+      const newExercise = { ...dataToSave, id: newExerciseRef.id, createdAt: new Date().toISOString() };
+      setDoc(newExerciseRef, newExercise)
+        .then(() => {
+          toast({ title: 'Exercício salvo no banco!' });
+          resetForm();
+        })
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: newExerciseRef.path,
+            operation: 'create',
+            requestResourceData: newExercise,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+          toast({ variant: 'destructive', title: 'Erro ao salvar exercício' });
+        })
+        .finally(() => {
+          setIsSubmitting(false);
         });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({ variant: 'destructive', title: 'Erro ao salvar exercício' });
-      }).finally(() => {
-        toast({ title: 'Exercício salvo no banco!' });
-        resetForm();
-        setIsSubmitting(false);
-      });
     }
   };
+
 
   const handleDelete = () => {
     if (!deletingExercise?.id) return;
