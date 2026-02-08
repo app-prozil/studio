@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useMemo } from 'react';
+import { cn } from '@/lib/utils';
 
 type PerformanceQuestion = {
   text: string;
@@ -56,10 +57,27 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
     // Create a copy before sorting to avoid state mutation
     const tasksCopy = [...tasks];
     return tasksCopy.sort((a, b) => {
+      // 1. Incomplete tasks come before completed tasks
       if (a.isCompleted !== b.isCompleted) {
-        return a.isCompleted ? 1 : -1; // false (pending) comes first
+        return a.isCompleted ? 1 : -1;
       }
-      return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime(); // Then by date descending
+
+      // If both are incomplete, sort by due date ASCENDING (earliest due first)
+      if (!a.isCompleted) {
+        const aDueDate = new Date(a.dueDate).getTime();
+        const bDueDate = new Date(b.dueDate).getTime();
+        return aDueDate - bDueDate;
+      }
+
+      // If both are completed, sort by completion date DESCENDING
+      const aCompletedAt = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+      const bCompletedAt = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+      if (aCompletedAt && bCompletedAt) {
+          return bCompletedAt - aCompletedAt;
+      }
+
+      // Fallback to due date for completed tasks without completion date
+      return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
     });
   }, [tasks]);
 
@@ -103,8 +121,13 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
             {error && <p className="text-destructive">Ocorreu um erro ao buscar suas tarefas.</p>}
             {tasks && sortedTasks.length > 0 ? (
                  <ul className="space-y-4">
-                    {sortedTasks.map(task => (
-                        <li key={task.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-card gap-4">
+                    {sortedTasks.map(task => {
+                        const today = new Date();
+                        today.setHours(0,0,0,0);
+                        const isExpired = !task.isCompleted && new Date(task.dueDate) < today;
+
+                        return (
+                        <li key={task.id} className={cn("flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4", isExpired ? "bg-destructive/5 border-destructive/20" : "bg-card")}>
                            <div className="grid gap-1.5 flex-1">
                                <p className={`font-bold text-lg ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
                                  {task.title}
@@ -127,16 +150,19 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
                            </div>
                            <div className="flex flex-col items-end justify-between gap-2 self-stretch shrink-0">
                              <div className="text-right">
-                                <Badge variant={task.isCompleted ? 'secondary' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Entregar até {format(new Date(task.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                                <div className="flex justify-end gap-2">
+                                    {isExpired && <Badge variant="destructive">VENCIDA</Badge>}
+                                    <Badge variant={task.isCompleted ? 'secondary' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
+                                </div>
+                                <p className={cn("text-xs mt-1", isExpired ? "text-destructive font-semibold" : "text-muted-foreground")}>
+                                    Entrega: {format(new Date(task.dueDate), "dd/MM/yyyy", { locale: ptBR })}
                                 </p>
                              </div>
 
                             {!task.isCompleted && task.taskType === 'jogo_interativo' && (
                                 <Button asChild size="sm">
                                     <Link href={`/${task.subject}?taskId=${task.id}&studentId=${studentId}`}>
-                                        Iniciar Atividade <ArrowRight className="ml-2 h-4 w-4"/>
+                                        {isExpired ? 'Fazer mesmo assim' : 'Iniciar Atividade'} <ArrowRight className="ml-2 h-4 w-4"/>
                                     </Link>
                                 </Button>
                             )}
@@ -157,7 +183,8 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
 
                            </div>
                         </li>
-                    ))}
+                        )
+                    })}
                  </ul>
             ) : (
                 !isLoading && <p className="text-center text-muted-foreground py-8">Você não tem nenhuma tarefa pendente. Parabéns!</p>
