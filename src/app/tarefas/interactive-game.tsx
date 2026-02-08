@@ -286,20 +286,27 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   }, [isAuthLoading, user, taskId, studentId, subject, firestore, router, toast, searchParams, mode, exerciseId, teacherIdForTest]);
 
 
+  // This single useEffect is now responsible for setting up the initial state for any game type
+  // whenever the question changes or the game starts.
   useEffect(() => {
-    // This effect should only run when the question index changes.
-    // NOT when the question object itself gets updated with performance stats.
-    // Therefore, we only depend on `currentQuestionIndex`.
-    
+    // We only set up the game board when we are in the 'playing' state for a given question.
+    if (gameState !== 'playing' || !questions[currentQuestionIndex]) {
+        return;
+    }
+
+    const currentQ = questions[currentQuestionIndex];
+
+    // Reset general state for the new question
     setMistakeMade(false);
     setQuestionStartTime(Date.now());
+    setSelectedAnswer(null);
+    setIsCorrect(null);
 
-    // Reset game-specific state when question changes
+    // Reset all possible game-specific states to ensure a clean slate
     setFlippedCards([]);
     setMatchedPairs([]);
     setIsChecking(false);
     setConstructedSyllables([]);
-    setAvailableSyllables([]);
     setGuessedLetters({});
     setChancesLeft(6);
     setAnimatingHeartIndex(null);
@@ -309,59 +316,49 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     setMatchPairsLines([]);
     setMatchPairsSelectedItem(null);
     setMatchPairsMatched([]);
+    setOrganizeCategoryState({ unplacedItems: [], placedItems: {}, selectedItem: null, incorrectCategory: null }); // Also reset category state
 
-    // We use `questions[currentQuestionIndex]` to get the new question data.
-    // The linter will complain about `questions` being a missing dependency,
-    // but adding it would re-introduce the bug where this effect runs on every
-    // answer. This is safe because this effect is designed to run only when
-    // moving to a new question.
-    const newQuestion = questions[currentQuestionIndex];
-    if (newQuestion?.questionType === 'organize_categories') {
-      const items = [...(newQuestion.categoryItems || [])].sort(() => Math.random() - 0.5);
-      const initialPlaced = newQuestion.categories?.reduce((acc, cat) => ({...acc, [cat]: []}), {}) || {};
-      setOrganizeCategoryState({
-        unplacedItems: items,
-        placedItems: initialPlaced,
-        selectedItem: null,
-        incorrectCategory: null,
-      });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQuestionIndex]);
-  
-  // This useEffect handles shuffling options for all game types
-  useEffect(() => {
-    if (gameState === 'playing' && questions[currentQuestionIndex]) {
-      const currentQ = questions[currentQuestionIndex];
-      let options = [...(currentQ.options || [])];
-      
-      if (currentQ.questionType === 'match_the_pairs') {
-          const leftCol: string[] = [];
-          const rightCol: string[] = [];
-          for (let i = 0; i < currentQ.options.length; i += 2) {
-              leftCol.push(currentQ.options[i]);
-              rightCol.push(currentQ.options[i + 1]);
-          }
-          setMatchPairsColumns({
-              left: leftCol.sort(() => Math.random() - 0.5),
-              right: rightCol.sort(() => Math.random() - 0.5),
-          });
-      } else {
-        // Fisher-Yates shuffle for other types
-        for (let i = options.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [options[i], options[j]] = [options[j], options[i]];
-        }
-        if (currentQ.questionType === 'organize_syllables') {
-            setAvailableSyllables(options);
+    // Set up the state for the *current* question type
+    switch (currentQ.questionType) {
+        case 'organize_categories':
+            const items = [...(currentQ.categoryItems || [])].sort(() => Math.random() - 0.5);
+            const initialPlaced = currentQ.categories?.reduce((acc, cat) => ({ ...acc, [cat]: [] }), {}) || {};
+            setOrganizeCategoryState({
+                unplacedItems: items,
+                placedItems: initialPlaced,
+                selectedItem: null,
+                incorrectCategory: null,
+            });
+            break;
+        case 'match_the_pairs':
+            const leftCol: string[] = [];
+            const rightCol: string[] = [];
+            for (let i = 0; i < (currentQ.options || []).length; i += 2) {
+                leftCol.push(currentQ.options[i]);
+                rightCol.push(currentQ.options[i + 1]);
+            }
+            setMatchPairsColumns({
+                left: leftCol.sort(() => Math.random() - 0.5),
+                right: rightCol.sort(() => Math.random() - 0.5),
+            });
+            break;
+        case 'organize_syllables':
+            setAvailableSyllables([...(currentQ.options || [])].sort(() => Math.random() - 0.5));
             setConstructedSyllables([]);
-        } else if (currentQ.questionType === 'organize_sentence') {
-            setAvailableSentenceWords(options.map((word, index) => ({ word, id: index })));
-            setConstructedSentence([]);
-        } else {
-            setShuffledOptions(options);
-        }
-      }
+            break;
+        case 'organize_sentence':
+             const words = (currentQ.options || []).map((word, index) => ({ word, id: index }));
+             setAvailableSentenceWords(words.sort(() => Math.random() - 0.5));
+             setConstructedSentence([]);
+            break;
+        case 'multiple_choice':
+        case 'fill_in_the_blank':
+        case 'guess_the_word':
+        case 'memory_game':
+        default:
+            // For memory game and multiple choice/fill_in_the_blank, we shuffle the `options` array
+            setShuffledOptions([...(currentQ.options || [])].sort(() => Math.random() - 0.5));
+            break;
     }
   }, [currentQuestionIndex, questions, gameState]);
 
@@ -406,8 +403,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
 
     } else {
         setCurrentQuestionIndex(prev => prev + 1);
-        setSelectedAnswer(null);
-        setIsCorrect(null);
         setGameState('playing');
     }
   }, [currentQuestionIndex, firestore, user, task, taskStartTime, toast, taskId, mode, exerciseId]);
@@ -1248,9 +1243,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           return (
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-center gap-4 p-4 border rounded-lg min-h-[10rem] bg-muted/50">
-                {organizeCategoryState.unplacedItems.map((item) => (
+                {organizeCategoryState.unplacedItems.map((item, index) => (
                   <Button
-                    key={item.item}
+                    key={`${item.item}-${index}`}
                     variant={organizeCategoryState.selectedItem?.item === item.item ? 'default' : 'secondary'}
                     className="h-auto p-3 sm:p-4 text-4xl sm:text-5xl font-bold shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
                     onClick={() => handleOrganizeItemSelect(item)}
@@ -1273,9 +1268,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
                   >
                     <h3 className="text-2xl font-bold text-center mb-4">{category}</h3>
                     <div className="flex flex-wrap justify-center gap-3">
-                      {organizeCategoryState.placedItems[category]?.map(placedItem => (
+                      {organizeCategoryState.placedItems[category]?.map((placedItem, pIndex) => (
                         <span
-                          key={placedItem}
+                          key={`${placedItem}-${pIndex}`}
                           className="bg-success/20 text-success-foreground p-2 sm:p-3 rounded-lg text-4xl sm:text-5xl font-bold animate-item-pop-in"
                         >
                           {placedItem}
