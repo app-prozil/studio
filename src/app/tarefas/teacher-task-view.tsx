@@ -990,6 +990,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [bankSubjectFilter, setBankSubjectFilter] = useState<'all' | 'matematica' | 'portugues' | 'memoria'>('all');
   const [bankQuestionTypeFilter, setBankQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs'>('all');
+  const [bankSearchQuery, setBankSearchQuery] = useState('');
   const [isStudentSelectorOpen, setIsStudentSelectorOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [selectableStudents, setSelectableStudents] = useState<Student[]>([]);
@@ -1018,9 +1019,11 @@ function TaskManager({ teacherId }: { teacherId: string }) {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
       const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
-      return subjectMatch && typeMatch;
+      const searchMatch = bankSearchQuery.trim() === '' || 
+                          (ex.text && ex.text.toLowerCase().includes(bankSearchQuery.toLowerCase()));
+      return subjectMatch && typeMatch && searchMatch;
     });
-  }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
+  }, [exercises, bankSubjectFilter, bankQuestionTypeFilter, bankSearchQuery]);
   
   const filteredStudents = useMemo(() => {
     if (!selectableStudents) return [];
@@ -1459,18 +1462,27 @@ function TaskManager({ teacherId }: { teacherId: string }) {
       </Dialog>
 
       <Dialog open={isBankOpen} onOpenChange={setIsBankOpen}>
-          <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
+          <DialogContent className="max-w-3xl h-[90vh] flex flex-col">
               <DialogHeader><DialogTitle>Adicionar Exercícios do Banco</DialogTitle><DialogDescription>Selecione os exercícios que você quer adicionar a esta tarefa.</DialogDescription></DialogHeader>
                <div className="space-y-4 pt-2 border-y pb-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium pr-4">Filtrar por Matéria:</span>
+                  <div className="relative px-2">
+                    <Search className="absolute left-4 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar por texto da pergunta..."
+                        className="pl-8"
+                        value={bankSearchQuery}
+                        onChange={(e) => setBankSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 px-2">
+                    <span className="text-sm font-medium pr-2">Matéria:</span>
                     <Button variant={bankSubjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('all')}>Todos</Button>
                     <Button variant={bankSubjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('matematica')}>Matemática</Button>
                     <Button variant={bankSubjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('portugues')}>Português</Button>
                     <Button variant={bankSubjectFilter === 'memoria' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('memoria')}>Memória</Button>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium pr-4">Filtrar por Jogo:</span>
+                  <div className="flex flex-wrap items-center gap-2 px-2">
+                    <span className="text-sm font-medium pr-2">Tipo de Jogo:</span>
                     <Button variant={bankQuestionTypeFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('all')}>Todos</Button>
                     <Button variant={bankQuestionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('multiple_choice')}>M. Escolha</Button>
                     <Button variant={bankQuestionTypeFilter === 'fill_in_the_blank' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('fill_in_the_blank')}>Completar</Button>
