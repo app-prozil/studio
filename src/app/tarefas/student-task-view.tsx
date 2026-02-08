@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, BookOpen, FileText, User, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useMemo } from 'react';
@@ -64,20 +64,36 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
 
       // If both are incomplete, sort by due date ASCENDING (earliest due first)
       if (!a.isCompleted) {
-        const aDueDate = new Date(a.dueDate).getTime();
-        const bDueDate = new Date(b.dueDate).getTime();
-        return aDueDate - bDueDate;
+        try {
+          const aDueDate = a.dueDate ? parseISO(a.dueDate).getTime() : 0;
+          const bDueDate = b.dueDate ? parseISO(b.dueDate).getTime() : 0;
+          if (isNaN(aDueDate) || isNaN(bDueDate)) return 0;
+          return aDueDate - bDueDate;
+        } catch (e) {
+          return 0;
+        }
       }
 
       // If both are completed, sort by completion date DESCENDING
-      const aCompletedAt = a.completedAt ? new Date(a.completedAt).getTime() : 0;
-      const bCompletedAt = b.completedAt ? new Date(b.completedAt).getTime() : 0;
-      if (aCompletedAt && bCompletedAt) {
-          return bCompletedAt - aCompletedAt;
+      try {
+        const aCompletedAt = a.completedAt ? parseISO(a.completedAt).getTime() : 0;
+        const bCompletedAt = b.completedAt ? parseISO(b.completedAt).getTime() : 0;
+        if (aCompletedAt && bCompletedAt && !isNaN(aCompletedAt) && !isNaN(bCompletedAt)) {
+            return bCompletedAt - aCompletedAt;
+        }
+      } catch (e) {
+         // fallback to due date
       }
 
       // Fallback to due date for completed tasks without completion date
-      return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+      try {
+        const aDueDate = a.dueDate ? parseISO(a.dueDate).getTime() : 0;
+        const bDueDate = b.dueDate ? parseISO(b.dueDate).getTime() : 0;
+        if (isNaN(aDueDate) || isNaN(bDueDate)) return 0;
+        return bDueDate - aDueDate;
+      } catch (e) {
+        return 0;
+      }
     });
   }, [tasks]);
 
@@ -124,7 +140,17 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
                     {sortedTasks.map(task => {
                         const today = new Date();
                         today.setHours(0,0,0,0);
-                        const isExpired = !task.isCompleted && new Date(task.dueDate) < today;
+                        let isExpired = false;
+                        let dueDateObj: Date | null = null;
+                        try {
+                          if (task.dueDate) {
+                            dueDateObj = parseISO(task.dueDate);
+                            isExpired = !task.isCompleted && dueDateObj < today;
+                          }
+                        } catch (e) {
+                           console.error("Invalid due date for task:", task.id, task.dueDate);
+                        }
+
 
                         return (
                         <li key={task.id} className={cn("flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4", isExpired ? "bg-destructive/5 border-destructive/20" : "bg-card")}>
@@ -138,7 +164,7 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
                                      <span className="flex items-center gap-1"><User className="w-3 h-3"/> {task.teacherName}</span>
                                    )}
                                    {task.createdAt && (
-                                     <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> Enviada em {format(new Date(task.createdAt), "dd/MM/yyyy", { locale: ptBR })}</span>
+                                     <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> Enviada em {format(parseISO(task.createdAt), "dd/MM/yyyy", { locale: ptBR })}</span>
                                    )}
                                    <span className="flex items-center gap-1">
                                     <BookOpen className="w-3 h-3"/> {task.subject === 'matematica' ? 'Matemática' : task.subject === 'portugues' ? 'Português' : 'Memória'}
@@ -155,7 +181,7 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
                                     <Badge variant={task.isCompleted ? 'secondary' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
                                 </div>
                                 <p className={cn("text-xs mt-1", isExpired ? "text-destructive font-semibold" : "text-muted-foreground")}>
-                                    Entrega: {format(new Date(task.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                                    Entrega: {dueDateObj ? format(dueDateObj, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida'}
                                 </p>
                              </div>
 

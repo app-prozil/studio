@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, Trash2, Send, Edit, BookCopy, Search, X, Save, Eye, User, FileText, Calendar, Clock, Target, Check, Circle, TestTube, Award, Download, WandSparkles, GripVertical } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
 import seedData from '@/lib/seed-exercises.json';
@@ -366,7 +366,11 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     })
     .sort((a, b) => {
         if (a.createdAt && b.createdAt) {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            try {
+              return parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime();
+            } catch (e) {
+              return 0;
+            }
         }
         if (a.createdAt) return -1;
         if (b.createdAt) return 1;
@@ -1036,7 +1040,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
         form.reset({
             ...editingTask,
             studentProzilId: editingTask.studentProzilId,
-            dueDate: editingTask.dueDate ? format(new Date(editingTask.dueDate), 'yyyy-MM-dd') : '',
+            dueDate: editingTask.dueDate ? format(parseISO(editingTask.dueDate), 'yyyy-MM-dd') : '',
         });
         setSelectedExercises((editingTask.questions || []).map((q, i) => ({...q, id: `${editingTask.id}-q-${i}`, subject: editingTask.subject, difficulty: 'easy', teacherId })));
     } else {
@@ -1150,13 +1154,17 @@ function TaskManager({ teacherId }: { teacherId: string }) {
       if (q.categoryItems) newQ.categoryItems = q.categoryItems;
       return newQ;
     });
+    
+    const dateParts = values.dueDate.split('-').map(Number);
+    const dueDate = new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2], 23, 59, 59, 999));
+    const dueDateISO = dueDate.toISOString();
 
     if (editingTask?.id) {
         const taskData: { [key: string]: any } = {};
 
         if (values.title) taskData.title = values.title.toUpperCase();
         taskData.description = (values.description || '').toUpperCase();
-        if (values.dueDate) taskData.dueDate = new Date(values.dueDate).toISOString();
+        if (values.dueDate) taskData.dueDate = dueDateISO;
         if (values.subject) taskData.subject = values.subject;
         if (values.taskType) taskData.taskType = values.taskType;
         if (questionsForDb) taskData.questions = questionsForDb;
@@ -1189,7 +1197,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
             title: values.title.toUpperCase(),
             studentProzilId: values.studentProzilId,
             description: (values.description || '').toUpperCase(),
-            dueDate: new Date(values.dueDate).toISOString(),
+            dueDate: dueDateISO,
             subject: values.subject,
             taskType: values.taskType,
             questions: questionsForDb,
