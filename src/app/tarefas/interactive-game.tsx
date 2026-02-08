@@ -421,22 +421,16 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     let shouldAdvance = false;
     
     if (isPuzzle) {
-        // For puzzle games, completing it is always considered "correct" for advancing the game.
-        // The scoring is handled separately by the 'mistakeMade' flag.
         shouldAdvance = true;
     } else {
-        // For direct answer questions, only a correct answer advances.
         shouldAdvance = isThisAnswerCorrect;
     }
 
-    let finalStatusForThisQuestion: 'correct' | 'incorrect' | undefined = undefined;
-
-    if (currentQuestion.status === 'unanswered') {
-      if (isPuzzle) {
-        finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
-      } else {
-        finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
-      }
+    let finalStatusForThisQuestion: 'correct' | 'incorrect';
+    if (isPuzzle) {
+      finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
+    } else {
+      finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
     }
     
     const timeTaken = Date.now() - questionStartTime;
@@ -450,7 +444,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         studentAnswer: answer,
         attempts: newAttempts,
         timeTaken: (q.timeTaken || 0) + timeTaken,
-        status: finalStatusForThisQuestion !== undefined ? finalStatusForThisQuestion : q.status,
+        status: finalStatusForThisQuestion,
       };
     });
     setQuestions(updatedQuestions);
@@ -473,7 +467,6 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     if (shouldAdvance) {
         setIsCorrect(true);
         
-        // Encapsulate the animation sequence
         const startAnimations = () => {
           setHandState('pointing');
           setShowHandAnimation(true);
@@ -494,19 +487,15 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           }, 7000);
         }
 
-        // Add delay for specific question type
-        if (questionType === 'organize_syllables') {
-            setTimeout(startAnimations, 2000); // 2 second delay for student to see the word
+        if (questionType === 'organize_syllables' || questionType === 'organize_sentence') {
+            setTimeout(startAnimations, 2000); 
         } else {
             startAnimations();
         }
 
     } else {
         setIsCorrect(false);
-        if (currentQuestion.status === 'unanswered') {
-          // This ensures direct-answer questions are marked as incorrect on the first wrong attempt.
-          setMistakeMade(true);
-        }
+        setMistakeMade(true);
         toast({ variant: 'destructive', title: 'Tente de novo!', duration: 2000 });
         setTimeout(() => {
             setGameState('playing');
@@ -672,34 +661,48 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   };
 
   useEffect(() => {
-    if (questionType !== 'guess_the_word' || gameState !== 'playing') return;
-
-    const secretWord = (currentQuestion?.answer || '').toUpperCase();
+    if (questionType !== 'guess_the_word' || gameState !== 'playing' || !currentQuestion) return;
+  
+    const secretWord = (currentQuestion.answer || '').toUpperCase();
     if (!secretWord) return;
-
-    // Check for win
-    const uniqueLetters = [...new Set(secretWord.split(''))];
-    const allLettersGuessed = uniqueLetters.every(letter => guessedLetters[letter] === 'correct');
+  
+    // Check for win condition
+    const allLettersGuessed = [...secretWord].every(letter => guessedLetters[letter] === 'correct');
     if (allLettersGuessed) {
-      setGameState('showingAnswer'); // Prevent further guesses
-      setTimeout(() => handleAnswer(secretWord), 500); // Trigger correct answer flow
-      return; // Stop further checks
+      setGameState('showingAnswer');
+      setTimeout(() => handleAnswer(secretWord), 500);
+      return;
     }
-
-    // Check for loss
+  
+    // Check for loss condition
     if (chancesLeft <= 0) {
-      setGameState('showingAnswer'); // Prevent further guesses
-      handleAnswer(Object.keys(guessedLetters).filter(k => guessedLetters[k] === 'correct').join(''));
-
-      // Show a "You Lost" message and then move on
+      setGameState('showingAnswer');
+      
+      const timeTaken = Date.now() - questionStartTime;
+      const updatedQuestions = questions.map((q, index) => {
+        if (index !== currentQuestionIndex) return q;
+        return {
+          ...q,
+          studentAnswer: Object.keys(guessedLetters).join(''),
+          attempts: (q.attempts || 0) + 1,
+          timeTaken: (q.timeTaken || 0) + timeTaken,
+          status: 'incorrect' as const,
+        };
+      });
+      setQuestions(updatedQuestions);
+  
       toast({
         variant: 'destructive',
         title: 'Fim de Jogo!',
         description: `A palavra era: ${secretWord}`,
-        duration: 3000,
+        duration: 4000,
       });
+  
+      setTimeout(() => {
+        handleNextQuestion(updatedQuestions);
+      }, 4000);
     }
-  }, [guessedLetters, chancesLeft, questionType, currentQuestion, gameState, handleAnswer, toast]);
+  }, [guessedLetters, chancesLeft, questionType, currentQuestion, gameState, handleAnswer, toast, questionStartTime, questions, currentQuestionIndex, handleNextQuestion]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {

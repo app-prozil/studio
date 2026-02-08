@@ -237,14 +237,12 @@ function TeacherProgressView({ userId, userType }: { userId: string, userType: '
   }, [userId, firestore, isAdminOrDirector, userType]);
   
   const tasksQuery = useMemoFirebase(() => {
+    const baseQuery = query(collectionGroup(firestore, 'tasks'), where('isCompleted', '==', true));
     if (isAdminOrDirector) {
-      return query(collectionGroup(firestore, 'tasks'), where('isCompleted', '==', true));
+      return baseQuery;
     }
-    return query(
-      collection(firestore, 'teachers', userId, 'tasks'),
-      where('isCompleted', '==', true)
-    );
-  }, [firestore, userId, isAdminOrDirector, userType]);
+    return query(baseQuery, where('teacherId', '==', userId));
+  }, [firestore, userId, isAdminOrDirector]);
 
   const { data: allCompletedTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 

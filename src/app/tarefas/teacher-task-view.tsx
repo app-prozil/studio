@@ -260,7 +260,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     defaultValues: { text: '', text2: '', librasText: '', options: ['', '', ''], answer: '', subject: 'matematica', difficulty: 'easy', teacherId: teacherId, id: '', createdAt: '', questionType: 'multiple_choice', categories: ['Categoria 1', 'Categoria 2'], categoryItems: [{ item: '', category: 'Categoria 1'}, { item: '', category: 'Categoria 1'}] },
   });
   
-  const { watch, setValue, control, trigger } = form;
+  const { watch, setValue, control, trigger, getValues } = form;
   const { fields, append, remove, replace } = useFieldArray({ control, name: "options" });
   const { fields: categoriesFields, append: appendCategory, remove: removeCategory, replace: replaceCategories } = useFieldArray({ control, name: "categories" });
   const { fields: itemsFields, append: appendItem, remove: removeItem, replace: replaceItems } = useFieldArray({ control, name: "categoryItems" });
@@ -273,21 +273,21 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     const subscription = watch((value, { name }) => {
       const currentQuestionType = value.questionType;
 
-      if (currentQuestionType === 'organize_syllables' && name?.startsWith('options')) {
+      if (currentQuestionType === 'organize_syllables' && (name?.startsWith('options') || name === 'options')) {
           const newAnswer = (value.options || []).join('');
-          if (form.getValues('answer') !== newAnswer) {
+          if (getValues('answer') !== newAnswer) {
               setValue('answer', newAnswer, { shouldValidate: true });
-              trigger('answer'); 
+              trigger('answer');
           }
       } else if (currentQuestionType === 'fill_in_the_blank') {
         const newAnswer = (value.options || [])[0] || '';
-        if (form.getValues('answer') !== newAnswer) {
+        if (getValues('answer') !== newAnswer) {
           setValue('answer', newAnswer, { shouldValidate: true });
         }
       }
     });
     return () => subscription.unsubscribe();
-  }, [watch, setValue, form, trigger]);
+  }, [watch, setValue, getValues, trigger]);
 
   const handleQuestionTypeChange = useCallback((value: 'multiple_choice' | 'fill_in_the_blank' | 'organize_syllables' | 'memory_game' | 'guess_the_word' | 'organize_categories' | 'organize_sentence' | 'match_the_pairs') => {
     setValue('questionType', value);
@@ -995,7 +995,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
-      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
