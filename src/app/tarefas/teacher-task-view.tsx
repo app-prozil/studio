@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -418,48 +419,56 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   
     const dataToSave: Exercise = JSON.parse(JSON.stringify(values));
   
-    dataToSave.text = (dataToSave.text || '').toUpperCase();
-    dataToSave.text2 = (dataToSave.text2 || '').toUpperCase();
-    dataToSave.librasText = (dataToSave.librasText || '').toUpperCase();
+    const processData = (data: Exercise): Exercise => {
+      const processed = { ...data };
+      processed.text = (processed.text || '').toUpperCase();
+      processed.text2 = (processed.text2 || '').toUpperCase();
   
-    switch (dataToSave.questionType) {
-      case 'fill_in_the_blank':
-        dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '').map(o => o.toUpperCase()) || [];
-        dataToSave.answer = dataToSave.options[0] || '';
-        break;
-      case 'organize_syllables':
-        dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '').map(o => o.toUpperCase()) || [];
-        dataToSave.answer = (dataToSave.answer || '').toUpperCase();
-        break;
-      case 'memory_game':
-      case 'match_the_pairs':
-        dataToSave.answer = "N/A";
-        dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '') || [];
-        break;
-      case 'guess_the_word':
-        dataToSave.answer = (dataToSave.answer || '').toUpperCase();
-        dataToSave.options = [];
-        break;
-      case 'organize_categories':
-        dataToSave.answer = "N/A";
-        dataToSave.options = [];
-        dataToSave.categories = dataToSave.categories?.filter(c => c && c.trim() !== '').map(c => c.toUpperCase()) || [];
-        dataToSave.categoryItems = dataToSave.categoryItems
-            ?.filter(i => i && i.item && i.item.trim() !== '')
-            .map(i => ({ item: i.item, category: (i.category || '').toUpperCase() })) || [];
-        break;
-      case 'organize_sentence':
-        dataToSave.answer = dataToSave.answer || '';
-        dataToSave.options = (dataToSave.answer || '').split(' ').filter(word => word.trim() !== '');
-        break;
-      default: // 'multiple_choice'
-        dataToSave.answer = (dataToSave.answer || '').toUpperCase();
-        dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '').map(o => o.toUpperCase()) || [];
-    }
+      switch (processed.questionType) {
+        case 'fill_in_the_blank':
+          processed.options = processed.options?.map(o => o.toUpperCase()) || [];
+          processed.answer = processed.options[0] || '';
+          break;
+        case 'organize_syllables':
+          processed.options = processed.options?.map(o => o.toUpperCase()) || [];
+          processed.answer = (processed.options || []).join('');
+          break;
+        case 'multiple_choice':
+          processed.answer = (processed.answer || '').toUpperCase();
+          processed.options = processed.options?.map(o => o.toUpperCase()) || [];
+          break;
+        case 'guess_the_word':
+          processed.answer = (processed.answer || '').toUpperCase();
+          processed.options = [];
+          break;
+        case 'organize_sentence':
+            processed.answer = processed.answer || '';
+            processed.options = (processed.answer || '').split(' ').filter(word => word.trim() !== '');
+            break;
+        case 'organize_categories':
+          processed.answer = "N/A";
+          processed.options = [];
+          processed.categories = (processed.categories || []).map(c => c.toUpperCase());
+          // Do not convert category items to uppercase to preserve emojis/case
+          break;
+        case 'memory_game':
+        case 'match_the_pairs':
+          processed.answer = "N/A";
+          // Do not convert memory/match options to uppercase to preserve emojis/case
+          break;
+        default:
+          processed.answer = (processed.answer || '').toUpperCase();
+          processed.options = processed.options?.map(o => o.toUpperCase()) || [];
+          break;
+      }
+      return processed;
+    };
+  
+    const finalData = processData(dataToSave);
     
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-      const { createdAt, ...dataForUpdate } = dataToSave;
+      const { createdAt, ...dataForUpdate } = finalData;
       updateDoc(exerciseRef, dataForUpdate)
         .then(() => {
           toast({ title: 'Exercício atualizado!' });
@@ -480,7 +489,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         });
     } else {
       const newExerciseRef = doc(collection(firestore, 'teachers', teacherId, 'exercises'));
-      const newExercise = { ...dataToSave, id: newExerciseRef.id, createdAt: new Date().toISOString() };
+      const newExercise = { ...finalData, id: newExerciseRef.id, createdAt: new Date().toISOString() };
       setDoc(newExerciseRef, newExercise)
         .then(() => {
           toast({ title: 'Exercício salvo no banco!' });
@@ -1004,7 +1013,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
-      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
