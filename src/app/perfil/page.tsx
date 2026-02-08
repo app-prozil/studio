@@ -13,8 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { manuals, ManualContent } from '@/lib/manuals';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type StudentProfileData = {
   id: string;
@@ -109,6 +112,8 @@ type LinkedStudent = {
 
 function TeacherStudentList({ teacherId }: { teacherId: string }) {
     const firestore = useFirestore();
+    const { toast } = useToast();
+    const [unlinkingStudent, setUnlinkingStudent] = useState<LinkedStudent | null>(null);
     
     const studentsQuery = useMemoFirebase(
         () => (firestore && teacherId) 
@@ -118,6 +123,27 @@ function TeacherStudentList({ teacherId }: { teacherId: string }) {
     );
 
     const { data: students, isLoading, error } = useCollection<LinkedStudent>(studentsQuery);
+
+    const handleUnlink = async () => {
+        if (!unlinkingStudent) return;
+        const studentRef = doc(firestore, 'students', unlinkingStudent.id);
+        try {
+            await updateDoc(studentRef, {
+                teacherIds: arrayRemove(teacherId)
+            });
+            toast({ title: 'Aluno desvinculado com sucesso!' });
+            setUnlinkingStudent(null);
+        } catch (error) {
+            console.error("Error unlinking student:", error);
+            const permissionError = new FirestorePermissionError({
+                path: studentRef.path,
+                operation: 'update',
+                requestResourceData: { teacherIds: `REMOVE ${teacherId}` },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Erro ao desvincular aluno.' });
+        }
+    };
 
     if (isLoading) {
         return <Skeleton className="h-24 w-full" />;
@@ -133,6 +159,7 @@ function TeacherStudentList({ teacherId }: { teacherId: string }) {
     }
 
     return (
+        <>
         <ul className="space-y-2">
             {students.map(student => (
                 <li key={student.id} className="flex items-center justify-between p-3 border rounded-md bg-background/50">
@@ -140,9 +167,30 @@ function TeacherStudentList({ teacherId }: { teacherId: string }) {
                         <p className="font-semibold">{student.name}</p>
                         <p className="text-xs text-muted-foreground">{student.prozilId}</p>
                     </div>
+                    <Button variant="ghost" size="sm" onClick={() => setUnlinkingStudent(student)} className="text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Desvincular
+                    </Button>
                 </li>
             ))}
         </ul>
+        <AlertDialog open={!!unlinkingStudent} onOpenChange={(open) => !open && setUnlinkingStudent(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Desvincular {unlinkingStudent?.name}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Esta ação removerá você da lista de professores deste aluno. Ele não receberá mais tarefas de você, mas o perfil dele não será excluído. Você pode se vincular novamente no futuro.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleUnlink} className="bg-destructive hover:bg-destructive/90">
+                        Sim, Desvincular
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        </>
     );
 }
 
@@ -412,7 +460,7 @@ export default function ProfilePage() {
         <Card>
             <CardHeader>
                 <CardTitle>Meus Alunos</CardTitle>
-                <CardDescription>Estes são os alunos que estão vinculados a você.</CardDescription>
+                <CardDescription>Estes são os alunos que estão vinculados a você. Você pode desvincular um aluno se ele não for mais da sua turma.</CardDescription>
             </CardHeader>
             <CardContent>
                 <TeacherStudentList teacherId={user.uid} />

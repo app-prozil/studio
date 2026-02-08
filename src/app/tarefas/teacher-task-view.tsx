@@ -453,12 +453,12 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
           processed.answer = "N/A";
           processed.options = [];
           processed.categories = (processed.categories || []).map(c => c.toUpperCase());
-          // Do not convert category items to uppercase to preserve emojis/case
+          // DO NOT convert category items to uppercase to preserve emojis/case
           break;
         case 'memory_game':
         case 'match_the_pairs':
           processed.answer = "N/A";
-          // Do not convert memory/match options to uppercase to preserve emojis/case
+          // DO NOT convert memory/match options to uppercase to preserve emojis/case
           break;
         default:
           processed.answer = (processed.answer || '').toUpperCase();
@@ -1945,25 +1945,39 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
     () => collection(firestore, 'teachers', teacherId, 'tasks'),
     [firestore, teacherId]
   );
-  const { data: tasks, isLoading } = useCollection<Task>(tasksQuery);
+  const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
   const [viewingReport, setViewingReport] = useState<Task | null>(null);
   const [viewingGeneralReportFor, setViewingGeneralReportFor] = useState<{name: string, tasks: Task[], teacherName?: string} | null>(null);
 
-  const tasksByStudent = useMemo(() => {
-    if (!tasks) {
-      return {};
+  // Fetch all students linked to this teacher to get their current names
+  const studentsQuery = useMemoFirebase(
+    () => query(collection(firestore, 'students'), where('teacherIds', 'array-contains', teacherId)),
+    [firestore, teacherId]
+  );
+  const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
+
+
+  const { tasksByStudent, studentMap } = useMemo(() => {
+    if (!tasks || !students) {
+      return { tasksByStudent: {}, studentMap: new Map() };
     }
+    
+    // Create a map of student IDs to their current names
+    const studentMap = new Map(students.map(s => [s.id, s.name]));
+
+    // Group tasks by the unique and immutable studentId
     const grouped = [...tasks].reduce((acc: Record<string, Task[]>, task: Task) => {
-      const studentIdentifier = task.studentName || task.studentId;
-      if (!acc[studentIdentifier]) {
-        acc[studentIdentifier] = [];
+      const studentId = task.studentId;
+      if (!acc[studentId]) {
+        acc[studentId] = [];
       }
-      acc[studentIdentifier].push(task);
+      acc[studentId].push(task);
       return acc;
     }, {});
   
-    for (const studentIdentifier in grouped) {
-      grouped[studentIdentifier].sort((a, b) => {
+    // Sort tasks within each student's group
+    for (const studentId in grouped) {
+      grouped[studentId].sort((a, b) => {
         if (a.isCompleted !== b.isCompleted) {
           return a.isCompleted ? 1 : -1;
         }
@@ -1971,8 +1985,10 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
       });
     }
   
-    return grouped;
-  }, [tasks]);
+    return { tasksByStudent: grouped, studentMap };
+  }, [tasks, students]);
+
+  const isLoading = isLoadingTasks || isLoadingStudents;
 
   if (isLoading) {
     return (
@@ -1996,8 +2012,11 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
           <div className="text-center text-muted-foreground py-8">Nenhuma tarefa atribuída encontrada.</div>
         ) : (
           <Accordion type="single" collapsible className="w-full">
-            {Object.entries(tasksByStudent).map(([studentName, studentTasks]) => (
-              <AccordionItem value={studentName} key={studentName}>
+            {Object.entries(tasksByStudent).map(([studentId, studentTasks]) => {
+              // Use the map to get the most current student name, with fallbacks
+              const studentName = studentMap.get(studentId) || studentTasks[0]?.studentName || studentId;
+              return (
+              <AccordionItem value={studentId} key={studentId}>
                 <AccordionTrigger className="text-lg font-medium hover:no-underline">
                   <div className="flex items-center gap-3">
                     <User className="h-5 w-5 text-primary" />
@@ -2046,7 +2065,7 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
                   </ul>
                 </AccordionContent>
               </AccordionItem>
-            ))}
+            )})}
           </Accordion>
         )}
       </CardContent>
