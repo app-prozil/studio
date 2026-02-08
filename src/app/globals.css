@@ -414,7 +414,6 @@
   .printable-page * {
     color: black !important;
     border-color: black !important;
-    font-family: 'PT Sans', sans-serif;
   }
   
   .printable-page .text-muted-foreground {
@@ -579,3 +578,5 @@
     }
   }
 }
+
+    

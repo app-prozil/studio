@@ -22,6 +22,7 @@ type Exercise = {
   teacherId: string;
   text: string;
   text2?: string;
+  librasText?: string;
   options: string[];
   answer: string;
   subject: 'matematica' | 'portugues' | 'memoria';
@@ -268,6 +269,12 @@ function PrintableWorksheetGenerator() {
                                             {`${exerciseCounter}. ${exercise.text} ${exercise.text2 || ''}`.replace(/___/g, '__________')}
                                         </p>
 
+                                        {exercise.librasText && (
+                                            <p className="text-center font-libras font-black libras-input-text !leading-none my-4">
+                                                {exercise.librasText}
+                                            </p>
+                                        )}
+
                                         {(() => {
                                             switch (questionType) {
                                             case 'organize_syllables':
@@ -420,3 +427,5 @@ function PrintableWorksheetGenerator() {
 export default function PrintableWorksheetsPage() {
     return <PrintableWorksheetGenerator />;
 }
+
+    
