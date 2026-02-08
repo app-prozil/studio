@@ -410,21 +410,23 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const handleAnswer = useCallback((answer: string) => {
     if (gameState !== 'playing' || !currentQuestion) return;
 
-    let isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
-    let isThisAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
+    const isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
+    const isThisAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
     
     let shouldAdvance = false;
-    
     if (isPuzzle) {
         shouldAdvance = true;
     } else {
         shouldAdvance = isThisAnswerCorrect;
     }
 
+    const isSpecialScoringGame = ['memory_game', 'guess_the_word'].includes(questionType);
     let finalStatusForThisQuestion: 'correct' | 'incorrect';
-    if (isPuzzle) {
+
+    if (isSpecialScoringGame) {
       finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
     } else {
+      // For all other games (including non-special puzzles), correctness is based on the final successful attempt.
       finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
     }
     
@@ -984,12 +986,12 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
         {questionType === 'organize_syllables' && (
             <div className="space-y-6">
                 <div className={cn("relative p-8 border-4 rounded-lg bg-muted min-h-32 flex items-center justify-center gap-2", isWrongSyllableShake && 'animate-shake')}>
-                    <p className="text-5xl font-bold font-mono tracking-widest">{constructedSyllables.join('')}</p>
                     {constructedSyllables.length > 0 && gameState === 'playing' && (
                          <Button variant="ghost" size="icon" className="absolute top-2 right-2" onClick={handleClearSyllables}>
                             <RotateCcw className="w-6 h-6" />
                          </Button>
                     )}
+                    <p className="text-5xl font-bold font-mono tracking-widest">{constructedSyllables.join('')}</p>
                 </div>
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {availableSyllables.map((syllable, index) => (
