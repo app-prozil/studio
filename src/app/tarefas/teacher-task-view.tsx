@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -414,58 +415,54 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
     
-    let answerValue: string;
-    let optionsValue: string[];
+    // Create a new object to hold the processed data.
+    const finalValues: Partial<Exercise> = {
+        // Common properties that don't need special processing
+        teacherId: values.teacherId,
+        subject: values.subject,
+        difficulty: values.difficulty,
+        questionType: values.questionType,
+        // Uppercase text fields by default
+        text: values.text.toUpperCase(),
+        text2: values.text2 ? values.text2.toUpperCase() : '',
+        librasText: values.librasText ? values.librasText.toUpperCase() : '',
+    };
 
-    let finalValues: Partial<Exercise> = { ...values };
-
-    // Default to uppercasing for text-based content for style consistency.
-    // Specific cases below will override for content that needs to preserve case (like emojis).
-    answerValue = values.answer.toUpperCase();
-    optionsValue = values.options?.filter(o => o.trim() !== '').map(o => o.toUpperCase());
-
+    // Process options, answer, and other specific fields based on type
     switch (values.questionType) {
       case 'fill_in_the_blank':
-        answerValue = values.options[0]; // Preserve case for emoji answers
-        optionsValue = values.options?.filter(o => o.trim() !== ''); // Preserve case
+        finalValues.answer = values.options[0]; // Preserve case
+        finalValues.options = values.options?.filter(o => o.trim() !== ''); // Preserve case
         break;
       case 'organize_syllables':
-        answerValue = values.answer.toUpperCase(); // Already constructed from options which are text
+        finalValues.answer = values.answer.toUpperCase();
+        finalValues.options = values.options?.filter(o => o.trim() !== '').map(o => o.toUpperCase());
         break;
       case 'memory_game':
       case 'match_the_pairs':
-        answerValue = "N/A";
-        optionsValue = values.options?.filter(o => o.trim() !== ''); // Preserve case
+        finalValues.answer = "N/A";
+        finalValues.options = values.options?.filter(o => o.trim() !== ''); // Preserve case
         break;
       case 'guess_the_word':
-        answerValue = values.answer.toUpperCase();
-        optionsValue = [];
+        finalValues.answer = values.answer.toUpperCase();
+        finalValues.options = [];
         break;
       case 'organize_categories':
-        answerValue = "N/A";
-        optionsValue = [];
+        finalValues.answer = "N/A";
+        finalValues.options = [];
         finalValues.categories = values.categories?.filter(c => c.trim() !== '').map(c => c.toUpperCase());
         finalValues.categoryItems = values.categoryItems
             ?.filter(i => i.item.trim() !== '')
             .map(i => ({ item: i.item, category: i.category.toUpperCase() })); // Preserve item case
         break;
       case 'organize_sentence':
-        answerValue = values.answer; // Preserve case
-        optionsValue = values.answer.split(' ').filter(word => word.trim() !== ''); // Preserve case
+        finalValues.answer = values.answer; // Preserve case
+        finalValues.options = values.answer.split(' ').filter(word => word.trim() !== ''); // Preserve case
         break;
-      default: // 'multiple_choice', assumed to be text, so uppercase for consistency.
-        answerValue = values.answer.toUpperCase();
-        optionsValue = values.options?.filter(o => o.trim() !== '').map(o => o.toUpperCase());
+      default: // 'multiple_choice'
+        finalValues.answer = values.answer.toUpperCase();
+        finalValues.options = values.options?.filter(o => o.trim() !== '').map(o => o.toUpperCase());
     }
-    
-    finalValues = {
-        ...finalValues,
-        text: values.text.toUpperCase(),
-        text2: values.text2 ? values.text2.toUpperCase() : '',
-        librasText: values.librasText ? values.librasText.toUpperCase() : '',
-        options: optionsValue,
-        answer: answerValue,
-    };
     
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
@@ -485,7 +482,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
       });
     } else {
       const newExerciseRef = doc(collection(firestore, 'teachers', teacherId, 'exercises'));
-      const newExercise = { ...finalValues, id: newExerciseRef.id, teacherId, createdAt: new Date().toISOString() };
+      const newExercise = { ...finalValues, id: newExerciseRef.id, createdAt: new Date().toISOString() };
       setDoc(newExerciseRef, newExercise).catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
           path: newExerciseRef.path,
@@ -1004,7 +1001,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
     return exercises.filter(ex => {
       const subjectMatch = bankSubjectFilter === 'all' || ex.subject === bankSubjectFilter;
       const effectiveQuestionType = ex.questionType || 'multiple_choice';
-      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === bankQuestionTypeFilter;
+      const typeMatch = bankQuestionTypeFilter === 'all' || effectiveQuestionType === typeMatch;
       return subjectMatch && typeMatch;
     });
   }, [exercises, bankSubjectFilter, bankQuestionTypeFilter]);
