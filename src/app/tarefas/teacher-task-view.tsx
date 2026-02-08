@@ -270,10 +270,10 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const watchedCategories = watch('categories');
 
   useEffect(() => {
-    const subscription = watch((value, { name }) => {
+    const subscription = watch((value, { name, type }) => {
       const currentQuestionType = value.questionType;
 
-      if (currentQuestionType === 'organize_syllables' && (name?.startsWith('options') || name === 'options')) {
+      if (currentQuestionType === 'organize_syllables' && (name?.startsWith('options') || type === 'change')) {
           const newAnswer = (value.options || []).join('');
           if (getValues('answer') !== newAnswer) {
               setValue('answer', newAnswer, { shouldValidate: true });
@@ -283,6 +283,7 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         const newAnswer = (value.options || [])[0] || '';
         if (getValues('answer') !== newAnswer) {
           setValue('answer', newAnswer, { shouldValidate: true });
+          trigger('answer');
         }
       }
     });
@@ -414,20 +415,27 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
     setIsSubmitting(true);
     
     let answerValue: string;
-    let optionsValue: string[] = values.options?.filter(o => o.trim() !== '').map(o => o.toUpperCase());
+    let optionsValue: string[];
 
     let finalValues: Partial<Exercise> = { ...values };
 
+    // Default to uppercasing for text-based content for style consistency.
+    // Specific cases below will override for content that needs to preserve case (like emojis).
+    answerValue = values.answer.toUpperCase();
+    optionsValue = values.options?.filter(o => o.trim() !== '').map(o => o.toUpperCase());
+
     switch (values.questionType) {
       case 'fill_in_the_blank':
-        answerValue = values.options[0].toUpperCase();
+        answerValue = values.options[0]; // Preserve case for emoji answers
+        optionsValue = values.options?.filter(o => o.trim() !== ''); // Preserve case
         break;
       case 'organize_syllables':
-        answerValue = values.answer.toUpperCase(); // Value is now set by useEffect
+        answerValue = values.answer.toUpperCase(); // Already constructed from options which are text
         break;
       case 'memory_game':
       case 'match_the_pairs':
         answerValue = "N/A";
+        optionsValue = values.options?.filter(o => o.trim() !== ''); // Preserve case
         break;
       case 'guess_the_word':
         answerValue = values.answer.toUpperCase();
@@ -439,14 +447,15 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
         finalValues.categories = values.categories?.filter(c => c.trim() !== '').map(c => c.toUpperCase());
         finalValues.categoryItems = values.categoryItems
             ?.filter(i => i.item.trim() !== '')
-            .map(i => ({ item: i.item.toUpperCase(), category: i.category.toUpperCase() }));
+            .map(i => ({ item: i.item, category: i.category.toUpperCase() })); // Preserve item case
         break;
       case 'organize_sentence':
-        answerValue = values.answer.toUpperCase();
-        optionsValue = values.answer.toUpperCase().split(' ').filter(word => word.trim() !== '');
+        answerValue = values.answer; // Preserve case
+        optionsValue = values.answer.split(' ').filter(word => word.trim() !== ''); // Preserve case
         break;
-      default: // 'multiple_choice'
+      default: // 'multiple_choice', assumed to be text, so uppercase for consistency.
         answerValue = values.answer.toUpperCase();
+        optionsValue = values.options?.filter(o => o.trim() !== '').map(o => o.toUpperCase());
     }
     
     finalValues = {
