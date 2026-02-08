@@ -424,10 +424,11 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     let finalStatusForThisQuestion: 'correct' | 'incorrect';
 
     if (isSpecialScoringGame) {
-      finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
-    } else {
-      // For all other games (including non-special puzzles), correctness is based on the final successful attempt.
+      // For memory and guess-the-word, if they complete it, it's correct, regardless of intermediate mistakes.
       finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
+    } else {
+      // For all other games, if any mistake was made, it's incorrect, even if the final attempt was right.
+      finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
     }
     
     const timeTaken = Date.now() - questionStartTime;
