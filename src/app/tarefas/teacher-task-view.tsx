@@ -416,40 +416,31 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
   
-    // Create a mutable copy of the form values to process.
     const dataToSave: Exercise = JSON.parse(JSON.stringify(values));
   
-    // Uppercase text fields by default, as it's desired for most content.
     dataToSave.text = (dataToSave.text || '').toUpperCase();
     dataToSave.text2 = (dataToSave.text2 || '').toUpperCase();
     dataToSave.librasText = (dataToSave.librasText || '').toUpperCase();
   
-    // Process options, answer, and other specific fields based on question type
     switch (dataToSave.questionType) {
       case 'fill_in_the_blank':
-        // Answer is the first option. Preserve case of all options.
+        dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '').map(o => o.toUpperCase()) || [];
         dataToSave.answer = dataToSave.options[0] || '';
-        dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '') || [];
         break;
       case 'organize_syllables':
-        // Syllables and answer are uppercased.
-        dataToSave.answer = (dataToSave.answer || '').toUpperCase();
         dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '').map(o => o.toUpperCase()) || [];
+        dataToSave.answer = (dataToSave.answer || '').toUpperCase();
         break;
       case 'memory_game':
       case 'match_the_pairs':
-        // No answer. Preserve case of options.
         dataToSave.answer = "N/A";
         dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '') || [];
         break;
       case 'guess_the_word':
-        // Answer is uppercased. No options.
         dataToSave.answer = (dataToSave.answer || '').toUpperCase();
         dataToSave.options = [];
         break;
       case 'organize_categories':
-        // This is the critical part.
-        // Preserve the case of the items, but uppercase the category names.
         dataToSave.answer = "N/A";
         dataToSave.options = [];
         dataToSave.categories = dataToSave.categories?.filter(c => c && c.trim() !== '').map(c => c.toUpperCase()) || [];
@@ -458,19 +449,16 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
             .map(i => ({ item: i.item, category: (i.category || '').toUpperCase() })) || [];
         break;
       case 'organize_sentence':
-        // Preserve case for the full sentence answer. Options are derived from it.
         dataToSave.answer = dataToSave.answer || '';
         dataToSave.options = (dataToSave.answer || '').split(' ').filter(word => word.trim() !== '');
         break;
       default: // 'multiple_choice'
-        // Answer and options are uppercased.
         dataToSave.answer = (dataToSave.answer || '').toUpperCase();
         dataToSave.options = dataToSave.options?.filter(o => o && o.trim() !== '').map(o => o.toUpperCase()) || [];
     }
     
     if (editingExercise?.id) {
       const exerciseRef = doc(firestore, 'teachers', teacherId, 'exercises', editingExercise.id);
-      // Omit createdAt from the update
       const { createdAt, ...dataForUpdate } = dataToSave;
       updateDoc(exerciseRef, dataForUpdate)
         .then(() => {
