@@ -28,6 +28,7 @@ type Question = {
   attempts?: number;
   status?: 'correct' | 'incorrect' | 'unanswered';
   timeTaken?: number;
+  proportionalScore?: number;
 };
 
 type Task = {
@@ -372,8 +373,13 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
     if (isLastQuestion) {
         setGameState('finished');
         
-        const correctCount = updatedQuestions.filter(q => q.status === 'correct').length;
-        const score = Math.round((correctCount / updatedQuestions.length) * 100);
+        const totalProportionalScore = updatedQuestions.reduce(
+            (sum, q) => sum + (q.proportionalScore ?? 0),
+            0
+        );
+        const score = updatedQuestions.length > 0
+            ? Math.round(totalProportionalScore / updatedQuestions.length)
+            : 0;
         setFinalScore(score);
         
         if (!isTaskTestMode && !isExerciseTestMode) {
@@ -386,7 +392,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             isCompleted: true,
             completedAt: new Date().toISOString(),
             totalTime: totalTime,
-            questions: updatedQuestions,
+            questions: updatedQuestions.map(({ proportionalScore, ...rest }) => rest), // Do not save UI score to DB
           };
           
           const studentTaskRef = doc(firestore, 'students', task.studentId, 'tasks', task.id);
@@ -410,59 +416,62 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
   const handleAnswer = useCallback((answer: string) => {
     if (gameState !== 'playing' || !currentQuestion) return;
 
-    const isPuzzle = ['memory_game', 'organize_syllables', 'organize_categories', 'guess_the_word', 'organize_sentence', 'match_the_pairs'].includes(questionType);
+    // These games are completion-based. Success means solving the puzzle.
+    const isCompletionBasedGame = ['memory_game', 'guess_the_word'].includes(questionType);
     const isThisAnswerCorrect = answer.toUpperCase() === currentQuestion.answer.toUpperCase();
     
-    let shouldAdvance = false;
-    if (isPuzzle) {
-        shouldAdvance = true;
-    } else {
-        shouldAdvance = isThisAnswerCorrect;
-    }
-
-    const isSpecialScoringGame = ['memory_game', 'guess_the_word'].includes(questionType);
-    let finalStatusForThisQuestion: 'correct' | 'incorrect';
-
-    if (isSpecialScoringGame) {
-      // For memory and guess-the-word, if they complete it, it's correct, regardless of intermediate mistakes.
-      finalStatusForThisQuestion = isThisAnswerCorrect ? 'correct' : 'incorrect';
-    } else {
-      // For all other games, if any mistake was made, it's incorrect, even if the final attempt was right.
-      finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
-    }
+    // For any game, we only advance if the answer is correct for this attempt.
+    const shouldAdvance = isThisAnswerCorrect;
     
-    const timeTaken = Date.now() - questionStartTime;
-    const updatedQuestions = questions.map((q, index) => {
-      if (index !== currentQuestionIndex) return q;
-      
-      const newAttempts = (q.attempts || 0) + 1;
-      
-      return {
-        ...q,
-        studentAnswer: answer,
-        attempts: newAttempts,
-        timeTaken: (q.timeTaken || 0) + timeTaken,
-        status: finalStatusForThisQuestion,
-      };
-    });
-    setQuestions(updatedQuestions);
-    
-    const isTestDrive = taskId === 'test-drive';
-    const isTaskTestMode = isTestDrive || mode === 'test';
-    const isExerciseTestMode = mode === 'test_exercise';
-    if (!isTaskTestMode && !isExerciseTestMode && firestore && user && studentId && taskId) {
-      const taskSource = searchParams.get('source') || 'student';
-      const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
-      const taskDocRef = doc(firestore, collectionPath, studentId, 'tasks', taskId);
-      updateDoc(taskDocRef, { questions: updatedQuestions }).catch(e => {
-        console.error("Failed to update question performance", e);
-      });
-    }
-
-    setGameState('showingAnswer');
-    setSelectedAnswer(answer);
-
     if (shouldAdvance) {
+        let finalStatusForThisQuestion: 'correct' | 'incorrect';
+        let proportionalScoreForThisQuestion: number;
+
+        if (isCompletionBasedGame) {
+            // If it's a completion game and they succeeded, it's 'correct' for the report and 100% score,
+            // regardless of intermediate mistakes.
+            finalStatusForThisQuestion = 'correct';
+            proportionalScoreForThisQuestion = 100;
+        } else {
+            // For standard games (Multiple Choice, Organize, etc)...
+            // The report status is strict: any mistake during this question marks it as incorrect.
+            finalStatusForThisQuestion = mistakeMade ? 'incorrect' : 'correct';
+            // The student's score is proportional: 100 for first-try, 50 for a corrected answer.
+            proportionalScoreForThisQuestion = mistakeMade ? 50 : 100;
+        }
+
+        const timeTaken = Date.now() - questionStartTime;
+        const updatedQuestions = questions.map((q, index) => {
+          if (index !== currentQuestionIndex) return q;
+          
+          const newAttempts = (q.attempts || 0) + 1;
+          
+          return {
+            ...q,
+            studentAnswer: answer,
+            attempts: newAttempts,
+            timeTaken: (q.timeTaken || 0) + timeTaken,
+            status: finalStatusForThisQuestion, // For the teacher's report
+            proportionalScore: proportionalScoreForThisQuestion, // For the student's end-game score
+          };
+        });
+        setQuestions(updatedQuestions);
+        
+        const isTestDrive = taskId === 'test-drive';
+        const isTaskTestMode = isTestDrive || mode === 'test';
+        const isExerciseTestMode = mode === 'test_exercise';
+        if (!isTaskTestMode && !isExerciseTestMode && firestore && user && studentId && taskId) {
+          const taskSource = searchParams.get('source') || 'student';
+          const collectionPath = taskSource === 'teacher' ? 'teachers' : 'students';
+          const taskDocRef = doc(firestore, collectionPath, studentId, 'tasks', taskId);
+          const questionsForDb = updatedQuestions.map(({ proportionalScore, ...rest }) => rest);
+          updateDoc(taskDocRef, { questions: questionsForDb }).catch(e => {
+            console.error("Failed to update question performance", e);
+          });
+        }
+
+        setGameState('showingAnswer');
+        setSelectedAnswer(answer);
         setIsCorrect(true);
         
         const startAnimations = () => {
@@ -491,9 +500,9 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
             startAnimations();
         }
 
-    } else {
+    } else { // Handle incorrect answer for non-advancing games (like multiple choice)
         setIsCorrect(false);
-        setMistakeMade(true);
+        setMistakeMade(true); // Flag that a mistake was made on this question
         toast({ variant: 'destructive', title: 'Tente de novo!', duration: 2000 });
         setTimeout(() => {
             setGameState('playing');
@@ -685,6 +694,7 @@ export default function InteractiveGame({ subject }: InteractiveGameProps) {
           attempts: (q.attempts || 0) + 1,
           timeTaken: (q.timeTaken || 0) + timeTaken,
           status: 'incorrect' as const,
+          proportionalScore: 0, // Explicitly set score to 0 on loss
         };
       });
       setQuestions(updatedQuestions);
