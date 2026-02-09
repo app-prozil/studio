@@ -85,7 +85,7 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
          // fallback to due date
       }
 
-      // Fallback to due date for completed tasks without completion date
+      // Fallback to completed tasks without completion date
       try {
         const aDueDate = a.dueDate ? parseISO(a.dueDate).getTime() : 0;
         const bDueDate = b.dueDate ? parseISO(b.dueDate).getTime() : 0;
@@ -180,13 +180,12 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
                                     {isExpired && <Badge variant="destructive">VENCIDA</Badge>}
                                     <Badge variant={task.isCompleted ? 'secondary' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
                                 </div>
-                                {task.isCompleted && task.completedAt ? (
+                                <p className={cn("text-xs mt-1", isExpired && !task.isCompleted ? "text-destructive font-semibold" : "text-muted-foreground")}>
+                                    Entrega: {dueDateObj ? format(dueDateObj, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida'}
+                                </p>
+                                {task.isCompleted && task.completedAt && (
                                   <p className="text-xs text-muted-foreground mt-1">
                                     Concluída: {format(parseISO(task.completedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
-                                  </p>
-                                ) : (
-                                  <p className={cn("text-xs mt-1", isExpired ? "text-destructive font-semibold" : "text-muted-foreground")}>
-                                    Entrega: {dueDateObj ? format(dueDateObj, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida'}
                                   </p>
                                 )}
                              </div>

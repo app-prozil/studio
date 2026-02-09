@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -2086,15 +2084,14 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
                                </p>
                                <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-1">
                                    <Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
-                                   {task.isCompleted && task.completedAt ? (
+                                   <span className="flex items-center gap-1">
+                                       <Calendar className="w-3 h-3"/>
+                                       Entrega: {format(parseISO(task.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                                   </span>
+                                   {task.isCompleted && task.completedAt && (
                                        <span className="flex items-center gap-1">
-                                           <Calendar className="w-3 h-3"/>
+                                           <Check className="w-3 h-3"/>
                                            Concluída: {format(parseISO(task.completedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
-                                       </span>
-                                   ) : (
-                                       <span className="flex items-center gap-1">
-                                           <Calendar className="w-3 h-3"/>
-                                           Entrega: {format(parseISO(task.dueDate), "dd/MM/yyyy", { locale: ptBR })}
                                        </span>
                                    )}
                                    <span className="flex items-center gap-1">
