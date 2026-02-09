@@ -2086,9 +2086,17 @@ function TasksByStudentView({ teacherId }: { teacherId: string }) {
                                </p>
                                <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-1">
                                    <Badge variant={task.isCompleted ? 'success' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
-                                   <span>
-                                    Data de Entrega: {format(new Date(task.dueDate), "dd/MM/yyyy")}
-                                   </span>
+                                   {task.isCompleted && task.completedAt ? (
+                                       <span className="flex items-center gap-1">
+                                           <Calendar className="w-3 h-3"/>
+                                           Concluída: {format(parseISO(task.completedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
+                                       </span>
+                                   ) : (
+                                       <span className="flex items-center gap-1">
+                                           <Calendar className="w-3 h-3"/>
+                                           Entrega: {format(parseISO(task.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                                       </span>
+                                   )}
                                    <span className="flex items-center gap-1">
                                     <FileText className="w-3 h-3"/> {task.questions?.length || 0} questões
                                    </span>

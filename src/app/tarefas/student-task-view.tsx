@@ -180,9 +180,15 @@ export default function StudentTaskView({ studentId }: { studentId: string }) {
                                     {isExpired && <Badge variant="destructive">VENCIDA</Badge>}
                                     <Badge variant={task.isCompleted ? 'secondary' : 'default'}>{task.isCompleted ? 'Concluída' : 'Pendente'}</Badge>
                                 </div>
-                                <p className={cn("text-xs mt-1", isExpired ? "text-destructive font-semibold" : "text-muted-foreground")}>
+                                {task.isCompleted && task.completedAt ? (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Concluída: {format(parseISO(task.completedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
+                                  </p>
+                                ) : (
+                                  <p className={cn("text-xs mt-1", isExpired ? "text-destructive font-semibold" : "text-muted-foreground")}>
                                     Entrega: {dueDateObj ? format(dueDateObj, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida'}
-                                </p>
+                                  </p>
+                                )}
                              </div>
 
                             {!task.isCompleted && task.taskType === 'jogo_interativo' && (
