@@ -458,11 +458,10 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
             case 'organize_categories':
                 processed.answer = "N/A";
                 processed.options = [];
-                processed.categories = (processed.categories || []).map(textTransform);
-                // DO NOT convert category items to uppercase to preserve emojis/case-sensitive content
+                processed.categories = (processed.categories || []).map(cat => cat);
                 processed.categoryItems = processed.categoryItems?.map(item => ({
                     ...item,
-                    category: textTransform(item.category), // Only standardize the target category
+                    category: item.category,
                 }));
                 break;
             case 'memory_game':
@@ -1472,89 +1471,107 @@ function TaskManager({ teacherId }: { teacherId: string }) {
       </Dialog>
 
       <Dialog open={isBankOpen} onOpenChange={setIsBankOpen}>
-          <DialogContent className="max-w-3xl h-[90vh] flex flex-col">
+          <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
               <DialogHeader><DialogTitle>Adicionar Exercícios do Banco</DialogTitle><DialogDescription>Selecione os exercícios que você quer adicionar a esta tarefa.</DialogDescription></DialogHeader>
-               <div className="space-y-4 pt-2 border-y pb-4">
-                  <div className="relative px-2">
-                    <Search className="absolute left-4 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Buscar por texto da pergunta..."
-                        className="pl-8"
-                        value={bankSearchQuery}
-                        onChange={(e) => setBankSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 px-2">
-                    <span className="text-sm font-medium pr-2">Matéria:</span>
-                    <Button variant={bankSubjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('all')}>Todos</Button>
-                    <Button variant={bankSubjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('matematica')}>Matemática</Button>
-                    <Button variant={bankSubjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('portugues')}>Português</Button>
-                    <Button variant={bankSubjectFilter === 'memoria' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('memoria')}>Memória</Button>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 px-2">
-                    <span className="text-sm font-medium pr-2">Tipo de Jogo:</span>
-                    <Button variant={bankQuestionTypeFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('all')}>Todos</Button>
-                    <Button variant={bankQuestionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('multiple_choice')}>M. Escolha</Button>
-                    <Button variant={bankQuestionTypeFilter === 'fill_in_the_blank' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('fill_in_the_blank')}>Completar</Button>
-                    <Button variant={bankQuestionTypeFilter === 'organize_syllables' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_syllables')}>Organizar Sílabas</Button>
-                    <Button variant={bankQuestionTypeFilter === 'organize_sentence' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_sentence')}>Organizar Frase</Button>
-                    <Button variant={bankQuestionTypeFilter === 'memory_game' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('memory_game')}>Memória</Button>
-                    <Button variant={bankQuestionTypeFilter === 'guess_the_word' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('guess_the_word')}>Adivinhar</Button>
-                    <Button variant={bankQuestionTypeFilter === 'organize_categories' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_categories')}>Categorias</Button>
-                    <Button variant={bankQuestionTypeFilter === 'match_the_pairs' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('match_the_pairs')}>Ligar Pares</Button>
-                  </div>
-               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto pr-4">
-                  {isLoadingExercises ? (
-                    <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                  ) : filteredBankExercises.length > 0 ? (
-                    filteredBankExercises.map(ex => (
-                      <div key={ex.id} className="flex items-center gap-4 p-2 border-b">
-                          <Checkbox 
-                              id={`bank-${ex.id}`} 
-                              checked={selectedExercises.some(s => s.id === ex.id)}
-                              onCheckedChange={(checked) => {
-                                  if (checked) {
-                                      setSelectedExercises(prev => [...prev, ex]);
-                                  } else {
-                                      setSelectedExercises(prev => prev.filter(p => p.id !== ex.id));
-                                  }
-                              }}
-                          />
-                          <label htmlFor={`bank-${ex.id}`} className="flex-1 cursor-pointer">
-                              <p className="font-semibold">{ex.text}{ex.text2 && ` ${ex.text2}`}</p>
-                              <div className="flex gap-2 mt-1 flex-wrap">
-                                  <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : ex.subject === 'portugues' ? 'Português' : 'Memória'}</Badge>
-                                  <Badge variant="outline">{ex.difficulty}</Badge>
-                                   <Badge variant={
-                                        (ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'secondary'
-                                        : (ex.questionType === 'organize_syllables') ? 'outline'
-                                        : (ex.questionType === 'organize_sentence') ? 'destructive'
-                                        : (ex.questionType === 'memory_game') ? 'destructive'
-                                        : (ex.questionType === 'match_the_pairs') ? 'destructive'
-                                        : (ex.questionType === 'guess_the_word') ? 'default'
-                                        : (ex.questionType === 'organize_categories') ? 'default'
-                                        : 'secondary'
-                                    }>
-                                        {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
-                                        : (ex.questionType === 'organize_syllables') ? 'Organizar Sílabas'
-                                        : (ex.questionType === 'organize_sentence') ? 'Organizar Frase'
-                                        : (ex.questionType === 'memory_game') ? 'Memória' 
-                                        : (ex.questionType === 'match_the_pairs') ? 'Ligar Pares'
-                                        : (ex.questionType === 'guess_the_word') ? 'Adivinhar' 
-                                        : (ex.questionType === 'organize_categories') ? 'Categorias'
-                                        : 'M. Escolha'}
-                                    </Badge>
-                              </div>
-                          </label>
+               
+               <div className="grid md:grid-cols-[300px_1fr] gap-6 flex-1 min-h-0 py-4 border-t">
+                  {/* Left Column for Filters */}
+                  <div className="flex flex-col gap-6 border-r pr-6 overflow-y-auto">
+                      <div>
+                          <Label htmlFor="bank-search" className="text-base">Buscar</Label>
+                          <div className="relative mt-2">
+                              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                  id="bank-search"
+                                  placeholder="Texto da pergunta..."
+                                  className="pl-8"
+                                  value={bankSearchQuery}
+                                  onChange={(e) => setBankSearchQuery(e.target.value)}
+                              />
+                          </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center text-muted-foreground py-8">
-                      Nenhum exercício encontrado para este filtro. Crie alguns no Banco de Exercícios.
-                    </div>
-                  )}
+
+                      <div>
+                          <Label className="text-base">Matéria</Label>
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <Button variant={bankSubjectFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('all')}>Todos</Button>
+                              <Button variant={bankSubjectFilter === 'matematica' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('matematica')}>Matemática</Button>
+                              <Button variant={bankSubjectFilter === 'portugues' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('portugues')}>Português</Button>
+                              <Button variant={bankSubjectFilter === 'memoria' ? 'default' : 'outline'} size="sm" onClick={() => setBankSubjectFilter('memoria')}>Memória</Button>
+                          </div>
+                      </div>
+
+                      <div>
+                          <Label className="text-base">Tipo de Jogo</Label>
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <Button variant={bankQuestionTypeFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('all')}>Todos</Button>
+                              <Button variant={bankQuestionTypeFilter === 'multiple_choice' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('multiple_choice')}>M. Escolha</Button>
+                              <Button variant={bankQuestionTypeFilter === 'fill_in_the_blank' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('fill_in_the_blank')}>Completar</Button>
+                              <Button variant={bankQuestionTypeFilter === 'organize_syllables' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_syllables')}>Organizar Sílabas</Button>
+                              <Button variant={bankQuestionTypeFilter === 'organize_sentence' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_sentence')}>Organizar Frase</Button>
+                              <Button variant={bankQuestionTypeFilter === 'memory_game' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('memory_game')}>Memória</Button>
+                              <Button variant={bankQuestionTypeFilter === 'guess_the_word' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('guess_the_word')}>Adivinhar</Button>
+                              <Button variant={bankQuestionTypeFilter === 'organize_categories' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('organize_categories')}>Categorias</Button>
+                              <Button variant={bankQuestionTypeFilter === 'match_the_pairs' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('match_the_pairs')}>Ligar Pares</Button>
+                          </div>
+                      </div>
+                  </div>
+                  
+                  {/* Right Column for Exercise List */}
+                  <div className="overflow-y-auto">
+                    {isLoadingExercises ? (
+                      <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                    ) : filteredBankExercises.length > 0 ? (
+                      filteredBankExercises.map(ex => (
+                        <div key={ex.id} className="flex items-start gap-4 p-2 border-b">
+                            <Checkbox 
+                                id={`bank-${ex.id}`} 
+                                checked={selectedExercises.some(s => s.id === ex.id)}
+                                onCheckedChange={(checked) => {
+                                    if (checked) {
+                                        setSelectedExercises(prev => [...prev, ex]);
+                                    } else {
+                                        setSelectedExercises(prev => prev.filter(p => p.id !== ex.id));
+                                    }
+                                }}
+                                className="mt-1"
+                            />
+                            <label htmlFor={`bank-${ex.id}`} className="flex-1 cursor-pointer">
+                                <p className="font-semibold">{ex.text}{ex.text2 && ` ${ex.text2}`}</p>
+                                <div className="flex gap-2 mt-1 flex-wrap">
+                                    <Badge variant="secondary">{ex.subject === 'matematica' ? 'Matemática' : ex.subject === 'portugues' ? 'Português' : 'Memória'}</Badge>
+                                    <Badge variant="outline">{ex.difficulty}</Badge>
+                                     <Badge variant={
+                                          (ex.questionType || 'multiple_choice') === 'fill_in_the_blank' ? 'secondary'
+                                          : (ex.questionType === 'organize_syllables') ? 'outline'
+                                          : (ex.questionType === 'organize_sentence') ? 'destructive'
+                                          : (ex.questionType === 'memory_game') ? 'destructive'
+                                          : (ex.questionType === 'match_the_pairs') ? 'destructive'
+                                          : (ex.questionType === 'guess_the_word') ? 'default'
+                                          : (ex.questionType === 'organize_categories') ? 'default'
+                                          : 'secondary'
+                                      }>
+                                          {(ex.questionType === 'fill_in_the_blank') ? 'Completar' 
+                                          : (ex.questionType === 'organize_syllables') ? 'Organizar Sílabas'
+                                          : (ex.questionType === 'organize_sentence') ? 'Organizar Frase'
+                                          : (ex.questionType === 'memory_game') ? 'Memória' 
+                                          : (ex.questionType === 'match_the_pairs') ? 'Ligar Pares'
+                                          : (ex.questionType === 'guess_the_word') ? 'Adivinhar' 
+                                          : (ex.questionType === 'organize_categories') ? 'Categorias'
+                                          : 'M. Escolha'}
+                                      </Badge>
+                                </div>
+                            </label>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-muted-foreground py-8 h-full flex items-center justify-center">
+                        <p>Nenhum exercício encontrado para este filtro.</p>
+                      </div>
+                    )}
+                  </div>
               </div>
+
               <DialogFooter>
                   <Button onClick={() => setIsBankOpen(false)}>
                     Adicionar {selectedExercises.length > 0 ? `(${selectedExercises.length})` : ''} Exercícios
