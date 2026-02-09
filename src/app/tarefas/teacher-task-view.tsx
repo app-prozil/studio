@@ -420,54 +420,64 @@ function ExerciseBank({ teacherId }: { teacherId: string }) {
   
   const onSubmit = (values: Exercise) => {
     setIsSubmitting(true);
-  
+
     const dataToSave: Exercise = JSON.parse(JSON.stringify(values));
-  
+
     const processData = (data: Exercise): Exercise => {
-      const processed = { ...data };
-      processed.text = (processed.text || '').toUpperCase();
-      processed.text2 = (processed.text2 || '').toUpperCase();
-  
-      switch (processed.questionType) {
-        case 'fill_in_the_blank':
-          processed.options = processed.options?.map(o => o.toUpperCase()) || [];
-          processed.answer = processed.options[0] || '';
-          break;
-        case 'organize_syllables':
-          processed.options = processed.options?.map(o => o.toUpperCase()) || [];
-          processed.answer = (processed.options || []).join('');
-          break;
-        case 'multiple_choice':
-          processed.answer = (processed.answer || '').toUpperCase();
-          processed.options = processed.options?.map(o => o.toUpperCase()) || [];
-          break;
-        case 'guess_the_word':
-          processed.answer = (processed.answer || '').toUpperCase();
-          processed.options = [];
-          break;
-        case 'organize_sentence':
-            processed.answer = processed.answer || '';
-            processed.options = (processed.answer || '').split(' ').filter(word => word.trim() !== '');
-            break;
-        case 'organize_categories':
-          processed.answer = "N/A";
-          processed.options = [];
-          processed.categories = (processed.categories || []).map(c => c.toUpperCase());
-          // DO NOT convert category items to uppercase to preserve emojis/case
-          break;
-        case 'memory_game':
-        case 'match_the_pairs':
-          processed.answer = "N/A";
-          // DO NOT convert memory/match options to uppercase to preserve emojis/case
-          break;
-        default:
-          processed.answer = (processed.answer || '').toUpperCase();
-          processed.options = processed.options?.map(o => o.toUpperCase()) || [];
-          break;
-      }
-      return processed;
+        const processed = { ...data };
+
+        // Standardize text fields to uppercase, except for specific game types
+        const textTransform = (text: string | undefined) => (text || '').toUpperCase();
+        
+        processed.text = textTransform(processed.text);
+        if (processed.text2) {
+            processed.text2 = textTransform(processed.text2);
+        }
+
+        switch (processed.questionType) {
+            case 'fill_in_the_blank':
+                processed.options = (processed.options || []).map(textTransform);
+                processed.answer = processed.options[0] || '';
+                break;
+            case 'organize_syllables':
+                processed.options = (processed.options || []).map(textTransform);
+                processed.answer = (processed.options || []).join('');
+                break;
+            case 'multiple_choice':
+                processed.answer = textTransform(processed.answer);
+                processed.options = (processed.options || []).map(textTransform);
+                break;
+            case 'guess_the_word':
+                processed.answer = textTransform(processed.answer);
+                processed.options = [];
+                break;
+            case 'organize_sentence':
+                processed.answer = processed.answer || '';
+                processed.options = (processed.answer || '').split(' ').filter(word => word.trim() !== '');
+                break;
+            case 'organize_categories':
+                processed.answer = "N/A";
+                processed.options = [];
+                processed.categories = (processed.categories || []).map(textTransform);
+                // DO NOT convert category items to uppercase to preserve emojis/case-sensitive content
+                processed.categoryItems = processed.categoryItems?.map(item => ({
+                    ...item,
+                    category: textTransform(item.category), // Only standardize the target category
+                }));
+                break;
+            case 'memory_game':
+            case 'match_the_pairs':
+                processed.answer = "N/A";
+                // DO NOT convert options for these games to preserve emojis/case-sensitive content
+                break;
+            default:
+                processed.answer = textTransform(processed.answer);
+                processed.options = (processed.options || []).map(textTransform);
+                break;
+        }
+        return processed;
     };
-  
+
     const finalData = processData(dataToSave);
     
     if (editingExercise?.id) {
@@ -1494,7 +1504,7 @@ function TaskManager({ teacherId }: { teacherId: string }) {
                     <Button variant={bankQuestionTypeFilter === 'match_the_pairs' ? 'default' : 'outline'} size="sm" onClick={() => setBankQuestionTypeFilter('match_the_pairs')}>Ligar Pares</Button>
                   </div>
                </div>
-              <div className="flex-1 overflow-y-auto pr-4">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-4">
                   {isLoadingExercises ? (
                     <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                   ) : filteredBankExercises.length > 0 ? (
