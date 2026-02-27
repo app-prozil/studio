@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 const signUpSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
@@ -35,6 +35,8 @@ const loginSchema = z.object({
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
   const router = useRouter();
   const { auth, firestore } = useFirebase();
   const { toast } = useToast();
@@ -211,9 +213,27 @@ export default function LoginPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Senha</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
+                        <div className="relative">
+                          <FormControl>
+                            <Input type={showLoginPassword ? "text" : "password"} {...field} />
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowLoginPassword(!showLoginPassword)}
+                          >
+                            {showLoginPassword ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            <span className="sr-only">
+                              {showLoginPassword ? "Esconder senha" : "Mostrar senha"}
+                            </span>
+                          </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -268,9 +288,27 @@ export default function LoginPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Senha</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
+                        <div className="relative">
+                          <FormControl>
+                            <Input type={showSignUpPassword ? "text" : "password"} {...field} />
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                          >
+                            {showSignUpPassword ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            <span className="sr-only">
+                              {showSignUpPassword ? "Esconder senha" : "Mostrar senha"}
+                            </span>
+                          </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
